@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* Subtle animations for hero shapes */
+@keyframes floatY {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes driftXY {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(8px, -8px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes rotateSlow {
+  0% { transform: rotate(45deg); }
+  100% { transform: rotate(405deg); }
+}
+
+.animate-float-slow {
+  animation: floatY 6s ease-in-out infinite;
+}
+
+.animate-drift-slower {
+  animation: driftXY 12s ease-in-out infinite;
+}
+
+.animate-rotate-very-slow {
+  animation: rotateSlow 30s linear infinite;
+}
+
+/* Mossy Hollow theme palette */
+@theme {
+  --color-moss-olive: #636B2F;
+  --color-moss-sage: #BAC095;
+  --color-moss-lime: #D4DE95;
+  --color-moss-deep: #3D4127;
+}
