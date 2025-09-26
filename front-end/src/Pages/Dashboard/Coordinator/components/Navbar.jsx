@@ -1,11 +1,15 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
+import { useAuth } from "../../../../context/AuthContext.jsx"
+import { useNavigate } from "react-router-dom"
 import { Home, FileText, CheckCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
 import { toast } from "react-hot-toast"
 
 export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile }) {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef(null)
@@ -24,10 +28,11 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
   }, [setActiveTab])
 
   const handleLogout = useCallback(() => {
+    logout()
     toast.success("Logged out successfully")
     setIsProfileDropdownOpen(false)
-    // Add logout logic here
-  }, [])
+    navigate("/", { replace: true })
+  }, [logout, navigate])
 
   const toggleProfileDropdown = useCallback(() => {
     setIsProfileDropdownOpen(prev => !prev)

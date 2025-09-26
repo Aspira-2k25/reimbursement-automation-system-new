@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock,} from 'lucide-react';
 import { GoogleLogin} from '@react-oauth/google';
+import { useAuth } from '../../context/AuthContext.jsx'
+import { useNavigate } from 'react-router-dom'
 
 
 export default function LoginPage() {
+  const { login, loginWithGoogle } = useAuth()
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,23 +24,28 @@ export default function LoginPage() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Simulate form submission
-    setTimeout(() => {
+    setError('');
+    try {
+      const { user } = await login(formData.name, formData.password);
+      const role = (user?.role || '').toLowerCase();
+      if (role === 'coordinator') {
+        navigate('/dashboard/coordinator', { replace: true });
+      } else if (role === 'faculty') {
+        navigate('/dashboard/faculty', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
       setIsLoading(false);
-      alert('Account created successfully!');
-    }, 2000);
+    }
   };
 
-  // Minimal demo handler; replace with API call to backend
-  async function loginWithGoogle(credential) {
-    // Example: send credential to backend for verification
-    // await fetch('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential }) })
-    console.log('Google credential received', credential?.slice?.(0, 10) + '...');
-  }
+  // Note: Faculty/Coordinator should authenticate via backend flow.
 
   return (
     <div className="min-h-screen flex">
@@ -87,6 +96,11 @@ export default function LoginPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                  {error}
+                </div>
+              )}
               {/* Name Input */}
               <div className="relative">
                 <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
@@ -94,7 +108,7 @@ export default function LoginPage() {
                 }`} />
                 <input
                   type="text"
-                  placeholder="Name"
+                  placeholder="Username"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   onFocus={() => setFocusedField('name')}
@@ -151,7 +165,14 @@ export default function LoginPage() {
                       if (!credential) {
                         throw new Error('No Google credential received');
                       }
-                      await loginWithGoogle(credential);
+                      const { user } = await loginWithGoogle(credential);
+                      if (user?.role === 'Coordinator') {
+                        navigate('/dashboard/coordinator', { replace: true });
+                      } else if (user?.role === 'Faculty') {
+                        navigate('/dashboard/faculty', { replace: true });
+                      } else {
+                        navigate('/dashboard', { replace: true });
+                      }
                     } catch (err) {
                       setError(err.message || 'Google login failed. Please try again.');
                     }

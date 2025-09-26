@@ -1,6 +1,6 @@
 import React from "react"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
-import { useAuth } from "../../context/AuthContext"
+import { useAuth } from "../../context/AuthContext.jsx"
 import { Toaster, toast } from "react-hot-toast"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -26,6 +26,37 @@ import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profil
 export default function Dashboard() {
   const location = useLocation()
   const { user } = useAuth()
+
+  const PageWrapper = ({ children, type = "fade" }) => {
+    const transitions = {
+      fade: {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -20 }
+      },
+      slide: {
+        initial: { opacity: 0, x: 20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -20 }
+      },
+      scale: {
+        initial: { opacity: 0, scale: 0.95 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.95 }
+      }
+    }
+
+    return (
+      <motion.div
+        initial={transitions[type].initial}
+        animate={transitions[type].animate}
+        exit={transitions[type].exit}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+        {children}
+      </motion.div>
+    )
+  }
 
   React.useEffect(() => {
     if (location.pathname === "/logout") {
@@ -77,34 +108,23 @@ export default function Dashboard() {
     )
   }
 
-  const PageWrapper = ({ children, type = "fade" }) => {
-    const transitions = {
-      fade: {
-        initial: { opacity: 0, y: 20 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -20 }
-      },
-      slide: {
-        initial: { opacity: 0, x: 20 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -20 }
-      },
-      scale: {
-        initial: { opacity: 0, scale: 0.95 },
-        animate: { opacity: 1, scale: 1 },
-        exit: { opacity: 0, scale: 0.95 }
-      }
-    }
-
+  // Force Faculty layout when path targets faculty, regardless of user role
+  if (location.pathname.startsWith("/dashboard/faculty")) {
     return (
-      <motion.div
-        initial={transitions[type].initial}
-        animate={transitions[type].animate}
-        exit={transitions[type].exit}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
-        {children}
-      </motion.div>
+      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <FacultyProfileProvider>
+          <FacultyNavbar />
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="faculty" element={<PageWrapper><FacultyDashboard /></PageWrapper>} />
+              <Route path="faculty/requests" element={<PageWrapper type="slide"><FacultyRequestStatus /></PageWrapper>} />
+              <Route path="faculty/profile" element={<PageWrapper type="scale"><FacultyProfileSettings /></PageWrapper>} />
+              <Route path="*" element={<Navigate to="faculty" replace />} />
+            </Routes>
+          </AnimatePresence>
+          <Toaster {...toastConfig} />
+        </FacultyProfileProvider>
+      </div>
     )
   }
 
@@ -114,12 +134,11 @@ export default function Dashboard() {
         <Navbar />
 
         <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
-            <Route path="/status" element={<PageWrapper type="slide"><RequestStatus /></PageWrapper>} />
-            <Route path="/profile" element={<PageWrapper type="scale"><ProfileSettings /></PageWrapper>} />
-            <Route path="/logout" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+          <Routes>
+            <Route index element={<PageWrapper><Dashboard /></PageWrapper>} />
+            <Route path="requests" element={<PageWrapper type="slide"><RequestStatus /></PageWrapper>} />
+            <Route path="profile" element={<PageWrapper type="scale"><ProfileSettings /></PageWrapper>} />
+            <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
         </AnimatePresence>
 

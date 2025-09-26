@@ -69,6 +69,47 @@ const authController = {
     }
   },
 
+  // Google login - verify credential, map to role from DB, return JWT
+  googleLogin: async (req, res) => {
+    try {
+      const { credential } = req.body;
+      if (!credential) {
+        return res.status(400).json({ error: 'Missing Google credential' });
+      }
+
+      // Verify Google ID token via tokeninfo (simpler) or google-auth-library in production
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+      if (!verifyRes.ok) {
+        return res.status(401).json({ error: 'Invalid Google token' });
+      }
+      const google = await verifyRes.json();
+      const email = google?.email;
+      const name = google?.name || 'Google User';
+      if (!email) {
+        return res.status(400).json({ error: 'Google token missing email' });
+      }
+
+      // Lookup user by email to determine role; default to Student
+      const staff = await dbUtils.getStaffByEmail?.(email);
+      const role = staff?.role || 'Student';
+      const userId = staff?.id || null;
+
+      const token = jwt.sign(
+        { userId, email, role, name },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      );
+
+      return res.json({
+        token,
+        user: { id: userId, email, name, role }
+      });
+    } catch (error) {
+      console.error('Google login error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   // Register function
   register: async (req, res) => {
     try {
