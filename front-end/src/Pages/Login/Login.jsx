@@ -165,15 +165,15 @@ export default function LoginPage() {
                       if (!credential) {
                         throw new Error('No Google credential received');
                       }
-                      const { user } = await loginWithGoogle(credential);
-                      if (user?.role === 'Coordinator') {
-                        navigate('/dashboard/coordinator', { replace: true });
-                      } else if (user?.role === 'Faculty') {
-                        navigate('/dashboard/faculty', { replace: true });
-                      } else {
-                        navigate('/dashboard', { replace: true });
-                      }
+                      await loginWithGoogle(credential);
+                      navigate('/dashboard', { replace: true });
+                      setTimeout(() => {
+                        if (location.pathname !== '/dashboard') {
+                          window.location.assign('/dashboard');
+                        }
+                      }, 50);
                     } catch (err) {
+                      console.error('Google login error:', err);
                       setError(err.message || 'Google login failed. Please try again.');
                     }
                   }}
