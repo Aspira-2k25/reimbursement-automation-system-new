@@ -7,6 +7,7 @@ const { validateLogin, validateRegister } = require('../middleware/validation');
 // Public routes (no authentication required)
 router.post('/login', validateLogin, authController.login);
 router.post('/register', validateRegister, authController.register);
+router.post('/google', authController.googleLogin);
 
 
 // Protected routes (authentication required)

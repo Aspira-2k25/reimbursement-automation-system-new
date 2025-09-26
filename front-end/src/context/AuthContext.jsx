@@ -70,17 +70,20 @@ export const AuthProvider = ({ children }) => {
   // In production, send the credential to your backend to verify with Google
   // and return an app-specific JWT and user object with role
   const loginWithGoogle = async (credential) => {
-    // For now, store the Google credential as the token and mark role as Student
-    // Replace this with a secure backend verification flow
-    localStorage.setItem('token', credential);
-    const googleUser = {
-      name: 'Google User',
-      role: 'Student',
-    };
-    localStorage.setItem('user', JSON.stringify(googleUser));
-    setToken(credential);
-    setUser(googleUser);
-    return { token: credential, user: googleUser };
+    const response = await fetch('http://localhost:5000/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error || 'Google login failed');
+    }
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+    return data;
   };
 
   // Check if user is authenticated

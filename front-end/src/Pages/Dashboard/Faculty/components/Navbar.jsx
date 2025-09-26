@@ -4,6 +4,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom"
 import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
+import { useAuth } from "../../../../context/AuthContext.jsx"
 
 function initials(name) {
   return name
@@ -21,6 +22,7 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { profile } = useProfile()
+  const { logout } = useAuth()
   
   const navItems = [
     { label: "Home", path: "/dashboard/faculty" },
@@ -187,13 +189,13 @@ export default function Navbar() {
                   <button
                     onClick={() => {
                       handleClose()
-                      navigate("/dashboard/faculty/settings")
+                      navigate("/dashboard/faculty/profile")
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         handleClose()
-                        navigate("/dashboard/faculty/settings")
+                        navigate("/dashboard/faculty/profile")
                       }
                     }}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-blue-50/60 active:bg-blue-100/60 rounded-lg transition-colors duration-150 focus:outline-none focus:bg-blue-50/60"
@@ -208,8 +210,9 @@ export default function Navbar() {
                   </button>
                   <button
                     onClick={() => {
-                      handleClose()
-                      navigate("/")
+                    logout()
+                    handleClose()
+                    navigate("/")
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
