@@ -87,43 +87,80 @@ const ReimbursementForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  //handle input change
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    
-    // For amount field, only allow positive numbers up to 1500
-    if (name === 'amount') {
-      if (value === '' || (value > 0 && value <= 1500)) {
+    const { name, value } =e.target;
+
+    //for amount field
+    if(name ==="amount") {
+      if (value === "" || (value>0 && value<=1500)) {
         setFormData({
           ...formData,
-          [name]: value
+          [name]: value,
         });
       }
     } else {
       setFormData({
         ...formData,
-        [name]: value
+        [name]: value,
       });
     }
 
-    // Clear error when user starts typing
-    if (errors[name]) {
+    //clear errors when user sttarts typing
+    if(errors[name]) {
       setErrors({
         ...errors,
-        [name]: ''
+        [name]: "",
+
       });
     }
   };
 
-  const handleSubmit = (e) => {
+  //handle form submit
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      // In a real application, this would send data to a backend
-      alert('Reimbursement form submitted successfully!');
-      console.log('Form submitted:', formData);
+      try {
+        //build formData for backend
+        const formDataToSend = new FormData();
+
+        //add all text field from state
+
+        Object.keys(formData).forEach((key) => {
+          formDataToSend.append(key,formData[key]);
+        });
+
+        //add file inputs by Id
+        const nptelFile = document.getElementById("nptelResult").files[0];
+        const idCardFile = document.getElementById("idCard").files[0];
+
+        if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
+        if (idCardFile) formDataToSend.append("idCard", idCardFile);
+
+        //send to backend api
+
+        const res = await fetch("http://localhost:5000/api/forms/submit",{
+          method: "POST",
+          headers: { "Content-Type": "application/json"},
+          body: JSON.stringify(formData),
+        });
+
+        const data = await res.json();
+        console.log("form saved:", data);
+
+        alert("Reimbursement form submitted successfully!");
+
+      } catch (err) {
+        console.log("Error submitting form:", err);
+        alert("form submission failed. Try again");
+      }
     }
   };
 
+
+
+ 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
