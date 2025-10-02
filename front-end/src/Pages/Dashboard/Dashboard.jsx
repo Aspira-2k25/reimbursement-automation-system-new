@@ -22,6 +22,7 @@ import CoordinatorApprovedRequest from "./Coordinator/ApprovedRequest" // Approv
 import CoordinatorApplyReimbursement from "./Coordinator/ApplyReimbursement" // Main dashboard for faculty
 import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profile settings page for faculty
 
+import HODDashboard from "./Hod/HODDashboard" 
 
 export default function Dashboard() {
   const location = useLocation()
@@ -124,6 +125,15 @@ export default function Dashboard() {
           </AnimatePresence>
           <Toaster {...toastConfig} />
         </FacultyProfileProvider>
+      </div>
+    )
+  }
+
+  if (location.pathname.startsWith("/dashboard/hod")) {
+    return (
+      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <HODDashboard />
+        <Toaster {...toastConfig} />
       </div>
     )
   }
