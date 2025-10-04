@@ -24,6 +24,8 @@ import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profil
 
 import HODDashboard from "./Hod/HODDashboard" 
 
+import PrincipalDashboard from "./Principal/PrincipalDashboard"
+
 export default function Dashboard() {
   const location = useLocation()
   const { user } = useAuth()
@@ -133,6 +135,15 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
         <HODDashboard />
+        <Toaster {...toastConfig} />
+      </div>
+    )
+  }
+
+  if (location.pathname.startsWith("/dashboard/principal")) {
+    return (
+      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>    
+        <PrincipalDashboard />
         <Toaster {...toastConfig} />
       </div>
     )

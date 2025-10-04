@@ -267,8 +267,19 @@ export const initialHodData = {
       approvalRate: 86
     },
     {
-      id: 'cse',
-      name: 'Computer Science',
+      id: 'ce',
+      name: 'Computer Engineering',
+      hod: 'Dr. Rajesh Kumar',
+      totalRequests: 52,
+      pendingRequests: 8,
+      approvedRequests: 38,
+      rejectedRequests: 6,
+      totalDisbursed: 145000,
+      approvalRate: 86
+    },
+    {
+      id: 'cse-aiml',
+      name: 'CSE AIML',
       hod: 'Dr. Priya Sharma',
       totalRequests: 38,
       pendingRequests: 5,
@@ -278,8 +289,8 @@ export const initialHodData = {
       approvalRate: 85
     },
     {
-      id: 'ece',
-      name: 'Electronics & Communication',
+      id: 'cse-ds',
+      name: 'CSE DS',
       hod: 'Dr. Amit Singh',
       totalRequests: 42,
       pendingRequests: 7,
@@ -310,17 +321,6 @@ export const initialHodData = {
       totalDisbursed: 75000,
       approvalRate: 83
     },
-    {
-      id: 'eee',
-      name: 'Electrical & Electronics',
-      hod: 'Dr. Vikas Yadav',
-      totalRequests: 31,
-      pendingRequests: 5,
-      approvedRequests: 22,
-      rejectedRequests: 4,
-      totalDisbursed: 68000,
-      approvalRate: 84
-    }
   ]
 }
 

@@ -4,10 +4,10 @@ import {
   User, 
   Mail, 
   Phone, 
-  Calendar, 
   Building, 
-  Edit3, 
-  Save, 
+  Calendar,
+  Save,
+  Edit3,
   X,
   Shield,
   Eye,
@@ -15,16 +15,15 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import { useHODContext } from './HODLayout'
+import { usePrincipalContext } from './PrincipalLayout'
 
 const ProfileSettings = () => {
-  const { userProfile, setUserProfile } = useHODContext()
+  const { userProfile, setUserProfile } = usePrincipalContext()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     fullName: userProfile?.fullName || '',
     email: userProfile?.email || '',
     phone: userProfile?.phone || '',
-    department: userProfile?.department || '',
     designation: userProfile?.designation || '',
     employeeId: userProfile?.employeeId || '',
     joinDate: userProfile?.joinDate || ''
@@ -60,9 +59,6 @@ const ProfileSettings = () => {
       newErrors.email = 'Please enter a valid email address'
     }
     
-    if (!formData.department?.trim()) {
-      newErrors.department = 'Department is required'
-    }
     
     if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
       newErrors.phone = 'Please enter a valid phone number'
@@ -102,7 +98,6 @@ const ProfileSettings = () => {
       fullName: userProfile?.fullName || '',
       email: userProfile?.email || '',
       phone: userProfile?.phone || '',
-      department: userProfile?.department || '',
       designation: userProfile?.designation || '',
       employeeId: userProfile?.employeeId || '',
       joinDate: userProfile?.joinDate || ''
@@ -320,40 +315,17 @@ const ProfileSettings = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department *
+                  College
                 </label>
                 <div className="relative">
                   <Building className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    value={formData.department}
-                    onChange={(e) => handleInputChange('department', e.target.value)}
-                    disabled={!isEditing}
-                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.department 
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                        : 'border-gray-200'
-                    } ${
-                      !isEditing ? 'bg-gray-50 text-gray-900' : ''
-                    }`}
+                    value="Engineering College"
+                    disabled
+                    className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-900"
                   />
-                  {errors.department && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <AlertCircle className="w-4 h-4 text-red-500" />
-                    </div>
-                  )}
                 </div>
-                {errors.department && (
-                  <motion.p 
-                    className="mt-1 text-sm text-red-600 flex items-center gap-1"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <AlertCircle className="w-3 h-3" />
-                    {errors.department}
-                  </motion.p>
-                )}
               </div>
 
               <div>
@@ -390,8 +362,6 @@ const ProfileSettings = () => {
               </div>
             </div>
           </div>
-
-          {/* Notification Preferences removed as requested */}
         </div>
 
         {/* Sidebar */}
