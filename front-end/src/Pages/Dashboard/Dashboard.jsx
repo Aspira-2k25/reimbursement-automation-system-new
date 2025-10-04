@@ -189,6 +189,30 @@ export default function Dashboard() {
           </div>
         )
 
+       case "HOD":
+        // Return HOD dashboard with sidebar-based navigation
+        // Note: HODDashboard handles its own internal navigation with collapsible sidebar
+        // Components: HODDashboard (includes sidebar, header, and page routing)
+        // Data Source: mockData.js -> initialHodData section
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+            <HODDashboard />
+            <Toaster {...toastConfig} />
+          </div>
+        )
+
+      case "Principal":
+        // Return Principal dashboard with sidebar-based navigation
+        // Note: PrincipalDashboard handles its own internal navigation with collapsible sidebar
+        // Components: PrincipalDashboard (includes sidebar, header, and page routing)
+        // Data Source: mockPrincipalData.js -> initialPrincipalData section
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+            <PrincipalDashboard />
+            <Toaster {...toastConfig} />
+          </div>
+        )
+
 
     default:
       return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider)
