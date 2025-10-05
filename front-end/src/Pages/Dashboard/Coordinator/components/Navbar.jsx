@@ -82,12 +82,12 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
   }, [])
 
   return (
-    <nav className="shadow-sm" style={{background: 'linear-gradient(135deg, color-mix(in oklab, var(--color-moss-olive) 70%, white) 0%, color-mix(in oklab, var(--color-moss-sage) 85%, white) 100%)', borderBottom: '1px solid color-mix(in oklab, var(--color-moss-olive) 35%, white)'}}>
+    <nav className="shadow-sm" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)'}}>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo and Title - Responsive */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{background: 'linear-gradient(135deg, var(--color-moss-olive) 0%, var(--color-moss-sage) 50%, var(--color-moss-lime) 100%)'}}>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)'}}>
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white rounded-md opacity-90"></div>
             </div>
             <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
@@ -103,9 +103,9 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                 <button
                   key={item.id}
                   onClick={() => handleNavItemClick(item.id)}
-                  className={`flex items-center gap-1.5 xl:gap-2 px-2 xl:px-3 py-1.5 xl:py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-moss-lime)]/60 focus:ring-offset-0 ${
+                  className={`flex items-center gap-1.5 xl:gap-2 px-2 xl:px-3 py-1.5 xl:py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                     activeTab === item.id
-                      ? "bg-[color:var(--color-moss-lime)]/35 text-white shadow-sm"
+                      ? "bg-white/20 text-white shadow-sm"
                       : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
                   }`}
                 >
@@ -124,13 +124,13 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             <div className="relative" ref={profileDropdownRef}>
               <button
                 onClick={toggleProfileDropdown}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-moss-lime)]/60 focus:ring-offset-0 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${
                   isProfileDropdownOpen 
-                    ? "text-white bg-[color:var(--color-moss-lime)]/35" 
+                    ? "text-white bg-white/20" 
                     : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
                 }`}
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--color-moss-deep)'}}>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center" style={{backgroundColor: '#182628'}}>
                   <span className="text-white text-xs sm:text-sm font-medium">
                     {userProfile?.fullName
                       ? userProfile.fullName
@@ -161,14 +161,14 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                   <div className="p-2">
                     <button
                       onClick={handleProfileSettings}
-                      className="flex items-center gap-2 sm:gap-3 w-full px-2 sm:px-3 py-2 sm:py-3 rounded-md hover:bg-gray-50 active:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-moss-olive)] focus:ring-offset-2"
+                      className="flex items-center gap-2 sm:gap-3 w-full px-2 sm:px-3 py-2 sm:py-3 rounded-md hover:bg-[#65CCB8]/40 active:bg-[#65CCB8]/60 transition-colors focus:outline-none"
                     >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, var(--color-moss-lime) 40%, white)'}}>
-                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" style={{color: 'var(--color-moss-olive)'}} />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 40%, white)'}}>
+                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" style={{color: '#3B945E'}} />
                       </div>
                       <div className="text-left">
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">Profile Settings</div>
-                        <div className="text-xs text-gray-500">Manage your faculty account</div>
+                        <div className="text-xs sm:text-sm font-medium text-[#182628]">Profile Settings</div>
+                        <div className="text-xs text-[#182628]/70">Manage your faculty account</div>
                       </div>
                     </button>
 
@@ -180,8 +180,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                         <LogOut className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                       </div>
                       <div className="text-left">
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">Logout</div>
-                        <div className="text-xs text-gray-500">Sign out of your account</div>
+                        <div className="text-xs sm:text-sm font-medium text-[#182628]">Logout</div>
+                        <div className="text-xs text-[#182628]/70">Sign out of your account</div>
                       </div>
                     </button>
                   </div>

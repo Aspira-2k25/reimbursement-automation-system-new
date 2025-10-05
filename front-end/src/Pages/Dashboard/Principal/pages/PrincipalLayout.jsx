@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialPrincipalData, calculateCollegeStats } from '../data/mockData'
+import { useAuth } from '../../../../context/AuthContext'
+import HomeDashboard from './HomeDashboard'
+import ReportsAndAnalytics from './ReportsAndAnalytics'
+import DepartmentRoster from './DepartmentRoster'
+import ProfileSettings from './ProfileSettings'
 
 // Context for sharing Principal state across components
 const PrincipalContext = createContext()
@@ -16,6 +21,7 @@ export const usePrincipalContext = () => {
 }
 
 const PrincipalLayout = ({ children }) => {
+  const { user } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
   const [userProfile, setUserProfile] = useState(initialPrincipalData.userProfile)
@@ -62,11 +68,42 @@ const PrincipalLayout = ({ children }) => {
     return () => window.removeEventListener('error', handleGlobalError)
   }, [])
 
+  // Update userProfile when user data from AuthContext changes
+  useEffect(() => {
+    if (user) {
+      setUserProfile({
+        fullName: user.fullName || user.name || 'Dr. Rajesh Kumar',
+        college: user.college || 'Engineering College',
+        designation: user.designation || user.role || 'Principal',
+        role: user.role || 'Principal',
+        email: user.email || 'principal@college.edu',
+        phone: user.phone || '+91-9876543210',
+        joinDate: user.joinDate || 'August 15, 2018',
+        employeeId: user.employeeId || user.id || 'PRIN-001'
+      })
+    }
+  }, [user])
+
   // Calculate college-wide statistics
   const collegeStats = useMemo(() => {
     return calculateCollegeStats(allRequests, departments)
   }, [allRequests, departments])
 
+  // Function to render content based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomeDashboard />
+      case 'reports':
+        return <ReportsAndAnalytics />
+      case 'roster':
+        return <DepartmentRoster />
+      case 'profile':
+        return <ProfileSettings />
+      default:
+        return <HomeDashboard />
+    }
+  }
 
   // Context value with all shared state and methods
   const contextValue = {
@@ -279,7 +316,7 @@ const PrincipalLayout = ({ children }) => {
                     scale: { duration: 0.3 }
                   }}
                 >
-                  {children}
+                  {renderContent()}
                 </motion.div>
               </AnimatePresence>
             </div>
