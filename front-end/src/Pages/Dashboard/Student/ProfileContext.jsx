@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useAuth } from '../../../context/AuthContext.jsx'
 
 // Create the Profile Context
 const ProfileContext = createContext()
@@ -15,7 +16,20 @@ const defaultProfile = {
  * Provides profile state and update functions to child components
  */
 export function ProfileProvider({ children }) {
+  const { user } = useAuth()
   const [profile, setProfile] = useState(defaultProfile)
+
+  // Sync profile with authenticated user data
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || user.username || "User",
+        department: user.department || "Computer Science",
+        role: user.role || "Student",
+        email: user.email || null
+      })
+    }
+  }, [user])
 
   /**
    * Update profile information

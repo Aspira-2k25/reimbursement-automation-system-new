@@ -78,12 +78,12 @@ export default function Navbar() {
   }, [open, handleClose])
 
   return (
-    <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{background: 'linear-gradient(135deg, color-mix(in oklab, var(--color-moss-olive) 70%, white) 0%, color-mix(in oklab, var(--color-moss-sage) 85%, white) 100%)', borderBottom: '1px solid color-mix(in oklab, var(--color-moss-olive) 35%, white)'}}>
+    <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)'}}>
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
         <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Logo section */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shadow-sm" style={{background: 'linear-gradient(135deg, var(--color-moss-olive), var(--color-moss-lime))'}}>
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shadow-sm" style={{background: 'linear-gradient(135deg, var(--color-dark-green), var(--color-light-teal))'}}>
               <div className="h-3 w-3 sm:h-4 sm:w-4 rounded-sm bg-white/20"></div>
             </div>
             <span className="font-bold text-white text-base sm:text-lg">Reimbursement Portal</span>
@@ -94,7 +94,7 @@ export default function Navbar() {
             <div 
               className={[
                 "absolute top-1 bottom-1 rounded-xl sliding-block",
-                "bg-gradient-to-r from-[color:var(--color-moss-olive)] via-[color:var(--color-moss-sage)] to-[color:var(--color-moss-lime)]",
+                "bg-gradient-to-r from-[var(--color-dark-green)] via-[var(--color-medium-teal)] to-[var(--color-light-teal)]",
                 "shadow-lg",
                 "border border-white/20",
                 "backdrop-blur-sm",
@@ -160,9 +160,9 @@ export default function Navbar() {
                 }}
                 aria-label="Profile menu"
                 aria-expanded={open}
-                className="flex items-center gap-2 sm:gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-2 sm:px-3 py-2 hover:bg-white/20 active:bg-white/25 transition-all duration-200 hover:shadow-lg hover:shadow-slate-900/10 focus:outline-none focus:ring-2 focus:ring-[var(--color-moss-lime)]/60"
+                className="flex items-center gap-2 sm:gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-2 sm:px-3 py-2 hover:bg-white/20 active:bg-white/25 transition-all duration-200 hover:shadow-lg hover:shadow-slate-900/10 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60"
               >
-                <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white font-semibold text-sm" style={{backgroundColor: 'var(--color-moss-deep)'}}>
+                <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white font-semibold text-sm" style={{backgroundColor: '#182628'}}>
                   {initials(profile.name)}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">
@@ -198,14 +198,14 @@ export default function Navbar() {
                         navigate("/dashboard/faculty/profile")
                       }
                     }}
-                    className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-blue-50/60 active:bg-blue-100/60 rounded-lg transition-colors duration-150 focus:outline-none focus:bg-blue-50/60"
+                    className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-[var(--color-light-teal)]/40 active:bg-[var(--color-light-teal)]/60 rounded-lg transition-colors duration-150 focus:outline-none"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-                      <Settings className="h-4 w-4 text-blue-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{backgroundColor: 'var(--color-light-teal)'}}>
+                      <Settings className="h-4 w-4" style={{color: 'var(--color-dark-gray)'}} />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-slate-900">Profile Settings</span>
-                      <span className="text-xs text-slate-500">Manage your faculty account</span>
+                      <span className="text-sm font-medium" style={{color: 'var(--color-dark-gray)'}}>Profile Settings</span>
+                      <span className="text-xs" style={{color: 'var(--color-dark-gray)'}}>Manage your faculty account</span>
                     </div>
                   </button>
                   <button
@@ -227,8 +227,8 @@ export default function Navbar() {
                       <LogOut className="h-4 w-4 text-red-600" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-slate-900">Logout</span>
-                      <span className="text-xs text-slate-500">Sign out of your account</span>
+                      <span className="text-sm font-medium" style={{color: 'var(--color-dark-gray)'}}>Logout</span>
+                      <span className="text-xs" style={{color: 'var(--color-dark-gray)'}}>Sign out of your account</span>
                     </div>
                   </button>
                 </div>
