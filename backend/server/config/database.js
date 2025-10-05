@@ -11,7 +11,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
-
+ 
 // Test the connection on startup
 pool.on('connect', () => {
   console.log('✅ Connected to PostgreSQL database');

@@ -119,42 +119,44 @@ const ReimbursementForm = () => {
   //handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (validateForm()) {
-      try {
-        //build formData for backend
-        const formDataToSend = new FormData();
+    try{
+      const formDataToSend = new FormData();
 
-        //add all text field from state
+      //append all text fields
+      Object.keys(formData).forEach((key)=> {
+        formDataToSend.append(key, formData[key]);
+      });
 
-        Object.keys(formData).forEach((key) => {
-          formDataToSend.append(key,formData[key]);
-        });
+      //append files
+      const nptelFile = document.getElementById("nptelResult").files[0];
+      const idCardFile = document.getElementById("idCard").files[0];
+      if (nptelFile) formDataToSend.append("nptelResult",nptelFile);
+      if (idCardFile) formDataToSend.append("idCard",idCardFile);
 
-        //add file inputs by Id
-        const nptelFile = document.getElementById("nptelResult").files[0];
-        const idCardFile = document.getElementById("idCard").files[0];
+      //get jwt tocken from login
+      const token = localStorage.getItem("token");
 
-        if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-        if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      const res = await fetch("http://localhost:5000/api/forms/submit",{
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,  // add tocken for authorization
+        },
+        body: formDataToSend,
+      });
 
-        //send to backend api
+      const data =  await res.json();
+      if (res.ok) {
+        alert("Form submitted successfully!!");
+        console.log(data);
 
-        const res = await fetch("http://localhost:5000/api/forms/submit",{
-          method: "POST",
-          headers: { "Content-Type": "application/json"},
-          body: JSON.stringify(formData),
-        });
-
-        const data = await res.json();
-        console.log("form saved:", data);
-
-        alert("Reimbursement form submitted successfully!");
-
-      } catch (err) {
-        console.log("Error submitting form:", err);
-        alert("form submission failed. Try again");
+      } else {
+        alert("Error: "+ data.error);
       }
+    }  catch (err) {
+      console.error("Error submitting form:", err);
+      alert("Form submission failed. Try Again");
     }
   };
 
