@@ -12,8 +12,12 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { usePrincipalContext } from '../pages/PrincipalLayout'
+import { useAuth } from '../../../../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -64,9 +68,11 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   }, [showProfileMenu])
 
   const handleLogout = useCallback(() => {
+    logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
-  }, [])
+    navigate('/')
+  }, [logout, navigate])
 
   const getCurrentTime = () => {
     return currentTime.toLocaleTimeString('en-US', {
@@ -86,18 +92,18 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="px-6 py-4" style={{backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)'}}>
       <div className="flex items-center justify-between">
         {/* Left Section - Current Page & Time */}
         <div className="flex items-center gap-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{currentPage}</h1>
+            <h1 className="text-2xl font-semibold" style={{color: 'var(--color-dark-gray)'}}>{currentPage}</h1>
             <div className="flex items-center gap-4 mt-1">
-              <div className="flex items-center gap-1 text-sm text-gray-500">
+              <div className="flex items-center gap-1 text-sm" style={{color: 'var(--color-dark-gray)'}}>
                 <Calendar className="w-4 h-4" />
                 <span>{getCurrentDate()}</span>
               </div>
-              <div className="flex items-center gap-1 text-sm text-gray-500">
+              <div className="flex items-center gap-1 text-sm" style={{color: 'var(--color-dark-gray)'}}>
                 <Clock className="w-4 h-4" />
                 <span>{getCurrentTime()}</span>
               </div>
@@ -111,7 +117,8 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
           <div className="relative" ref={notificationRef}>
             <button
               onClick={handleNotificationClick}
-              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="relative p-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
+              style={{color: 'var(--color-dark-gray)'}}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -207,7 +214,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
               onClick={handleProfileClick}
               className="flex items-center gap-3 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))'}}>
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName
                     ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
@@ -216,10 +223,10 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                 </span>
               </div>
               <div className="hidden md:block text-left">
-                <div className="text-sm font-medium text-gray-900">
+                <div className="text-sm font-medium" style={{color: 'var(--color-dark-gray)'}}>
                   {userProfile?.fullName || 'Dr. Rajesh Kumar'}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs" style={{color: 'var(--color-dark-gray)'}}>
                   {userProfile?.designation || 'Principal'}
                 </div>
               </div>

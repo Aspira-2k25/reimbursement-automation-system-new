@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --brand-primary: #1b4ae8;
-  --brand-dark: #0d1b2a;
-  --brand-bg: #f4f7fb;
+  /* New Color Scheme from Nurture Design */
+  --color-dark-gray: #182628;
+  --color-light-teal: #65CCB8;
+  --color-medium-teal: #57BA98;
+  --color-dark-green: #3B945E;
+  --color-off-white: #F2F2F2;
+  
+  /* Legacy brand colors for compatibility */
+  --brand-primary: #57BA98;
+  --brand-dark: #182628;
+  --brand-bg: #F2F2F2;
 }
 
 body {
@@ -30,15 +38,21 @@ body {
 }
 
 .badge-approved {
-  @apply bg-green-50 text-green-700 border border-green-200;
+  @apply text-white border;
+  background-color: var(--color-dark-green);
+  border-color: var(--color-dark-green);
 }
 
 .badge-pending {
-  @apply bg-yellow-50 text-yellow-700 border border-yellow-200;
+  @apply text-white border;
+  background-color: var(--color-medium-teal);
+  border-color: var(--color-medium-teal);
 }
 
 .badge-rejected {
-  @apply bg-rose-50 text-rose-700 border border-rose-200;
+  @apply text-white border;
+  background-color: var(--color-dark-gray);
+  border-color: var(--color-dark-gray);
 }
 
 .input {
@@ -50,7 +64,13 @@ body {
 }
 
 .btn-primary {
-  @apply bg-[color:var(--brand-primary)] text-white hover:bg-blue-700 focus:ring-[color:var(--brand-primary)]/20 shadow-sm;
+  @apply text-white shadow-sm;
+  background-color: var(--color-medium-teal);
+  border-color: var(--color-medium-teal);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-dark-green);
 }
 
 .btn-outline {
@@ -66,7 +86,13 @@ body {
 }
 
 .btn-success {
-  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500/20;
+  @apply text-white;
+  background-color: var(--color-dark-green);
+  border-color: var(--color-dark-green);
+}
+
+.btn-success:hover {
+  background-color: var(--color-medium-teal);
 }
 
 .btn-sm {
