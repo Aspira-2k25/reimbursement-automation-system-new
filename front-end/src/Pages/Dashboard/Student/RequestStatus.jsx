@@ -54,23 +54,23 @@ const studentRequests = [
 function SummaryCard({ title, value, sub }) {
   // Icon mapping for consistent icons across summary cards
   const iconMap = {
-    "Total Applications": <FileText className="h-5 w-5 text-slate-700" />,
-    "Total Approved": <CheckCircle className="h-5 w-5 text-green-600" />,
-    "Pending Review": <Clock className="h-5 w-5 text-yellow-600" />,
-    "Rejected": <XCircle className="h-5 w-5 text-rose-600" />
+    "Total Applications": <FileText className="h-5 w-5" style={{color: '#3B945E'}} />,
+    "Total Approved": <CheckCircle className="h-5 w-5" style={{color: '#3B945E'}} />,
+    "Pending Review": <Clock className="h-5 w-5" style={{color: '#57BA98'}} />,
+    "Rejected": <XCircle className="h-5 w-5" style={{color: '#3B945E'}} />
   }
 
-  const icon = iconMap[title] || <FileText className="h-5 w-5 text-slate-700" />
+  const icon = iconMap[title] || <FileText className="h-5 w-5" style={{color: '#3B945E'}} />
 
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-slate-900 font-medium">{title}</div>
-          <div className="text-2xl font-semibold text-slate-900 mt-1">{value}</div>
-          <div className="text-slate-500 text-xs mt-1">{sub}</div>
+          <div className="font-medium" style={{color: '#182628'}}>{title}</div>
+          <div className="text-2xl font-semibold mt-1" style={{color: '#182628'}}>{value}</div>
+          <div className="text-xs mt-1" style={{color: '#3B945E'}}>{sub}</div>
         </div>
-        <div className="h-12 w-12 rounded-xl bg-slate-50 text-slate-700 flex items-center justify-center">
+        <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)'}}>
           {icon}
         </div>
       </div>
@@ -133,8 +133,8 @@ export default function RequestStatus() {
       {/* Requests table section */}
       <div className="section mt-4 sm:mt-6">
         <div className="mb-3 sm:mb-4">
-          <h3 className="section-title text-lg sm:text-xl">Your Requests</h3>
-          <p className="section-subtitle text-sm sm:text-base">Track the status of your reimbursement applications</p>
+          <h3 className="section-title text-lg sm:text-xl" style={{color: '#182628'}}>Your Requests</h3>
+          <p className="section-subtitle text-sm sm:text-base" style={{color: '#3B945E'}}>Track the status of your reimbursement applications</p>
         </div>
         <RequestsTable search={search} requests={studentRequests} />
       </div>

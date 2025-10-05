@@ -22,6 +22,9 @@ import CoordinatorApprovedRequest from "./Coordinator/ApprovedRequest" // Approv
 import CoordinatorApplyReimbursement from "./Coordinator/ApplyReimbursement" // Main dashboard for faculty
 import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profile settings page for faculty
 
+import HODDashboard from "./Hod/HODDashboard" 
+
+import PrincipalDashboard from "./Principal/PrincipalDashboard"
 
 export default function Dashboard() {
   const location = useLocation()
@@ -101,7 +104,7 @@ export default function Dashboard() {
   // If the URL explicitly targets coordinator routes, render coordinator dashboard directly
   if (location.pathname.startsWith("/dashboard/coordinator")) {
     return (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <CoordinatorDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -111,7 +114,7 @@ export default function Dashboard() {
   // Force Faculty layout when path targets faculty, regardless of user role
   if (location.pathname.startsWith("/dashboard/faculty")) {
     return (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <FacultyProfileProvider>
           <FacultyNavbar />
           <AnimatePresence mode="wait">
@@ -128,9 +131,27 @@ export default function Dashboard() {
     )
   }
 
+  if (location.pathname.startsWith("/dashboard/hod")) {
+    return (
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+        <HODDashboard />
+        <Toaster {...toastConfig} />
+      </div>
+    )
+  }
+
+  if (location.pathname.startsWith("/dashboard/principal")) {
+    return (
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+        <PrincipalDashboard />
+        <Toaster {...toastConfig} />
+      </div>
+    )
+  }
+
   const getRoutes = (Navbar, Dashboard, RequestStatus, ProfileSettings, Provider = null) => {
     const content = (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <Navbar />
 
         <AnimatePresence mode="wait">
@@ -164,6 +185,30 @@ export default function Dashboard() {
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/20">
             <CoordinatorDashboard />
+            <Toaster {...toastConfig} />
+          </div>
+        )
+
+       case "HOD":
+        // Return HOD dashboard with sidebar-based navigation
+        // Note: HODDashboard handles its own internal navigation with collapsible sidebar
+        // Components: HODDashboard (includes sidebar, header, and page routing)
+        // Data Source: mockData.js -> initialHodData section
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+            <HODDashboard />
+            <Toaster {...toastConfig} />
+          </div>
+        )
+
+      case "Principal":
+        // Return Principal dashboard with sidebar-based navigation
+        // Note: PrincipalDashboard handles its own internal navigation with collapsible sidebar
+        // Components: PrincipalDashboard (includes sidebar, header, and page routing)
+        // Data Source: mockPrincipalData.js -> initialPrincipalData section
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+            <PrincipalDashboard />
             <Toaster {...toastConfig} />
           </div>
         )

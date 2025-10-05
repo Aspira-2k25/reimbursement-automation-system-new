@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react"
 import "../Dashboard.css"
 import Navbar from "./components/Navbar"
+import { useAuth } from "../../../context/AuthContext.jsx"
 import ReminderBanner from "./components/ReminderBanner"
 import StatCard from "./components/StatCard"
 import RequestTable from "./components/RequestTable"
@@ -72,8 +73,22 @@ const initialStudentRequests = [
 ]
 
 export default function CoordinatorDashboard() {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState("home")
   const [userProfile, setUserProfile] = useState(initialUserProfile)
+
+  // Sync userProfile with authenticated user data
+  useEffect(() => {
+    if (user) {
+      setUserProfile({
+        fullName: user.name || user.username || "Coordinator",
+        department: user.department || "Computer Science",
+        designation: user.designation || "Class Coordinator",
+        role: user.role || "Coordinator",
+        email: user.email || null
+      })
+    }
+  }, [user])
   const [studentRequests, setStudentRequests] = useState(initialStudentRequests)
   // Dynamic approved requests calculation
   const approvedRequests = useMemo(() => {
