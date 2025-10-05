@@ -104,7 +104,7 @@ export default function Dashboard() {
   // If the URL explicitly targets coordinator routes, render coordinator dashboard directly
   if (location.pathname.startsWith("/dashboard/coordinator")) {
     return (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <CoordinatorDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -114,7 +114,7 @@ export default function Dashboard() {
   // Force Faculty layout when path targets faculty, regardless of user role
   if (location.pathname.startsWith("/dashboard/faculty")) {
     return (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <FacultyProfileProvider>
           <FacultyNavbar />
           <AnimatePresence mode="wait">
@@ -133,7 +133,7 @@ export default function Dashboard() {
 
   if (location.pathname.startsWith("/dashboard/hod")) {
     return (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <HODDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -142,7 +142,7 @@ export default function Dashboard() {
 
   if (location.pathname.startsWith("/dashboard/principal")) {
     return (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>    
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <PrincipalDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -151,7 +151,7 @@ export default function Dashboard() {
 
   const getRoutes = (Navbar, Dashboard, RequestStatus, ProfileSettings, Provider = null) => {
     const content = (
-      <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-moss-lime) 20%, white) 0%, white 40%)'}}>
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <Navbar />
 
         <AnimatePresence mode="wait">

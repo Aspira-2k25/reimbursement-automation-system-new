@@ -54,33 +54,33 @@ export default function StudentDashboard() {
   }
   
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 page-content">  
+    <main className="min-h-screen bg-gradient-to-br from-[#F2F2F2] to-[#65CCB8]/10 page-content">  
       {/* Reminder banner for important notifications */}
       <ReminderBanner />
 
       <section className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         {/* Welcome section with greeting and main title */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse"></div>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-3 sm:mb-4" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)', color: '#3B945E'}}>
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse" style={{backgroundColor: '#3B945E'}}></div>
             HELLO , {profile.name}
           </div>
           
-          <h1 className="text-slate-900 font-bold text-2xl sm:text-3xl lg:text-4xl mb-2 sm:mb-3">
+          <h1 className="font-bold text-2xl sm:text-3xl lg:text-4xl mb-2 sm:mb-3" style={{color: '#182628'}}>
             Reimbursement Management
           </h1>
           
-          <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto px-4 sm:px-0">
+          <p className="text-base sm:text-lg max-w-2xl mx-auto px-4 sm:px-0" style={{color: '#3B945E'}}>
             Submit and track your reimbursement requests
           </p>
         </div>
 
         {/* Section header for available options */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-slate-900 font-semibold text-lg sm:text-xl lg:text-2xl mb-2">
+          <h2 className="font-semibold text-lg sm:text-xl lg:text-2xl mb-2" style={{color: '#182628'}}>
             What can you claim?
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base">
+          <p className="text-sm sm:text-base" style={{color: '#3B945E'}}>
             Choose from the available reimbursement options below
           </p>
         </div>
@@ -97,8 +97,8 @@ export default function StudentDashboard() {
             ))
           ) : (
             <div className="col-span-full text-center py-8 sm:py-12">
-              <div className="text-slate-500 text-base sm:text-lg">No reimbursement options available</div>
-              <div className="text-slate-400 text-sm mt-2">Please check back later</div>
+              <div className="text-base sm:text-lg" style={{color: '#3B945E'}}>No reimbursement options available</div>
+              <div className="text-sm mt-2" style={{color: '#57BA98'}}>Please check back later</div>
             </div>
           )}
         </div>

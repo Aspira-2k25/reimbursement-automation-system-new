@@ -66,8 +66,8 @@ export default function ProfileSettings() {
       <div className="section">
         {/* Header section */}
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold">Profile Settings</h1>
-          <p className="text-slate-600 mt-1 text-sm sm:text-base">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{color: '#182628'}}>Profile Settings</h1>
+          <p className="mt-1 text-sm sm:text-base" style={{color: '#3B945E'}}>
             Update your name and department. Changes reflect across the portal instantly.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default function ProfileSettings() {
         >
           {/* Full Name input */}
           <label className="grid gap-1">
-            <span className="text-sm text-slate-600">Full Name</span>
+            <span className="text-sm" style={{color: '#3B945E'}}>Full Name</span>
             <input
               className="input w-full"
               value={name}
@@ -91,7 +91,7 @@ export default function ProfileSettings() {
           
           {/* Department input */}
           <label className="grid gap-1">
-            <span className="text-sm text-slate-600">Department</span>
+            <span className="text-sm" style={{color: '#3B945E'}}>Department</span>
             <input
               className="input w-full"
               value={dept}

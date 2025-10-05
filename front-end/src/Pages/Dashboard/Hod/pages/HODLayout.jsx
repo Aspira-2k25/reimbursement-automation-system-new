@@ -3,6 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialHodData } from '../data/mockData'
+import { useAuth } from '../../../../context/AuthContext'
+import HomeDashboard from './HomeDashboard'
+import ReportsAndAnalytics from './ReportsAndAnalytics'
+import DepartmentRoster from './DepartmentRoster'
+import ApplyForReimbursement from './ApplyForReimbursement'
+import ProfileSettings from './ProfileSettings'
+import RequestStatus from './RequestStatus'
+import AllDepartmentOverview from './AllDepartmentOverview'
 
 // Context for sharing HOD state across components
 const HODContext = createContext()
@@ -16,6 +24,7 @@ export const useHODContext = () => {
 }
 
 const HODLayout = ({ children }) => {
+  const { user } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
   const [userProfile, setUserProfile] = useState(initialHodData.userProfile)
@@ -96,6 +105,44 @@ const HODLayout = ({ children }) => {
     window.addEventListener('error', handleGlobalError)
     return () => window.removeEventListener('error', handleGlobalError)
   }, [])
+
+  // Update userProfile when user data from AuthContext changes
+  useEffect(() => {
+    if (user) {
+      setUserProfile({
+        fullName: user.fullName || user.name || 'Dr. Jagan Kumar',
+        department: user.department || 'Information Technology',
+        designation: user.designation || user.role || 'Head of Department',
+        role: user.role || 'HOD',
+        email: user.email || 'jagan.kumar@college.edu',
+        phone: user.phone || '+91-9876543210',
+        joinDate: user.joinDate || 'August 15, 2018',
+        employeeId: user.employeeId || user.id || 'IT-HOD-001'
+      })
+    }
+  }, [user])
+
+  // Function to render content based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomeDashboard />
+      case 'reports':
+        return <ReportsAndAnalytics />
+      case 'roster':
+        return <DepartmentRoster />
+      case 'apply':
+        return <ApplyForReimbursement />
+      case 'request-status':
+        return <RequestStatus />
+      case 'all-departments':
+        return <AllDepartmentOverview />
+      case 'profile':
+        return <ProfileSettings />
+      default:
+        return <HomeDashboard />
+    }
+  }
 
   // Context value with all shared state and methods
   const contextValue = {
@@ -267,7 +314,7 @@ const HODLayout = ({ children }) => {
                     scale: { duration: 0.3 }
                   }}
                 >
-                  {children}
+                  {renderContent()}
                 </motion.div>
               </AnimatePresence>
             </div>
