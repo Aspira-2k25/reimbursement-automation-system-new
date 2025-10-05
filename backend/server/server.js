@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const connectMongoDB = require("./config/mongo");
 const formRoutes = require("./routes/formRoutes");
-
+const studentFormRoutes = require("./routes/StudentFormRoutes");
 const dbUtils = require('./utils/database');
 const authRoutes = require('./routes/auth');
 
@@ -78,3 +78,5 @@ connectMongoDB().then(() => {
 }).catch(err => {
   console.error("❌ Failed to connect MongoDB", err);
 });
+
+app.use("/api/student-forms", studentFormRoutes);
