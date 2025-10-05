@@ -5,14 +5,15 @@ import ReminderBanner from "./components/ReminderBanner"
 import StatCard from "./components/StatCard"
 import InfoTipBox from "./components/InfoTipBox"
 import { useProfile } from "./ProfileContext"
+import { useNavigate } from "react-router-dom"
 
 // Dummy data for faculty reimbursement options
 const facultyReimbursementOptions = [
   {
-    id: "research-grant",
-    title: "Research Grants",
-    description: "Funding for research projects and academic publications",
-    icon: "ScienceOutlined"
+    id: "nptel",
+    title: "NPTEL Certification",
+    description: "Reimbursement for NPTEL course completion certificates",
+    icon: "SchoolOutlined"
   },
   {
     id: "fdp-program",
@@ -39,8 +40,9 @@ const facultyReimbursementOptions = [
  * Main dashboard for faculty to view and manage reimbursement requests
  */
 export default function FacultyDashboard() {
+  const navigate = useNavigate();
   const { profile } = useProfile()
-  
+
   // State for reimbursement options - using dummy data for demonstration
   const [reimbursementOptions] = React.useState(facultyReimbursementOptions)
 
@@ -49,12 +51,20 @@ export default function FacultyDashboard() {
    * @param {Object} option - The selected reimbursement option
    */
   const handleApply = (option) => {
-    toast.success(`Application started for ${option.title}`)
-    // TODO: Implement actual application logic
+      if (option.id === "nptel"){
+        navigate("/faculty-nptel-form");
+
+      }else {
+      toast.success(`Application started for ${option.title}`)
+      // TODO: Implement actual application logic
+    }
   }
-  
+
+
+
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 page-content">  
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 page-content">
       {/* Reminder banner for important notifications */}
       <ReminderBanner />
 
@@ -65,9 +75,9 @@ export default function FacultyDashboard() {
             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse"></div>
             WELCOME, {profile.name}
           </div>
-          
+
           <h1 className="text-slate-900 font-bold text-2xl sm:text-3xl lg:text-4xl mb-2 sm:mb-3">Faculty Reimbursement Portal</h1>
-          
+
           <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto px-4 sm:px-0">Submit and track your academic reimbursement requests</p>
         </div>
 
@@ -81,9 +91,9 @@ export default function FacultyDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           {reimbursementOptions.length > 0 ? (
             reimbursementOptions.map((opt) => (
-              <StatCard 
-                key={opt.id} 
-                option={opt} 
+              <StatCard
+                key={opt.id}
+                option={opt}
                 onApply={() => handleApply(opt)}
               />
             ))

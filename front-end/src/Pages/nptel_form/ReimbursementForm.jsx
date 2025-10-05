@@ -119,50 +119,52 @@ const ReimbursementForm = () => {
   //handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (validateForm()) {
-      try {
-        //build formData for backend
-        const formDataToSend = new FormData();
+    try{
+      const formDataToSend = new FormData();
 
-        //add all text field from state
+      //append all text fields
+      Object.keys(formData).forEach((key)=> {
+        formDataToSend.append(key, formData[key]);
+      });
 
-        Object.keys(formData).forEach((key) => {
-          formDataToSend.append(key,formData[key]);
-        });
+      //append files
+      const nptelFile = document.getElementById("nptelResult").files[0];
+      const idCardFile = document.getElementById("idCard").files[0];
+      if (nptelFile) formDataToSend.append("nptelResult",nptelFile);
+      if (idCardFile) formDataToSend.append("idCard",idCardFile);
 
-        //add file inputs by Id
-        const nptelFile = document.getElementById("nptelResult").files[0];
-        const idCardFile = document.getElementById("idCard").files[0];
+      //get jwt tocken from login
+      const token = localStorage.getItem("token");
 
-        if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-        if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      const res = await fetch("http://localhost:5000/api/forms/submit",{
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,  // add tocken for authorization
+        },
+        body: formDataToSend,
+      });
 
-        //send to backend api
+      const data =  await res.json();
+      if (res.ok) {
+        alert("Form submitted successfully!!");
+        console.log(data);
 
-        const res = await fetch("http://localhost:5000/api/forms/submit",{
-          method: "POST",
-          headers: { "Content-Type": "application/json"},
-          body: JSON.stringify(formData),
-        });
-
-        const data = await res.json();
-        console.log("form saved:", data);
-
-        alert("Reimbursement form submitted successfully!");
-
-      } catch (err) {
-        console.log("Error submitting form:", err);
-        alert("form submission failed. Try again");
+      } else {
+        alert("Error: "+ data.error);
       }
+    }  catch (err) {
+      console.error("Error submitting form:", err);
+      alert("Form submission failed. Try Again");
     }
   };
 
 
 
- 
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-green-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
         <div className="border-b border-gray-200 pb-4 mb-6">
           <h1 className="text-2xl font-bold text-center text-gray-800">
@@ -172,11 +174,11 @@ const ReimbursementForm = () => {
             Application for Faculty Reimbursement
           </h2>
         </div>
-        
+
         <div className="text-right mb-6 text-gray-600">
           <p>Date: {new Date().toLocaleDateString()}</p>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-md">
@@ -185,10 +187,10 @@ const ReimbursementForm = () => {
               </p>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-lg font-medium text-gray-800 mb-4">Personal Details</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -207,7 +209,7 @@ const ReimbursementForm = () => {
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
-              
+
               {/* ID Field */}
               <div>
                 <label htmlFor="id" className="block text-sm font-medium text-gray-700 mb-1">
@@ -230,7 +232,7 @@ const ReimbursementForm = () => {
                 />
                 {errors.id && <p className="text-red-500 text-xs mt-1">{errors.id}</p>}
               </div>
-              
+
               <div>
                 <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1">
                   Job Title *
@@ -248,7 +250,7 @@ const ReimbursementForm = () => {
                 />
                 {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
               </div>
-              
+
               {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
@@ -273,12 +275,12 @@ const ReimbursementForm = () => {
             </div>
             </div>
             </div>
-            
-          
-          
+
+
+
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-lg font-medium text-gray-800 mb-4">Reimbursement Details</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="academicYear" className="block text-sm font-medium text-gray-700 mb-1">
@@ -298,7 +300,7 @@ const ReimbursementForm = () => {
                 />
                 {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
               </div>
-              
+
               {/* Amount Field */}
               <div>
                 <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
@@ -327,7 +329,7 @@ const ReimbursementForm = () => {
               </div>
               </div>
 
-            
+
             <div className="mt-4">
               <p className="text-sm font-medium text-gray-700 mb-2">
                 Type of Reimbursement
@@ -348,10 +350,10 @@ const ReimbursementForm = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-lg font-medium text-gray-800 mb-4">Banking Details</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="accountName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -370,7 +372,7 @@ const ReimbursementForm = () => {
                 />
                 {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
               </div>
-              
+
               <div>
                 <label htmlFor="ifscCode" className="block text-sm font-medium text-gray-700 mb-1">
                   IFSC Code *
@@ -389,7 +391,7 @@ const ReimbursementForm = () => {
                 />
                 {errors.ifscCode && <p className="text-red-500 text-xs mt-1">{errors.ifscCode}</p>}
               </div>
-              
+
               <div className="md:col-span-2">
                 <label htmlFor="accountNumber" className="block text-sm font-medium text-gray-700 mb-1">
                   Account Number *
@@ -409,7 +411,7 @@ const ReimbursementForm = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-200 pt-4">
             <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-2">
               Remarks (Optional)
@@ -424,7 +426,7 @@ const ReimbursementForm = () => {
               placeholder="Additional remarks or notes..."
             ></textarea>
           </div>
-          
+
           <div className="bg-yellow-50 p-4 rounded-md mt-6">
             <p className="text-sm text-yellow-800">
               <strong>Note:</strong> Please provide all required supporting documents for NPTEL reimbursement.
@@ -458,7 +460,7 @@ const ReimbursementForm = () => {
                    file:bg-blue-50 file:text-blue-700
                    hover:file:bg-blue-100"
       />
-      
+
     </div>
 
     {/* Faculty ID Card */}
@@ -481,7 +483,7 @@ const ReimbursementForm = () => {
                    file:bg-blue-50 file:text-blue-700
                    hover:file:bg-blue-100"
       />
-      
+
     </div>
   </div>
 </div>

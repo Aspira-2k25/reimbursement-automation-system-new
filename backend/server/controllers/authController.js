@@ -92,7 +92,8 @@ const authController = {
       // Look up staff by email to determine role; default to Student
       const staff = await dbUtils.getStaffByEmail(email);
       const role = staff?.role || 'Student';
-      const userId = staff?.id || null;
+      // Use staff ID if found, otherwise use email as userId for Google users
+      const userId = staff?.id || email;
 
       const token = jwt.sign(
         { userId, email, role, name },
