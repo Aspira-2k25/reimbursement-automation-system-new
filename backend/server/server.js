@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectMongoDB = require("./config/mongo");
-//const userRoutes = require("./routes.userRoutes");
 const formRoutes = require("./routes/formRoutes");
-require('dotenv').config();
+const studentFormRoutes = require("./routes/StudentFormRoutes");
+const dbUtils = require('./utils/database');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -12,28 +14,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
 
-
-const dbUtils = require('./utils/database');
-
-// Test database connection
+// Test database connection (Postgres)
 app.get('/test-db', async (req, res) => {
   try {
     const result = await dbUtils.testConnection();
     if (result.success) {
       res.json({
-        message: 'Database connected successfully!',
+        message: 'Postgres connected successfully!',
         timestamp: result.timestamp
       });
     } else {
-      res.status(500).json({ error: 'Database connection failed', details: result.error });
+      res.status(500).json({ error: 'Postgres connection failed', details: result.error });
     }
   } catch (error) {
-    res.status(500).json({ error: 'Database connection failed', details: error.message });
+    res.status(500).json({ error: 'Postgres connection failed', details: error.message });
   }
 });
 
-// Get all users (for testing)
+// Get all users (Postgres)
 app.get('/api/users', async (req, res) => {
   try {
     const users = await dbUtils.getAllUsers();
@@ -43,24 +44,26 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Debug endpoint to test getUserForLogin
+// Debug endpoint (Postgres)
 app.get('/api/debug/user/:moodleId', async (req, res) => {
   try {
     const { moodleId } = req.params;
     const user = await dbUtils.getUserForLogin(moodleId);
-    res.json({ 
+    res.json({
       moodleId,
       userFound: !!user,
-      user: user 
+      user: user
     });
   } catch (error) {
     res.status(500).json({ error: 'Debug failed', details: error.message });
   }
 });
 
-// Import routes
-const authRoutes = require('./routes/auth');
+// Auth routes
 app.use('/api/auth', authRoutes);
+
+// Form routes (MongoDB)
+app.use("/api/forms", formRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -68,15 +71,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Connect MongoDB before starting server
+connectMongoDB().then(() => {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}).catch(err => {
+  console.error("❌ Failed to connect MongoDB", err);
 });
 
-
-app.use("./api/forms",formRoutes);
-
-
-connectMongoDB();
-
-app.listen(5000, () => console.log("server running on port 5001"));
+app.use("/api/student-forms", studentFormRoutes);
