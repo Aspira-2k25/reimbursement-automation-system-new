@@ -1,48 +1,45 @@
 
 import React from "react"
+import { studentFormsAPI } from "../../../services/api"
 import { FileText, CheckCircle, Clock, XCircle } from "lucide-react"
 import "../Dashboard.css"
 import RequestsTable from "./components/RequestsTable.jsx"
 
-// Dummy data for student requests
-const studentRequests = [
-  {
-    id: "STU001",
-    category: "NPTEL Certification",
-    status: "Approved",
-    amount: 1000,
-    submittedDate: "2024-01-15",
-    updatedDate: "2024-01-20",
-    description: "Machine Learning course completion certificate"
-  },
-  {
-    id: "STU002",
-    category: "Lab Materials",
-    status: "Pending",
-    amount: 2500,
-    submittedDate: "2024-01-18",
-    updatedDate: "2024-01-18",
-    description: "Arduino components for IoT project"
-  },
-  {
-    id: "STU003",
-    category: "Conference Attendance",
-    status: "Under Review",
-    amount: 5000,
-    submittedDate: "2024-01-10",
-    updatedDate: "2024-01-22",
-    description: "IEEE Conference registration and travel"
-  },
-  {
-    id: "STU004",
-    category: "Workshop Training",
-    status: "Rejected",
-    amount: 1500,
-    submittedDate: "2024-01-05",
-    updatedDate: "2024-01-12",
-    description: "Data Science workshop participation"
-  }
-]
+// Fetched data state
+const useStudentRequests = () => {
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState(null)
+  const [requests, setRequests] = React.useState([])
+
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setLoading(true)
+        const data = await studentFormsAPI.listMine()
+        const forms = Array.isArray(data?.forms) ? data.forms : []
+        // Map backend forms to table row shape
+        const mapped = forms.map((f) => ({
+          id: f.applicationId || f._id,
+          category: f.reimbursementType || "NPTEL",
+          status: f.status || "Pending",
+          amount: Number(f.amount || 0),
+          submittedDate: f.createdAt,
+          updatedDate: f.updatedAt,
+          description: f.remarks || f.name || "",
+        }))
+        if (mounted) setRequests(mapped)
+      } catch (e) {
+        if (mounted) setError(e?.error || "Failed to load requests")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
+  return { loading, error, requests }
+}
 
 /**
  * SummaryCard Component
@@ -85,14 +82,15 @@ function SummaryCard({ title, value, sub }) {
 export default function RequestStatus() {
   // State for search functionality
   const [search, setSearch] = React.useState("")
+  const { loading, error, requests } = useStudentRequests()
   
-  // Calculate summary statistics from dummy data
-  const summary = {
-    total: studentRequests.length,
-    approved: studentRequests.filter(r => r.status === "Approved").length,
-    pending: studentRequests.filter(r => ["Pending", "Under Review"].includes(r.status)).length,
-    rejected: studentRequests.filter(r => r.status === "Rejected").length
-  }
+  // Calculate summary statistics from fetched data
+  const summary = React.useMemo(() => ({
+    total: requests.length,
+    approved: requests.filter(r => String(r.status).toLowerCase() === "approved").length,
+    pending: requests.filter(r => ["pending", "under review", "under coordinator", "under hod", "under principal"].includes(String(r.status).toLowerCase())).length,
+    rejected: requests.filter(r => String(r.status).toLowerCase() === "rejected").length,
+  }), [requests])
 
   return (
     <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content">
@@ -136,7 +134,11 @@ export default function RequestStatus() {
           <h3 className="section-title text-lg sm:text-xl" style={{color: '#182628'}}>Your Requests</h3>
           <p className="section-subtitle text-sm sm:text-base" style={{color: '#3B945E'}}>Track the status of your reimbursement applications</p>
         </div>
-        <RequestsTable search={search} requests={studentRequests} />
+        {error ? (
+          <div className="card p-4 text-red-600">{String(error)}</div>
+        ) : (
+          <RequestsTable search={search} requests={requests} />
+        )}
       </div>
     </main>
   )

@@ -18,9 +18,12 @@ const StudentFormSchema = new mongoose.Schema({
     reimbursementType: { type: String, default: "NPTEL" },
     documents: [
         {
+            // Support both local file fields and Cloudinary fields
             filename: String,
             path: String,
             mimetype: String,
+            url: String,
+            publicId: String,
         },
     ],
 }, { timestamps: true });
