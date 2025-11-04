@@ -6,6 +6,8 @@ const formRoutes = require("./routes/formRoutes");
 const studentFormRoutes = require("./routes/StudentFormRoutes");
 const dbUtils = require('./utils/database');
 const authRoutes = require('./routes/auth');
+const upload = require('./middleware/multer');
+const uploadRoute = require('./controllers/routeUpload')
 
 const app = express();
 
@@ -14,8 +16,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static('uploads'));
+// cloudinary
+app.use('/api/users', uploadRoute);
 
 // Test database connection (Postgres)
 app.get('/test-db', async (req, res) => {
