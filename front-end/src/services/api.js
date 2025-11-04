@@ -88,3 +88,23 @@ export const userAPI = {
 };
 
 export default api;
+
+// Student Forms API
+export const studentFormsAPI = {
+  listMine: async () => {
+    try {
+      const res = await api.get('/student-forms/mine');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  getById: async (id) => {
+    try {
+      const res = await api.get(`/student-forms/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+};
