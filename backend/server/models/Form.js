@@ -15,9 +15,12 @@ const FormSchema = new mongoose.Schema({
     remark: { type:String},
     documents: [
         {
+        // Support both local file fields and Cloudinary fields
         filename: String,
         path: String,
         mimetype: String,
+        url: String,
+        publicId: String,
         },
     ],
 
