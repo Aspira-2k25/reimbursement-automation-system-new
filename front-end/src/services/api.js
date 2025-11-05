@@ -109,12 +109,20 @@ export const studentFormsAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
-  debug: async () => {
+  updateById: async (id, data) => {
     try {
-      const res = await api.get('/student-forms/debug');
+      const res = await api.put(`/student-forms/${id}`, data);
       return res.data;
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+  deleteById: async (id) => {
+    try {
+      const res = await api.delete(`/student-forms/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
 };

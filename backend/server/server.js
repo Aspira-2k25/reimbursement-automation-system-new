@@ -1,30 +1,40 @@
+// server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const connectMongoDB = require("./config/mongo");
-const formRoutes = require("./routes/formRoutes");
-const studentFormRoutes = require("./routes/StudentFormRoutes");
+const path = require('path');
+
+// Database/connectors
+const connectMongoDB = require('./config/mongo');
 const dbUtils = require('./utils/database');
+
+// Routes / controllers / middleware
+const formRoutes = require('./routes/formRoutes');
+const studentFormRoutes = require('./routes/StudentFormRoutes');
 const authRoutes = require('./routes/auth');
-const upload = require('./middleware/multer');
-const uploadRoute = require('./controllers/routeUpload')
+const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
+const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user upload controller
+const upload = require('./middleware/multer');             // multer middleware (if needed)
 
 const app = express();
 
-// Middleware
+// ----------------- Middleware -----------------
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check (so '/' does not 404 on backend)
+// Optional: serve static uploaded files (if you store locally in 'public' or 'uploads')
+// Adjust if you store in cloud (S3/Cloudinary) instead
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// ----------------- Health / Basic routes -----------------
+// Health check root
 app.get('/', (req, res) => {
   res.json({ ok: true, service: 'backend', time: new Date().toISOString() });
 });
 
-// cloudinary
-app.use('/api/users', uploadRoute);
-
-// Test database connection (Postgres)
+// Test Postgres connection
 app.get('/test-db', async (req, res) => {
   try {
     const result = await dbUtils.testConnection();
@@ -66,35 +76,72 @@ app.get('/api/debug/user/:moodleId', async (req, res) => {
   }
 });
 
-// Auth routes
+// ----------------- API Routes -----------------
+// Auth
 app.use('/api/auth', authRoutes);
 
-// Form routes (MongoDB)
-app.use("/api/forms", formRoutes);
+// Uploads (local or specific upload route)
+app.use('/api/uploads', uploadRoutes);
 
-// Error handling middleware
+// Cloudinary / user upload controller (keeps the same path used in your second file)
+app.use('/api/users', uploadRoute);
+
+// Forms (MongoDB)
+app.use('/api/forms', formRoutes);
+
+// Student forms (MongoDB)
+app.use('/api/student-forms', studentFormRoutes);
+
+// ----------------- Error handler -----------------
+// Centralized error handling (keeps the improved handling from your first version)
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: Object.values(err.errors || {}).map(e => ({
+        field: e.path,
+        message: e.message
+      }))
+    });
+  }
+
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or expired token'
+    });
+  }
+
+  if (err.name === 'MulterError') {
+    return res.status(400).json({
+      error: 'File upload failed',
+      message: err.message
+    });
+  }
+
+  // Default error response (more info in development)
+  res.status(500).json({
+    error: 'Something went wrong!',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
 });
 
-// Student form routes (MongoDB)
-app.use("/api/student-forms", studentFormRoutes);
-
-// Start server with explicit async bootstrap
+// ----------------- Server bootstrap -----------------
 async function startServer() {
   try {
     await connectMongoDB();
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {
-    console.error("❌ Failed to connect MongoDB", err);
+    console.error('❌ Failed to connect MongoDB', err);
     process.exit(1);
   }
 }
 
-// When running locally (node server.js), start HTTP server.
-// When deployed on Vercel (@vercel/node), export the app instead.
+// Allow this file to be required (for tests/hosting) and also start when run directly
 if (require.main === module) {
   startServer();
 }
