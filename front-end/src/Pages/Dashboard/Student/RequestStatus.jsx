@@ -62,6 +62,21 @@ const useStudentRequests = () => {
     return () => { mountedRef.current = false }
   }, [location.pathname, fetchRequests])
 
+  // Refetch when component becomes visible again (e.g., navigating back from view/edit)
+  React.useEffect(() => {
+    // Check if we're on the requests page
+    const isRequestsPage = location.pathname === '/dashboard/requests' || location.pathname.includes('/requests')
+    
+    if (isRequestsPage) {
+      // Small delay to ensure navigation is complete
+      const timeoutId = setTimeout(() => {
+        fetchRequests()
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [location.pathname, fetchRequests])
+
   return { loading, error, requests, refetch: fetchRequests }
 }
 

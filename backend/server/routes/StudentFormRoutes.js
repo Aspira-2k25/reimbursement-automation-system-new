@@ -218,14 +218,31 @@ router.put(
       const formId = form._id;
 
       const userId = req.user.userId || req.user.email || req.user.id;
-      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(req.user.role)) {
+      const isOwner = form.userId === userId;
+      const isAdmin = ['coordinator', 'hod', 'principal'].includes(req.user.role);
+      
+      if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
-      // Prevent updating certain fields if not admin/coordinator
-      const allowedUpdates = ['remarks'];
-      if (['coordinator', 'hod', 'principal'].includes(req.user.role)) {
-        allowedUpdates.push('status', 'reviewedBy', 'reviewedAt');
+      // Determine allowed fields based on user role and form status
+      let allowedUpdates = [];
+      
+      if (isOwner && form.status === 'Pending') {
+        // Students can update their own pending forms (all editable fields)
+        allowedUpdates = [
+          'name', 'studentId', 'division', 'email', 'academicYear', 
+          'amount', 'accountName', 'ifscCode', 'accountNumber', 
+          'remarks', 'documents'
+        ];
+      } else if (isOwner) {
+        // Students can only update remarks for non-pending forms
+        allowedUpdates = ['remarks'];
+      }
+      
+      if (isAdmin) {
+        // Admins can update status and review fields
+        allowedUpdates = ['remarks', 'status', 'reviewedBy', 'reviewedAt'];
       }
 
       const updates = {};
@@ -235,8 +252,11 @@ router.put(
         }
       });
 
+      // Update updatedAt timestamp
+      updates.updatedAt = new Date();
+
       const updatedForm = await StudentForm.findByIdAndUpdate(
-        req.params.id,
+        formId,
         { $set: updates },
         { new: true, runValidators: true }
       );
