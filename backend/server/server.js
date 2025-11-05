@@ -16,6 +16,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check (so '/' does not 404 on backend)
+app.get('/', (req, res) => {
+  res.json({ ok: true, service: 'backend', time: new Date().toISOString() });
+});
+
 // cloudinary
 app.use('/api/users', uploadRoute);
 
@@ -73,12 +78,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Connect MongoDB before starting server
-connectMongoDB().then(() => {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}).catch(err => {
-  console.error("❌ Failed to connect MongoDB", err);
-});
-
+// Student form routes (MongoDB)
 app.use("/api/student-forms", studentFormRoutes);
+
+// Start server with explicit async bootstrap
+async function startServer() {
+  try {
+    await connectMongoDB();
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  } catch (err) {
+    console.error("❌ Failed to connect MongoDB", err);
+    process.exit(1);
+  }
+}
+
+// When running locally (node server.js), start HTTP server.
+// When deployed on Vercel (@vercel/node), export the app instead.
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;

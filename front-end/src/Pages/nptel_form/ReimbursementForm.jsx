@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const ReimbursementForm = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     id: '',
@@ -150,7 +152,8 @@ const ReimbursementForm = () => {
       if (res.ok) {
         alert("Form submitted successfully!!");
         console.log(data);
-
+        // Navigate to request status page after successful submission
+        navigate('/dashboard/faculty/requests');
       } else {
         alert("Error: "+ data.error);
       }

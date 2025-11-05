@@ -1,5 +1,6 @@
 
 import React from "react"
+import { useLocation } from "react-router-dom"
 import { studentFormsAPI } from "../../../services/api"
 import { FileText, CheckCircle, Clock, XCircle } from "lucide-react"
 import "../Dashboard.css"
@@ -7,38 +8,60 @@ import RequestsTable from "./components/RequestsTable.jsx"
 
 // Fetched data state
 const useStudentRequests = () => {
+  const location = useLocation()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(null)
   const [requests, setRequests] = React.useState([])
+  const mountedRef = React.useRef(true)
 
-  React.useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        const data = await studentFormsAPI.listMine()
-        const forms = Array.isArray(data?.forms) ? data.forms : []
-        // Map backend forms to table row shape
-        const mapped = forms.map((f) => ({
-          id: f.applicationId || f._id,
-          category: f.reimbursementType || "NPTEL",
-          status: f.status || "Pending",
-          amount: Number(f.amount || 0),
-          submittedDate: f.createdAt,
-          updatedDate: f.updatedAt,
-          description: f.remarks || f.name || "",
-        }))
-        if (mounted) setRequests(mapped)
-      } catch (e) {
-        if (mounted) setError(e?.error || "Failed to load requests")
-      } finally {
-        if (mounted) setLoading(false)
+  const fetchRequests = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const data = await studentFormsAPI.listMine()
+      
+      // Handle different response structures
+      let forms = []
+      if (Array.isArray(data)) {
+        forms = data
+      } else if (Array.isArray(data?.forms)) {
+        forms = data.forms
+      } else if (data?.data && Array.isArray(data.data)) {
+        forms = data.data
       }
-    })()
-    return () => { mounted = false }
+      
+      // Map backend forms to table row shape
+      const mapped = forms.map((f) => ({
+        id: f.applicationId || f._id || f.id || `form-${f._id}`,
+        category: f.reimbursementType || f.category || "NPTEL",
+        status: f.status || "Pending",
+        amount: Number(f.amount || 0),
+        submittedDate: f.createdAt || f.submittedDate || new Date(),
+        updatedDate: f.updatedAt || f.updatedDate || f.createdAt || new Date(),
+        description: f.remarks || f.name || f.description || "",
+      }))
+      
+      if (mountedRef.current) {
+        setRequests(mapped)
+      }
+    } catch (e) {
+      if (mountedRef.current) {
+        const errorMessage = e?.error || e?.message || "Failed to load requests"
+        setError(errorMessage)
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false)
+    }
   }, [])
 
-  return { loading, error, requests }
+  React.useEffect(() => {
+    mountedRef.current = true
+    fetchRequests()
+    return () => { mountedRef.current = false }
+  }, [location.pathname, fetchRequests])
+
+  return { loading, error, requests, refetch: fetchRequests }
 }
 
 /**
@@ -135,7 +158,29 @@ export default function RequestStatus() {
           <p className="section-subtitle text-sm sm:text-base" style={{color: '#3B945E'}}>Track the status of your reimbursement applications</p>
         </div>
         {error ? (
-          <div className="card p-4 text-red-600">{String(error)}</div>
+          <div className="card p-4 text-red-600">
+            <div className="font-semibold mb-2">Error loading requests:</div>
+            <div>{String(error)}</div>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="card p-8 text-center">
+            <div className="flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-[#3B945E] border-t-transparent rounded-full animate-spin mr-3"></div>
+              <span className="text-slate-600">Loading requests...</span>
+            </div>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="card p-8 text-center">
+            <div className="text-lg font-medium text-slate-700 mb-2">No requests found</div>
+            <div className="text-sm text-slate-500 mb-4">You haven't submitted any reimbursement requests yet.</div>
+            <div className="text-xs text-slate-400">Check the browser console for debugging information.</div>
+          </div>
         ) : (
           <RequestsTable search={search} requests={requests} />
         )}
