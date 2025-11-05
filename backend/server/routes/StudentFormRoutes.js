@@ -17,9 +17,11 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const userId = req.user.userId || req.user.email;
+      const userId = req.user.userId || req.user.email || req.user.id;
 
-      if (!userId) return res.status(400).json({ error: "User ID not found in token" });
+      if (!userId) {
+        return res.status(400).json({ error: "User ID not found in token" });
+      }
 
       // Upload received files to Cloudinary (if present)
       let nptelResultUpload = null;
@@ -77,14 +79,62 @@ router.get(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      const userId = req.user.userId || req.user.email;
-      if (!userId) return res.status(400).json({ error: "User ID not found in token" });
+      const userId = req.user.userId || req.user.email || req.user.id;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID not found in token" });
+      }
 
-      const forms = await StudentForm.find({ userId }).sort({ createdAt: -1 });
+      // Try to find forms matching userId (could be numeric ID or email)
+      // Convert userId to string for comparison since MongoDB might store it as string
+      const userIdStr = String(userId);
+      
+      // Try multiple query patterns to handle different userId formats
+      const forms = await StudentForm.find({ 
+        $or: [
+          { userId: userIdStr },
+          { userId: userId },
+          { userId: Number(userId) }
+        ]
+      }).sort({ createdAt: -1 });
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching user forms:", err);
       res.status(500).json({ error: "Failed to fetch user forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/debug - Debug endpoint to see all forms (for troubleshooting)
+router.get(
+  "/debug",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId || req.user.email || req.user.id;
+      
+      // Get all forms (limited to 10 for debugging)
+      const allForms = await StudentForm.find().limit(10).select('userId applicationId name createdAt');
+      
+      // Get forms for current user
+      const userForms = await StudentForm.find({ 
+        $or: [
+          { userId: String(userId) },
+          { userId: userId },
+          { userId: Number(userId) }
+        ]
+      }).limit(10).select('userId applicationId name createdAt');
+      
+      return res.json({ 
+        currentUserId: userId,
+        userObject: req.user,
+        allFormsSample: allForms,
+        userForms: userForms,
+        userFormsCount: userForms.length
+      });
+    } catch (err) {
+      console.error("Error in debug endpoint:", err);
+      res.status(500).json({ error: "Debug endpoint error", details: err.message });
     }
   }
 );
