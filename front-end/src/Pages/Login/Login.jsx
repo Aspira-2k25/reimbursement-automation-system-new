@@ -3,12 +3,13 @@ import { motion } from 'framer-motion';
 import { User, Mail, Lock,} from 'lucide-react';
 import { GoogleLogin} from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -48,12 +49,11 @@ export default function LoginPage() {
 
   // Note: Faculty/Coordinator should authenticate via backend flow.
 
-  // Match Landing page animation: simple fade-in-up on view
+  // Match Landing page animation: simple fade-in-up on mount
   const fadeInUp = {
     initial: { opacity: 0, y: 20 },
-    whileInView: { opacity: 1, y: 0 },
-    transition: { duration: 0.6 },
-    viewport: { once: true }
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6 }
   }
 
   return (

@@ -16,6 +16,7 @@ const StudentFormSchema = new mongoose.Schema({
     accountNumber: { type: String },
     remarks: { type: String },
     reimbursementType: { type: String, default: "NPTEL" },
+    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Rejected"] },
     documents: [
         {
             // Support both local file fields and Cloudinary fields
