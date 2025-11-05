@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { studentFormsAPI } from '../../services/api';
 
 export default function ViewForm() {
   const { id } = useParams();
-  const navigateBack = useBackNavigation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(null);
   const [error, setError] = useState(null);
@@ -41,10 +40,10 @@ export default function ViewForm() {
       <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
         <div className="text-red-500 mb-4">{error}</div>
         <button
-          onClick={navigateBack}
+          onClick={() => navigate('/dashboard/requests')}
           className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
         >
-          Back to Dashboard
+          Back to Request Status
         </button>
       </div>
     );
@@ -55,10 +54,10 @@ export default function ViewForm() {
       <div className="min-h-screen flex flex-col justify-center items-center bg-gray-50">
         <div className="text-gray-500 mb-4">Form not found</div>
         <button
-          onClick={navigateBack}
+          onClick={() => navigate('/dashboard/requests')}
           className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
         >
-          Back to Dashboard
+          Back to Request Status
         </button>
       </div>
     );
@@ -69,11 +68,11 @@ export default function ViewForm() {
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
         <div className="mb-4">
           <button
-            onClick={navigateBack}
+            onClick={() => navigate('/dashboard/requests')}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            Back to Request Status
           </button>
         </div>
 
