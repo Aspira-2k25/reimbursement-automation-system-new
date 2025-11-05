@@ -4,6 +4,8 @@ import LoginPage from './Pages/Login/Login'
 import Dashboard from './Pages/Dashboard/Dashboard'
 import ReimbursementForm from './Pages/nptel_form/ReimbursementForm'
 import StudentNptelForm from './Pages/nptel_form/StudentForm'
+import ViewForm from './Pages/nptel_form/ViewForm'
+import EditForm from './Pages/nptel_form/EditForm'
 
 function App() {
 
@@ -22,6 +24,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/form" element={<ReimbursementForm />} />
         <Route path="/student-nptel-form" element={<StudentNptelForm />} />
+        <Route path="/nptel-form/view/:id" element={<ViewForm />} />
+        <Route path="/nptel-form/edit/:id" element={<EditForm />} />
         <Route path="/faculty-nptel-form" element={<ReimbursementForm/>} />
       </Routes>
     </BrowserRouter>

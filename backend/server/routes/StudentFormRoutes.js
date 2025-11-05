@@ -17,6 +17,13 @@ router.post(
   ]),
   async (req, res) => {
     try {
+      // Log the incoming request data
+      console.log('Form submission received:', {
+        body: req.body,
+        files: req.files,
+        user: req.user
+      });
+
       const userId = req.user.userId || req.user.email;
 
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
@@ -49,8 +56,25 @@ router.post(
         );
       }
 
-      const newStudentForm = new StudentForm({
+      // Validate required fields before saving
+      const requiredFields = ['name', 'studentId', 'division', 'email'];
+      const missingFields = requiredFields.filter(field => !req.body[field]);
+      
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          error: "Missing required fields",
+          fields: missingFields
+        });
+      }
+
+      // Parse amount as number if present
+      const formData = {
         ...req.body,
+        amount: req.body.amount ? parseFloat(req.body.amount) : undefined
+      };
+
+      const newStudentForm = new StudentForm({
+        ...formData,
         userId,
         documents: [
           nptelResultUpload
@@ -62,11 +86,38 @@ router.post(
         ].filter(Boolean),
       });
 
+      console.log('Attempting to save form:', newStudentForm);
+
       await newStudentForm.save();
       res.status(201).json({ message: "Student form submitted successfully!", form: newStudentForm });
     } catch (err) {
       console.error("Error saving student form:", err);
-      res.status(500).json({ error: "Failed to save student form", details: err.message });
+      
+      // Handle mongoose validation errors
+      if (err.name === 'ValidationError') {
+        const validationErrors = Object.keys(err.errors).map(key => ({
+          field: key,
+          message: err.errors[key].message
+        }));
+        return res.status(400).json({
+          error: "Validation failed",
+          details: validationErrors
+        });
+      }
+      
+      // Handle file upload errors
+      if (err.message && err.message.includes('Cloudinary')) {
+        return res.status(500).json({
+          error: "File upload failed",
+          details: err.message
+        });
+      }
+
+      res.status(500).json({
+        error: "Failed to save student form",
+        details: err.message,
+        type: err.name
+      });
     }
   }
 );
@@ -99,13 +150,86 @@ router.get(
       if (!form) return res.status(404).json({ error: "Form not found" });
       // Optionally ensure users can only access their own form unless they have elevated roles
       const userId = req.user.userId || req.user.email;
-      if (form.userId !== userId) {
+      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(req.user.role)) {
         return res.status(403).json({ error: "Forbidden" });
       }
       return res.json({ form });
     } catch (err) {
       console.error("Error fetching form by id:", err);
       res.status(500).json({ error: "Failed to fetch form", details: err.message });
+    }
+  }
+);
+
+// PUT /api/student-forms/:id - update a specific form
+router.put(
+  "/:id",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      const form = await StudentForm.findById(req.params.id);
+      if (!form) return res.status(404).json({ error: "Form not found" });
+      
+      const userId = req.user.userId || req.user.email;
+      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(req.user.role)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Prevent updating certain fields if not admin/coordinator
+      const allowedUpdates = ['remarks'];
+      if (['coordinator', 'hod', 'principal'].includes(req.user.role)) {
+        allowedUpdates.push('status', 'reviewedBy', 'reviewedAt');
+      }
+
+      const updates = {};
+      allowedUpdates.forEach(field => {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      });
+
+      const updatedForm = await StudentForm.findByIdAndUpdate(
+        req.params.id,
+        { $set: updates },
+        { new: true, runValidators: true }
+      );
+
+      return res.json({ form: updatedForm });
+    } catch (err) {
+      console.error("Error updating form:", err);
+      res.status(500).json({ error: "Failed to update form", details: err.message });
+    }
+  }
+);
+
+// DELETE /api/student-forms/:id - delete a specific form
+router.delete(
+  "/:id",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      const form = await StudentForm.findById(req.params.id);
+      if (!form) return res.status(404).json({ error: "Form not found" });
+      
+      const userId = req.user.userId || req.user.email;
+      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(req.user.role)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Delete associated files from Cloudinary
+      if (form.documents) {
+        for (const doc of form.documents) {
+          if (doc.publicId) {
+            await cloudinary.uploader.destroy(doc.publicId);
+          }
+        }
+      }
+
+      await StudentForm.findByIdAndDelete(req.params.id);
+      return res.json({ message: "Form deleted successfully" });
+    } catch (err) {
+      console.error("Error deleting form:", err);
+      res.status(500).json({ error: "Failed to delete form", details: err.message });
     }
   }
 );

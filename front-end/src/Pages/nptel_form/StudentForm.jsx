@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { useBackNavigation } from '../../hooks/useBackNavigation';
 
 const StudentNptelForm = () => {
+  const navigate = useNavigate();
+
+  const navigateBack = useBackNavigation();
+
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
@@ -109,8 +116,17 @@ const StudentNptelForm = () => {
 
     try {
       const formDataToSend = new FormData();
+      
+      // Handle amount as a number explicitly
+      const amountValue = formData.amount ? parseFloat(formData.amount) : null;
+      
+      // Append all form fields, converting amount to number
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key]);
+        if (key === 'amount') {
+          formDataToSend.append(key, amountValue);
+        } else {
+          formDataToSend.append(key, formData[key]);
+        }
       });
 
       const nptelFile = document.getElementById("nptelResult").files[0];
@@ -118,33 +134,79 @@ const StudentNptelForm = () => {
       if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
       if (idCardFile) formDataToSend.append("idCard", idCardFile);
 
+      // Ensure these required fields are present
       formDataToSend.append("reimbursementType", "NPTEL");
+      
+      // Log the form data before sending (for debugging)
+      console.log("Form data being sent:", {
+        name: formData.name,
+        studentId: formData.studentId,
+        division: formData.division,
+        email: formData.email,
+        amount: amountValue,
+        // other fields...
+      });
       const token = localStorage.getItem("token");
 
       const res = await fetch("http://localhost:5000/api/student-forms/submit", {
         method: "POST",
         headers: {
-          authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,  // Fixed header name to match backend expectation
         },
         body: formDataToSend,
       });
 
       const data = await res.json();
       if (res.ok) {
-        alert("Form submitted successfully!!");
+        alert("Form submitted successfully!");
         console.log(data);
+        // Redirect to request status page
+        navigate('/dashboard/student/request-status');
       } else {
         alert("Error: "+ data.error);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+      
+      try {
+        const errorData = await err.response?.json();
+        let errorMessage = "Form submission failed. ";
+        
+        if (errorData?.error === "Validation failed") {
+          errorMessage += "Please check the following fields:\n";
+          errorData.details.forEach(error => {
+            errorMessage += `- ${error.field}: ${error.message}\n`;
+          });
+        } else if (errorData?.error === "Missing required fields") {
+          errorMessage += "Missing required fields: " + errorData.fields.join(", ");
+        } else if (errorData?.error === "File upload failed") {
+          errorMessage += "Failed to upload files. Please try again.";
+        } else {
+          errorMessage += errorData?.details || "Please try again.";
+        }
+        
+        alert(errorMessage);
+        console.log('Detailed error:', errorData);
+      } catch (e) {
+        alert("Form submission failed. Please check all required fields and try again.");
+        console.log('Error response:', err);
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+        {/* Back Button */}
+        <div className="mb-4">
+          <button
+            onClick={navigateBack}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
+        </div>
         <div className="border-b border-gray-200 pb-4 mb-6">
           <h1 className="text-2xl font-bold text-center text-gray-800">
             Department of Information Technology

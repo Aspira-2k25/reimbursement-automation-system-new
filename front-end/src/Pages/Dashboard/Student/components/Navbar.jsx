@@ -1,5 +1,3 @@
-
-
 import React from "react"
 import { useLocation, Link, useNavigate } from "react-router-dom"
 import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
@@ -91,6 +89,32 @@ export default function Navbar() {
             </div>
             <span className="font-bold text-white text-base sm:text-lg">Reimbursement Portal</span>
           </div>
+
+          {/* Mobile Navigation */}
+          <nav className="md:hidden flex items-center gap-1">
+            {navItems.slice(0, 2).map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={[
+                  "flex items-center px-3 py-2 rounded-lg font-medium",
+                  "transition-all duration-200",
+                  isActive(item.path)
+                    ? "bg-white/20 text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-2">
+                  {item.label === "Home" ? (
+                    <Home className="h-4 w-4" />
+                  ) : (
+                    <BarChart2 className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">{item.label}</span>
+                </div>
+              </Link>
+            ))}
+          </nav>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10">

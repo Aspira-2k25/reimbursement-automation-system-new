@@ -1,7 +1,6 @@
-
-
-import React from "react"
-import { Eye, Pencil, X } from "lucide-react"
+import React, { useState } from "react"
+import { Eye, Pencil, Trash2, X, AlertCircle } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
 
@@ -34,10 +33,11 @@ function StatusBadge({ status }) {
  * @param {string} search - Search term for filtering requests
  * @param {Array} requests - Array of request objects to display
  */
-export default function RequestsTable({ search, requests = [] }) {
-  // State for modal visibility
-  const [viewItem, setViewItem] = React.useState(null)
-  const [editItem, setEditItem] = React.useState(null)
+export default function RequestsTable({ search, requests = [], onDelete }) {
+  const navigate = useNavigate();
+  const [viewItem, setViewItem] = React.useState(null);
+  const [editItem, setEditItem] = React.useState(null);
+  const [deleteItem, setDeleteItem] = React.useState(null);
 
   // Filter requests based on search term
   const filtered = React.useMemo(() => {
@@ -65,30 +65,39 @@ export default function RequestsTable({ search, requests = [] }) {
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
           {filtered.length > 0 ? filtered.map((r) => (
-            <tr key={r.id} className="hover:bg-slate-50/60">
-              <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
-              <td className="px-4 py-3">{r.category}</td>
+            <tr key={r._id} className="hover:bg-slate-50/60">
+              <td className="px-4 py-3 font-medium text-slate-900">{r._id}</td>
+              <td className="px-4 py-3">{r.reimbursementType || 'NPTEL'}</td>
               <td className="px-4 py-3">
-                <StatusBadge status={r.status} />
+                <StatusBadge status={r.status || 'Pending'} />
               </td>
-              <td className="px-4 py-3">₹{r.amount.toLocaleString("en-IN")}</td>
-              <td className="px-4 py-3">{new Date(r.submittedDate).toLocaleDateString()}</td>
-              <td className="px-4 py-3">{new Date(r.updatedDate).toLocaleDateString()}</td>
+              <td className="px-4 py-3">₹{r.amount?.toLocaleString("en-IN")}</td>
+              <td className="px-4 py-3">{new Date(r.createdAt).toLocaleDateString()}</td>
+              <td className="px-4 py-3">{new Date(r.updatedAt).toLocaleDateString()}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <button
-                    className="icon-btn"
-                    onClick={() => setViewItem(r)}
+                    className="icon-btn hover:bg-blue-50"
+                    onClick={() => navigate(`/nptel-form/view/${r._id}`)}
                     aria-label="View"
                   >
                     <Eye className="h-4 w-4" />
                   </button>
                   <button
-                    className="icon-btn"
-                    onClick={() => setEditItem(r)}
+                    className="icon-btn hover:bg-green-50 disabled:opacity-50"
+                    onClick={() => navigate(`/nptel-form/edit/${r._id}`)}
                     aria-label="Edit"
+                    disabled={r.status !== 'Pending'}
                   >
                     <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    onClick={() => setDeleteItem(r)}
+                    aria-label="Delete"
+                    disabled={r.status !== 'Pending'}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </td>
@@ -150,6 +159,49 @@ export default function RequestsTable({ search, requests = [] }) {
                 <div className="text-slate-500">Description</div>
                 <div className="font-medium">{viewItem.description}</div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteItem && (
+        <div className={modalStyle} role="dialog" aria-modal="true">
+          <div
+            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+            onClick={() => setDeleteItem(null)}
+          ></div>
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl transform transition-all duration-200 scale-100">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Confirmation</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this form? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+                onClick={() => setDeleteItem(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
+                onClick={async () => {
+                  try {
+                    await onDelete?.(deleteItem._id);
+                    setDeleteItem(null);
+                  } catch (error) {
+                    console.error('Error deleting form:', error);
+                    alert('Failed to delete form. Please try again.');
+                  }
+                }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
@@ -222,7 +274,7 @@ function EditForm({ item, onSave, onCancel }) {
       <label className="grid gap-1">
         <span className="text-sm text-slate-600">Description</span>
         <textarea
-          className="input min-h-[80px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
+          className="input min-h-20 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           required
