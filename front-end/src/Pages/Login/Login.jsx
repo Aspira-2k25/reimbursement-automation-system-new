@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { User, Mail, Lock,} from 'lucide-react';
 import { GoogleLogin} from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -47,10 +48,18 @@ export default function LoginPage() {
 
   // Note: Faculty/Coordinator should authenticate via backend flow.
 
+  // Match Landing page animation: simple fade-in-up on view
+  const fadeInUp = {
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+    transition: { duration: 0.6 },
+    viewport: { once: true }
+  }
+
   return (
         <div className="min-h-screen flex">
           {/* Left Side - Welcome Section */}
-          <div className="w-1/2 relative overflow-hidden flex items-center justify-center" style={{background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)'}}>
+          <motion.div className="w-1/2 relative overflow-hidden flex items-center justify-center" style={{background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)'}} {...fadeInUp}>
         {/* Decorative geometric shapes */}
         <div className="absolute inset-0">
           {/* Diamond shapes */}
@@ -73,20 +82,20 @@ export default function LoginPage() {
         </div>
 
         {/* Content */}
-        <div className="flex flex-col justify-center items-center p-16 relative z-10 text-center">
+        <motion.div className="flex flex-col justify-center items-center p-16 relative z-10 text-center" {...fadeInUp}>
           <h1 className="text-5xl font-bold text-white mb-8 leading-tight">
             Welcome Back!
           </h1>
           <p className="text-xl text-white/90 leading-relaxed max-w-md">
             To keep connected with us please login with your personal info
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
           {/* Right Side - Form Section */}
-          <div className="w-1/2 flex items-center justify-center p-8" style={{background: '#F2F2F2'}}>
+          <motion.div className="w-1/2 flex items-center justify-center p-8" style={{background: '#F2F2F2'}} {...fadeInUp}>
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+          <motion.div className="bg-white rounded-2xl shadow-xl p-8" {...fadeInUp}>
             {/* Header */}
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold mb-2" style={{color: '#182628'}}>
@@ -209,9 +218,9 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
