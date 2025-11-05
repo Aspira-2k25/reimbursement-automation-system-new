@@ -1,9 +1,8 @@
 import axios from 'axios';
 
-// Use env var on Vercel; fallback to current origin '/api' or localhost for dev
+// Use env var on Vercel; fallback to localhost for dev
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -105,6 +104,14 @@ export const studentFormsAPI = {
   getById: async (id) => {
     try {
       const res = await api.get(`/student-forms/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  debug: async () => {
+    try {
+      const res = await api.get('/student-forms/debug');
       return res.data;
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const StudentNptelForm = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
@@ -133,6 +135,8 @@ const StudentNptelForm = () => {
       if (res.ok) {
         alert("Form submitted successfully!!");
         console.log(data);
+        // Navigate to request status page after successful submission
+        navigate('/dashboard/requests');
       } else {
         alert("Error: "+ data.error);
       }
