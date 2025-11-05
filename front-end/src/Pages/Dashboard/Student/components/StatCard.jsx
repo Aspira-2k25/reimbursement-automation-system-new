@@ -4,10 +4,15 @@ import { GraduationCap, Wrench, Users, PlaneTakeoff } from "lucide-react"
 
 // Icon mapping for consistent icon usage across the application
 const iconMap = {
-  SchoolOutlined: (props) => <GraduationCap {...props} className="text-[#3B945E]" />,
-  BuildOutlined: (props) => <Wrench {...props} className="text-[#3B945E]" />,
-  Groups2Outlined: (props) => <Users {...props} className="text-[#3B945E]" />,
-  FlightTakeoffOutlined: (props) => <PlaneTakeoff {...props} className="text-[#3B945E]" />,
+  // SchoolOutlined: (props) => <GraduationCap {...props} />,
+  // BuildOutlined: (props) => <Wrench {...props} />,
+  // Groups2Outlined: (props) => <Users {...props} />,
+  // FlightTakeoffOutlined: (props) => <PlaneTakeoff {...props} />,
+
+  SchoolOutlined: (props) => <GraduationCap {...props} className="text-[#ffffff]" />,
+  BuildOutlined: (props) => <Wrench {...props} className="text-[#ffffff]" />,
+  Groups2Outlined: (props) => <Users {...props} className="text-[#ffffff]" />,
+  FlightTakeoffOutlined: (props) => <PlaneTakeoff {...props} className="text-[#ffffff]" />,
 }
 
 /**
@@ -51,7 +56,7 @@ export default function StatCard({ option, onApply }) {
     <div className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1" style={{border: '1px solid var(--color-light-teal)'}}>
       {/* Hover background effect */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{background: 'linear-gradient(135deg, var(--color-light-teal)/20, var(--color-medium-teal)/20)'}}></div>
-      
+
       <div className="relative p-4 sm:p-5 lg:p-6 h-full flex flex-col">
         {/* Icon container with hover animation */}
         <div className="flex h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 items-center justify-center rounded-lg sm:rounded-xl mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300" style={{background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))'}}>
@@ -59,13 +64,13 @@ export default function StatCard({ option, onApply }) {
           <Icon size={24} className="hidden sm:block lg:hidden text-white" />
           <Icon size={28} className="hidden lg:block text-white" />
         </div>
-        
+
         {/* Card title */}
         <h3 className="font-semibold text-base sm:text-lg lg:text-xl mb-2" style={{color: 'var(--color-dark-gray)'}}>{title}</h3>
-        
+
         {/* Card description */}
         <p className="text-xs sm:text-sm lg:text-base flex-1 leading-relaxed" style={{color: 'var(--color-dark-gray)'}}>{description}</p>
-        
+
         {/* Apply button */}
         <button
           onClick={handleApply}
