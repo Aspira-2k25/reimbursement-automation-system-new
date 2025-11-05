@@ -160,7 +160,7 @@ export default function EditForm() {
 
       await studentFormsAPI.updateById(id, formDataToSend);
       alert('Form updated successfully!');
-      navigate('/dashboard/student/request-status');
+      navigate('/dashboard/requests');
     } catch (err) {
       console.error('Error updating form:', err);
       alert(err.error || 'Failed to update form. Please try again.');
