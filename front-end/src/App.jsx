@@ -4,6 +4,7 @@ import LoginPage from './Pages/Login/Login'
 import Dashboard from './Pages/Dashboard/Dashboard'
 import ReimbursementForm from './Pages/nptel_form/ReimbursementForm'
 import StudentNptelForm from './Pages/nptel_form/StudentForm'
+import LandingPage from './Pages/Landing_Page/Landing'
 
 function App() {
 
@@ -17,7 +18,8 @@ function App() {
     // </>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/form" element={<ReimbursementForm />} />
