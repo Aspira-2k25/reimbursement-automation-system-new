@@ -1,4 +1,3 @@
-
 import React from "react"
 import { useLocation } from "react-router-dom"
 import { studentFormsAPI } from "../../../services/api"
@@ -18,9 +17,9 @@ const useStudentRequests = () => {
     try {
       setLoading(true)
       setError(null)
-      
+
       const data = await studentFormsAPI.listMine()
-      
+
       // Handle different response structures
       let forms = []
       if (Array.isArray(data)) {
@@ -30,10 +29,12 @@ const useStudentRequests = () => {
       } else if (data?.data && Array.isArray(data.data)) {
         forms = data.data
       }
-      
+
       // Map backend forms to table row shape
       const mapped = forms.map((f) => ({
         id: f.applicationId || f._id || f.id || `form-${f._id}`,
+        _id: f._id, // Store MongoDB _id for navigation
+        applicationId: f.applicationId, // Store applicationId as well
         category: f.reimbursementType || f.category || "NPTEL",
         status: f.status || "Pending",
         amount: Number(f.amount || 0),
@@ -41,7 +42,7 @@ const useStudentRequests = () => {
         updatedDate: f.updatedAt || f.updatedDate || f.createdAt || new Date(),
         description: f.remarks || f.name || f.description || "",
       }))
-      
+
       if (mountedRef.current) {
         setRequests(mapped)
       }
@@ -105,8 +106,8 @@ function SummaryCard({ title, value, sub }) {
 export default function RequestStatus() {
   // State for search functionality
   const [search, setSearch] = React.useState("")
-  const { loading, error, requests } = useStudentRequests()
-  
+  const { loading, error, requests, refetch } = useStudentRequests()
+
   // Calculate summary statistics from fetched data
   const summary = React.useMemo(() => ({
     total: requests.length,
@@ -161,8 +162,8 @@ export default function RequestStatus() {
           <div className="card p-4 text-red-600">
             <div className="font-semibold mb-2">Error loading requests:</div>
             <div>{String(error)}</div>
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
               Retry
@@ -182,7 +183,19 @@ export default function RequestStatus() {
             <div className="text-xs text-slate-400">Check the browser console for debugging information.</div>
           </div>
         ) : (
-          <RequestsTable search={search} requests={requests} />
+          <RequestsTable
+            search={search}
+            requests={requests}
+            onDelete={async (deletedId) => {
+              try {
+                await studentFormsAPI.deleteById(deletedId);
+                await refetch();
+              } catch (error) {
+                console.error('Error deleting form:', error);
+                alert('Failed to delete form. ' + (error.error || 'Please try again.'));
+              }
+            }}
+          />
         )}
       </div>
     </main>

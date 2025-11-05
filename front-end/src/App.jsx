@@ -5,6 +5,8 @@ import Dashboard from './Pages/Dashboard/Dashboard'
 import ReimbursementForm from './Pages/nptel_form/ReimbursementForm'
 import StudentNptelForm from './Pages/nptel_form/StudentForm'
 import LandingPage from './Pages/Landing_Page/Landing'
+import ViewForm from './Pages/nptel_form/ViewForm'
+import EditForm from './Pages/nptel_form/EditForm'
 
 function App() {
 
@@ -23,6 +25,8 @@ function App() {
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/form" element={<ReimbursementForm />} />
+        <Route path="/nptel-form/view/:id" element={<ViewForm />} />
+        <Route path="/nptel-form/edit/:id" element={<EditForm />} />
         <Route path="/student-nptel-form" element={<StudentNptelForm />} />
         <Route path="/faculty-nptel-form" element={<ReimbursementForm/>} />
       </Routes>
@@ -31,3 +35,7 @@ function App() {
 }
 
 export default App
+
+
+
+
