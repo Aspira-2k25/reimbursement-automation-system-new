@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Eye, Pencil, Trash2, X, AlertCircle } from "lucide-react"
+import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -87,34 +87,46 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <td className="px-4 py-3">₹{(r.amount || 0).toLocaleString("en-IN")}</td>
                 <td className="px-4 py-3">{formatDate(r.submittedDate || r.createdAt)}</td>
                 <td className="px-4 py-3">{formatDate(r.updatedDate || r.updatedAt)}</td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    className="icon-btn hover:bg-blue-50"
-                    onClick={() => navigate(`/nptel-form/view/${r._id || r.applicationId || r.id}`)}
-                    aria-label="View"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="icon-btn hover:bg-green-50 disabled:opacity-50"
-                    onClick={() => navigate(`/nptel-form/edit/${r._id || r.applicationId || r.id}`)}
-                    aria-label="Edit"
-                    disabled={r.status !== 'Pending'}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    onClick={() => setDeleteItem(r)}
-                    aria-label="Delete"
-                    disabled={r.status !== 'Pending'}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="icon-btn hover:bg-blue-50 disabled:opacity-50"
+                      onClick={() => {
+                        const docUrl = r.documents?.[0]?.url;
+                        if (docUrl) window.open(docUrl, '_blank');
+                      }}
+                      disabled={!r.documents?.[0]?.url}
+                      title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
+                      aria-label="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-btn hover:bg-blue-50"
+                      onClick={() => navigate(`/nptel-form/view/${r._id || r.applicationId || r.id}`)}
+                      aria-label="View"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-btn hover:bg-green-50 disabled:opacity-50"
+                      onClick={() => navigate(`/nptel-form/edit/${r._id || r.applicationId || r.id}`)}
+                      aria-label="Edit"
+                      disabled={r.status !== 'Pending'}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      onClick={() => setDeleteItem(r)}
+                      aria-label="Delete"
+                      disabled={r.status !== 'Pending'}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
             );
           }) : (
             <tr>
@@ -127,152 +139,158 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
         </tbody>
       </table>
 
-      {viewItem && (
-        <div className={modalStyle} role="dialog" aria-modal="true">
-          <div
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
-            onClick={() => setViewItem(null)}
-          ></div>
-          <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Request Details</h3>
-              <button
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
-                onClick={() => setViewItem(null)}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-slate-500">Application ID</div>
-                <div className="font-medium">{viewItem.id}</div>
+      {
+        viewItem && (
+          <div className={modalStyle} role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+              onClick={() => setViewItem(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Request Details</h3>
+                <button
+                  className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
+                  onClick={() => setViewItem(null)}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <div>
-                <div className="text-slate-500">Category</div>
-                <div className="font-medium">{viewItem.category}</div>
-              </div>
-              <div>
-                <div className="text-slate-500">Status</div>
-                <div className="font-medium">{viewItem.status}</div>
-              </div>
-              <div>
-                <div className="text-slate-500">Amount</div>
-                <div className="font-medium">₹{viewItem.amount.toLocaleString("en-IN")}</div>
-              </div>
-              <div>
-                <div className="text-slate-500">Submitted</div>
-                <div className="font-medium">
-                  {(() => {
-                    const date = viewItem.submittedDate || viewItem.createdAt;
-                    if (!date) return 'N/A';
-                    try {
-                      const d = new Date(date);
-                      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
-                    } catch {
-                      return 'N/A';
-                    }
-                  })()}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-slate-500">Application ID</div>
+                  <div className="font-medium">{viewItem.id}</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-slate-500">Updated</div>
-                <div className="font-medium">
-                  {(() => {
-                    const date = viewItem.updatedDate || viewItem.updatedAt;
-                    if (!date) return 'N/A';
-                    try {
-                      const d = new Date(date);
-                      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
-                    } catch {
-                      return 'N/A';
-                    }
-                  })()}
+                <div>
+                  <div className="text-slate-500">Category</div>
+                  <div className="font-medium">{viewItem.category}</div>
                 </div>
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-slate-500">Description</div>
-                <div className="font-medium">{viewItem.description}</div>
+                <div>
+                  <div className="text-slate-500">Status</div>
+                  <div className="font-medium">{viewItem.status}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Amount</div>
+                  <div className="font-medium">₹{viewItem.amount.toLocaleString("en-IN")}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Submitted</div>
+                  <div className="font-medium">
+                    {(() => {
+                      const date = viewItem.submittedDate || viewItem.createdAt;
+                      if (!date) return 'N/A';
+                      try {
+                        const d = new Date(date);
+                        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+                      } catch {
+                        return 'N/A';
+                      }
+                    })()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Updated</div>
+                  <div className="font-medium">
+                    {(() => {
+                      const date = viewItem.updatedDate || viewItem.updatedAt;
+                      if (!date) return 'N/A';
+                      try {
+                        const d = new Date(date);
+                        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+                      } catch {
+                        return 'N/A';
+                      }
+                    })()}
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="text-slate-500">Description</div>
+                  <div className="font-medium">{viewItem.description}</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Delete Confirmation Modal */}
-      {deleteItem && (
-        <div className={modalStyle} role="dialog" aria-modal="true">
-          <div
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
-            onClick={() => setDeleteItem(null)}
-          ></div>
-          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl transform transition-all duration-200 scale-100">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-shrink-0">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+      {
+        deleteItem && (
+          <div className={modalStyle} role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+              onClick={() => setDeleteItem(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl transform transition-all duration-200 scale-100">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Confirmation</h3>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Delete Confirmation</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to delete this form? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-150"
-                onClick={() => setDeleteItem(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
-                onClick={async () => {
-                  try {
-                    await onDelete?.(deleteItem._id);
-                    setDeleteItem(null);
-                  } catch (error) {
-                    console.error('Error deleting form:', error);
-                    alert('Failed to delete form. Please try again.');
-                  }
-                }}
-              >
-                Delete
-              </button>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to delete this form? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+                  onClick={() => setDeleteItem(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
+                  onClick={async () => {
+                    try {
+                      await onDelete?.(deleteItem._id);
+                      setDeleteItem(null);
+                    } catch (error) {
+                      console.error('Error deleting form:', error);
+                      alert('Failed to delete form. Please try again.');
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {editItem && (
-        <div className={modalStyle} role="dialog" aria-modal="true">
-          <div
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
-            onClick={() => setEditItem(null)}
-          ></div>
-          <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Edit Request</h3>
-              <button
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
-                onClick={() => setEditItem(null)}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      {
+        editItem && (
+          <div className={modalStyle} role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+              onClick={() => setEditItem(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Edit Request</h3>
+                <button
+                  className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
+                  onClick={() => setEditItem(null)}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <EditForm
+                item={editItem}
+                onCancel={() => setEditItem(null)}
+                onSave={(payload) => {
+                  // TODO: Implement actual save logic
+                  console.log('Saving request:', payload)
+                  setEditItem(null)
+                }}
+              />
             </div>
-            <EditForm
-              item={editItem}
-              onCancel={() => setEditItem(null)}
-              onSave={(payload) => {
-                // TODO: Implement actual save logic
-                console.log('Saving request:', payload)
-                setEditItem(null)
-              }}
-            />
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 }
 
