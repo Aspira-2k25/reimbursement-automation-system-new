@@ -1,5 +1,3 @@
-
-
 import React from "react"
 import { useLocation, Link, useNavigate } from "react-router-dom"
 import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
@@ -30,11 +28,11 @@ export default function Navbar() {
 
   const [open, setOpen] = React.useState(false)
   const dropdownRef = React.useRef(null)
-  
+
   const handleProfileClick = React.useCallback(() => {
     setOpen(prev => !prev)
   }, [])
-  
+
   const handleClose = React.useCallback(() => {
     setOpen(false)
   }, [])
@@ -92,21 +90,47 @@ export default function Navbar() {
             <span className="font-bold text-white text-base sm:text-lg">Reimbursement Portal</span>
           </div>
 
+          {/* Mobile Navigation */}
+          <nav className="md:hidden flex items-center gap-1">
+            {navItems.slice(0, 2).map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={[
+                  "flex items-center px-3 py-2 rounded-lg font-medium",
+                  "transition-all duration-200",
+                  isActive(item.path)
+                    ? "bg-white/20 text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-2">
+                  {item.label === "Home" ? (
+                    <Home className="h-4 w-4" />
+                  ) : (
+                    <BarChart2 className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">{item.label}</span>
+                </div>
+              </Link>
+            ))}
+          </nav>
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10">
-            <div 
+            <div
               className={[
                 "absolute top-1 bottom-1 rounded-xl sliding-block",
                 "bg-gradient-to-r from-[#3B945E] via-[#57BA98] to-[#65CCB8]",
                 "shadow-lg",
                 "border border-white/20",
                 "backdrop-blur-sm",
-                navItems.slice(0, 2).findIndex(item => isActive(item.path)) === 0 
-                  ? "sliding-block-left" 
+                navItems.slice(0, 2).findIndex(item => isActive(item.path)) === 0
+                  ? "sliding-block-left"
                   : "sliding-block-right"
               ].join(" ")}
             />
-            
+
             {navItems.slice(0, 2).map((item, index) => (
               <Link
                 key={item.path}
@@ -123,8 +147,8 @@ export default function Navbar() {
                 <div className="flex items-center gap-2">
                   <div className={[
                     "transition-all duration-300 ease-out",
-                    isActive(item.path) 
-                      ? "scale-110 drop-shadow-sm" 
+                    isActive(item.path)
+                      ? "scale-110 drop-shadow-sm"
                       : "scale-100 group-hover:scale-105"
                   ].join(" ")}>
                     {item.label === "Home" ? (
@@ -135,8 +159,8 @@ export default function Navbar() {
                   </div>
                   <span className={[
                     "text-sm transition-all duration-300 ease-out",
-                    isActive(item.path) 
-                      ? "font-semibold tracking-wide drop-shadow-sm" 
+                    isActive(item.path)
+                      ? "font-semibold tracking-wide drop-shadow-sm"
                       : "font-medium group-hover:font-semibold"
                   ].join(" ")}>{item.label}</span>
                 </div>
@@ -150,7 +174,7 @@ export default function Navbar() {
             <div className="relative">
               <NotificationMenu />
             </div>
-            
+
             {/* Profile button with dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -176,12 +200,12 @@ export default function Navbar() {
                 </div>
                 <ChevronDown className={`h-4 w-4 text-white/80 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
               </button>
-              
+
               {/* Profile dropdown menu with smooth transitions */}
               <div
                 className={`absolute right-0 top-full mt-2 w-64 sm:w-72 rounded-xl border border-white/20 bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/20 z-30 transition-all duration-300 ease-out ${
-                  open 
-                    ? 'opacity-100 translate-y-0 scale-100' 
+                  open
+                    ? 'opacity-100 translate-y-0 scale-100'
                     : 'opacity-0 translate-y-2 scale-95 pointer-events-none'
                 }`}
               >

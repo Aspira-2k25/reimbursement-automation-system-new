@@ -17,11 +17,16 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const userId = req.user.userId || req.user.email || req.user.id;
+      // Log the incoming request data
+      console.log('Form submission received:', {
+        body: req.body,
+        files: req.files,
+        user: req.user
+      });
 
-      if (!userId) {
-        return res.status(400).json({ error: "User ID not found in token" });
-      }
+      const userId = req.user.userId || req.user.email;
+
+      if (!userId) return res.status(400).json({ error: "User ID not found in token" });
 
       // Upload received files to Cloudinary (if present)
       let nptelResultUpload = null;
@@ -51,6 +56,24 @@ router.post(
         );
       }
 
+      // Validate required fields before saving
+      const requiredFields = ['name', 'studentId', 'division', 'email'];
+      const missingFields = requiredFields.filter(field => !req.body[field]);
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          error: "Missing required fields",
+          fields: missingFields
+        });
+      }
+
+      // Parse amount as number if present
+      const formData = {
+        ...req.body,
+        amount: req.body.amount ? parseFloat(req.body.amount) : undefined
+      };
+
+
       const newStudentForm = new StudentForm({
         ...req.body,
         userId,
@@ -63,6 +86,8 @@ router.post(
             : null,
         ].filter(Boolean),
       });
+
+      console.log('Attempting to save form:', newStudentForm);
 
       await newStudentForm.save();
       res.status(201).json({ message: "Student form submitted successfully!", form: newStudentForm });
@@ -87,9 +112,9 @@ router.get(
       // Try to find forms matching userId (could be numeric ID or email)
       // Convert userId to string for comparison since MongoDB might store it as string
       const userIdStr = String(userId);
-      
+
       // Try multiple query patterns to handle different userId formats
-      const forms = await StudentForm.find({ 
+      const forms = await StudentForm.find({
         $or: [
           { userId: userIdStr },
           { userId: userId },
@@ -112,20 +137,20 @@ router.get(
   async (req, res) => {
     try {
       const userId = req.user.userId || req.user.email || req.user.id;
-      
+
       // Get all forms (limited to 10 for debugging)
       const allForms = await StudentForm.find().limit(10).select('userId applicationId name createdAt');
-      
+
       // Get forms for current user
-      const userForms = await StudentForm.find({ 
+      const userForms = await StudentForm.find({
         $or: [
           { userId: String(userId) },
           { userId: userId },
           { userId: Number(userId) }
         ]
       }).limit(10).select('userId applicationId name createdAt');
-      
-      return res.json({ 
+
+      return res.json({
         currentUserId: userId,
         userObject: req.user,
         allFormsSample: allForms,
@@ -139,19 +164,30 @@ router.get(
   }
 );
 
-// GET /api/student-forms/:id - fetch a specific form by Mongo _id
+// GET /api/student-forms/:id - fetch a specific form by Mongo _id or applicationId
 router.get(
   "/:id",
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      const form = await StudentForm.findById(req.params.id);
-      if (!form) return res.status(404).json({ error: "Form not found" });
-      // Optionally ensure users can only access their own form unless they have elevated roles
-      const userId = req.user.userId || req.user.email;
+      // Try to find by MongoDB _id first, then by applicationId
+      let form = await StudentForm.findById(req.params.id);
+      
+      // If not found by _id, try applicationId
+      if (!form) {
+        form = await StudentForm.findOne({ applicationId: req.params.id });
+      }
+      
+      if (!form) {
+        return res.status(404).json({ error: "Form not found" });
+      }
+      
+      // Ensure users can only access their own form unless they have elevated roles
+      const userId = req.user.userId || req.user.email || req.user.id;
       if (form.userId !== userId) {
         return res.status(403).json({ error: "Forbidden" });
       }
+      
       return res.json({ form });
     } catch (err) {
       console.error("Error fetching form by id:", err);
@@ -159,5 +195,113 @@ router.get(
     }
   }
 );
+
+// PUT /api/student-forms/:id - update a specific form
+router.put(
+  "/:id",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Try to find by MongoDB _id first, then by applicationId
+      let form = await StudentForm.findById(req.params.id);
+      
+      // If not found by _id, try applicationId
+      if (!form) {
+        form = await StudentForm.findOne({ applicationId: req.params.id });
+      }
+      
+      if (!form) {
+        return res.status(404).json({ error: "Form not found" });
+      }
+      
+      // Use the MongoDB _id for the update
+      const formId = form._id;
+
+      const userId = req.user.userId || req.user.email || req.user.id;
+      const isOwner = form.userId === userId;
+      const isAdmin = ['coordinator', 'hod', 'principal'].includes(req.user.role);
+      
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Determine allowed fields based on user role and form status
+      let allowedUpdates = [];
+      
+      if (isOwner && form.status === 'Pending') {
+        // Students can update their own pending forms (all editable fields)
+        allowedUpdates = [
+          'name', 'studentId', 'division', 'email', 'academicYear', 
+          'amount', 'accountName', 'ifscCode', 'accountNumber', 
+          'remarks', 'documents'
+        ];
+      } else if (isOwner) {
+        // Students can only update remarks for non-pending forms
+        allowedUpdates = ['remarks'];
+      }
+      
+      if (isAdmin) {
+        // Admins can update status and review fields
+        allowedUpdates = ['remarks', 'status', 'reviewedBy', 'reviewedAt'];
+      }
+
+      const updates = {};
+      allowedUpdates.forEach(field => {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      });
+
+      // Update updatedAt timestamp
+      updates.updatedAt = new Date();
+
+      const updatedForm = await StudentForm.findByIdAndUpdate(
+        formId,
+        { $set: updates },
+        { new: true, runValidators: true }
+      );
+
+      return res.json({ form: updatedForm });
+    } catch (err) {
+      console.error("Error updating form:", err);
+      res.status(500).json({ error: "Failed to update form", details: err.message });
+    }
+  }
+);
+
+// DELETE /api/student-forms/:id - delete a specific form
+router.delete(
+  "/:id",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      const form = await StudentForm.findById(req.params.id);
+      if (!form) return res.status(404).json({ error: "Form not found" });
+
+      const userId = req.user.userId || req.user.email;
+      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(req.user.role)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Delete associated files from Cloudinary
+      if (form.documents) {
+        for (const doc of form.documents) {
+          if (doc.publicId) {
+            await cloudinary.uploader.destroy(doc.publicId);
+          }
+        }
+      }
+
+      await StudentForm.findByIdAndDelete(req.params.id);
+      return res.json({ message: "Form deleted successfully" });
+    } catch (err) {
+      console.error("Error deleting form:", err);
+      res.status(500).json({ error: "Failed to delete form", details: err.message });
+    }
+  }
+);
+
+
+
 
 module.exports = router;

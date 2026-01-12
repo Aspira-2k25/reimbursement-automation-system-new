@@ -89,6 +89,14 @@ const authController = {
         return res.status(400).json({ error: 'Google token missing email' });
       }
 
+      // Validate email domain - only allow apsit.edu.in domain
+      const allowedDomain = 'apsit.edu.in';
+      if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
+        return res.status(403).json({ 
+          error: `Only ${allowedDomain} email addresses are allowed. Please sign in with your institutional email.` 
+        });
+      }
+
       // Look up staff by email to determine role; default to Student
       const staff = await dbUtils.getStaffByEmail(email);
       const role = staff?.role || 'Student';

@@ -1,5 +1,6 @@
 import React from "react"
-import { Eye, Pencil, X } from "lucide-react"
+import { Eye, Pencil, Trash2, X, AlertCircle } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
 
@@ -18,7 +19,7 @@ function StatusBadge({ status }) {
         return "badge badge-pending"
     }
   }
-  
+
   return <span className={getStatusClass(status)}>{status}</span>
 }
 
@@ -28,10 +29,11 @@ function StatusBadge({ status }) {
  * @param {string} search - Search term for filtering requests
  * @param {Array} requests - Array of request objects to display
  */
-export default function RequestsTable({ search, requests = [] }) {
-  // State for modal visibility
-  const [viewItem, setViewItem] = React.useState(null)
-  const [editItem, setEditItem] = React.useState(null)
+export default function RequestsTable({ search, requests = [], onDelete }) {
+  const navigate = useNavigate();
+  const [viewItem, setViewItem] = React.useState(null);
+  const [editItem, setEditItem] = React.useState(null);
+  const [deleteItem, setDeleteItem] = React.useState(null);
 
   // Filter requests based on search term
   const filtered = React.useMemo(() => {
@@ -70,11 +72,32 @@ export default function RequestsTable({ search, requests = [] }) {
               <td className="px-4 py-3">{new Date(r.updatedDate).toLocaleDateString()}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <button className="icon-btn" onClick={() => setViewItem(r)} aria-label="View">
+                  <button
+                    className="icon-btn"
+                    onClick={() => {
+                      setViewItem(r);
+                      navigate(`/nptel-form/view/${r.id}`);
+                    }}
+                    aria-label="View"
+                  >
                     <Eye className="h-4 w-4" />
                   </button>
-                  <button className="icon-btn" onClick={() => setEditItem(r)} aria-label="Edit">
+                  <button
+                    className="icon-btn"
+                    onClick={() => {
+                      setEditItem(r);
+                      navigate(`/nptel-form/edit/${r.id}`);
+                    }}
+                    aria-label="Edit"
+                  >
                     <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="icon-btn text-red-600 hover:bg-red-50"
+                    onClick={() => setDeleteItem(r)}
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </td>
@@ -92,16 +115,16 @@ export default function RequestsTable({ search, requests = [] }) {
 
       {viewItem && (
         <div className={modalStyle} role="dialog" aria-modal="true">
-          <div 
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200" 
+          <div
+            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
             onClick={() => setViewItem(null)}
           ></div>
           <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Faculty Request Details</h3>
-              <button 
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150" 
-                onClick={() => setViewItem(null)} 
+              <button
+                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
+                onClick={() => setViewItem(null)}
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -141,18 +164,74 @@ export default function RequestsTable({ search, requests = [] }) {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {deleteItem && (
+        <div className={modalStyle} role="dialog" aria-modal="true">
+          <div
+            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+            onClick={() => setDeleteItem(null)}
+          ></div>
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl transform transition-all duration-200 scale-100">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="shrink-0">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Confirmation</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this form? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+                onClick={() => setDeleteItem(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`http://localhost:5000/api/forms/${deleteItem.id}`, {
+                      method: 'DELETE',
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
+
+                    if (response.ok) {
+                      onDelete?.(deleteItem.id);
+                      setDeleteItem(null);
+                    } else {
+                      const data = await response.json();
+                      alert(data.error || 'Failed to delete form');
+                    }
+                  } catch (error) {
+                    console.error('Error deleting form:', error);
+                    alert('Failed to delete form. Please try again.');
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editItem && (
         <div className={modalStyle} role="dialog" aria-modal="true">
-          <div 
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200" 
+          <div
+            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
             onClick={() => setEditItem(null)}
           ></div>
           <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Edit Faculty Request</h3>
-              <button 
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150" 
-                onClick={() => setEditItem(null)} 
+              <button
+                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
+                onClick={() => setEditItem(null)}
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -208,7 +287,7 @@ function EditForm({ item, onSave, onCancel }) {
       <label className="grid gap-1">
         <span className="text-sm text-slate-600">Description</span>
         <textarea
-          className="input min-h-[80px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
+          className="input min-h-20 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           required
@@ -243,15 +322,15 @@ function EditForm({ item, onSave, onCancel }) {
       </label>
 
       <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
-        <button 
-          type="button" 
-          className="btn btn-outline hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150" 
+        <button
+          type="button"
+          className="btn btn-outline hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150"
           onClick={handleCancel}
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="btn btn-primary hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all duration-150"
         >
           Save Changes
