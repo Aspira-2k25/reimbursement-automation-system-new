@@ -55,6 +55,11 @@ body {
   border-color: var(--color-dark-gray);
 }
 
+.badge-under-hod {
+  @apply text-yellow-800 border border-yellow-200;
+  background-color: #fef3c7; /* bg-yellow-100 */
+}
+
 .input {
   @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all duration-200 focus:border-[color:var(--brand-primary)] focus:ring-2 focus:ring-[color:var(--brand-primary)]/20;
 }
