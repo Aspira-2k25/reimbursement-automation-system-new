@@ -11,7 +11,6 @@ function StatusBadge({ status }) {
     "pending",
     "at under cordinator",
     "under coordinator",
-    "under hod",
     "under principal",
   ])
 
@@ -20,9 +19,11 @@ function StatusBadge({ status }) {
       ? "badge badge-approved"
       : normalized === "rejected"
         ? "badge badge-rejected"
-        : pendingStatuses.has(normalized)
-          ? "badge badge-pending"
-          : "badge badge-pending"
+        : normalized === "under hod"
+          ? "badge badge-under-hod"
+          : pendingStatuses.has(normalized)
+            ? "badge badge-pending"
+            : "badge badge-pending"
 
   return <span className={cls}>{status}</span>
 }
@@ -157,10 +158,29 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-slate-500">Application ID</div>
-                  <div className="font-medium">{viewItem.id}</div>
+              <div>
+                <div className="text-slate-500">Status</div>
+                <div className="font-medium">
+                  <StatusBadge status={viewItem.status} />
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-500">Amount</div>
+                <div className="font-medium">₹{viewItem.amount.toLocaleString("en-IN")}</div>
+              </div>
+              <div>
+                <div className="text-slate-500">Submitted</div>
+                <div className="font-medium">
+                  {(() => {
+                    const date = viewItem.submittedDate || viewItem.createdAt;
+                    if (!date) return 'N/A';
+                    try {
+                      const d = new Date(date);
+                      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+                    } catch {
+                      return 'N/A';
+                    }
+                  })()}
                 </div>
                 <div>
                   <div className="text-slate-500">Category</div>
