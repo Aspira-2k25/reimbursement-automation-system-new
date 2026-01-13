@@ -60,8 +60,10 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
   }
 
   // Determine which actions to show based on status
-  const canApprove = ['Pending', 'Under HOD'].includes(request.status)
-  const canReject = ['Pending', 'Under HOD', 'Under Principal'].includes(request.status)
+  // For HOD: Can only approve/reject requests with status "Under HOD" (pending their approval)
+  // Once approved (status becomes "Under Principal"), HOD cannot reject it anymore
+  const canApprove = request.status === 'Under HOD'
+  const canReject = request.status === 'Under HOD' // HOD can only reject requests pending their approval
 
   if (variant === 'compact') {
     return (
