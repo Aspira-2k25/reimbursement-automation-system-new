@@ -9,7 +9,8 @@ import {
   TrendingUp,
   Building,
   Loader2,
-  Search
+  Search,
+  X
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
@@ -31,22 +32,44 @@ const HomeDashboard = () => {
     setTypeFilter
   } = useHODContext()
   const [rejectModal, setRejectModal] = useState({ show: false, request: null })
+  const [viewModal, setViewModal] = useState({ show: false, request: null })
   const [rejectReason, setRejectReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [viewLoading, setViewLoading] = useState(false)
+  const [requestDetails, setRequestDetails] = useState(null)
 
   // Handler functions - declared first to avoid hoisting issues
-  const handleViewRequest = useCallback((request) => {
-    toast.info(`Viewing request ${request.id} for ${request.applicantName}`)
-    // In a real app, this would navigate to a detailed view or open a modal
+  const handleViewRequest = useCallback(async (request) => {
+    setViewModal({ show: true, request })
+    setViewLoading(true)
+    
+    try {
+      // Fetch full request details from API
+      const { studentFormsAPI } = await import('../../../../services/api')
+      const formId = request._id || request.applicationId || request.id
+      const data = await studentFormsAPI.getById(formId)
+      setRequestDetails(data?.form || data)
+    } catch (error) {
+      console.error('Error fetching request details:', error)
+      toast.error('Failed to load request details')
+      setRequestDetails(request) // Fallback to basic request data
+    } finally {
+      setViewLoading(false)
+    }
+  }, [])
+  
+  const closeViewModal = useCallback(() => {
+    setViewModal({ show: false, request: null })
+    setRequestDetails(null)
   }, [])
 
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      updateRequestStatus(request.id, 'Approved')
-      toast.success(`Request ${request.id} approved for ${request.applicantName}`)
+      const success = await updateRequestStatus(request.id, 'Under Principal')
+      if (success) {
+        toast.success(`Request ${request.id} approved and sent to Principal for ${request.applicantName}`)
+      }
     } catch (error) {
       toast.error('Failed to approve request. Please try again.')
     } finally {
@@ -147,12 +170,12 @@ const HomeDashboard = () => {
     if (rejectReason.trim()) {
       setIsLoading(true)
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        updateRequestStatus(rejectModal.request.id, 'Rejected')
-        toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
-        setRejectModal({ show: false, request: null })
-        setRejectReason('')
+        const success = await updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
+        if (success) {
+          toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
+          setRejectModal({ show: false, request: null })
+          setRejectReason('')
+        }
       } catch (error) {
         toast.error('Failed to reject request. Please try again.')
       } finally {
@@ -309,11 +332,10 @@ const HomeDashboard = () => {
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
+                <option value="Pending">Pending / Under HOD</option>
+                <option value="Under Principal">Under Principal</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
-                <option value="Under HOD">Under HOD</option>
-                <option value="Under Principal">Under Principal</option>
               </select>
 
               <select
@@ -341,19 +363,177 @@ const HomeDashboard = () => {
         />
       </div>
 
+      {/* View Modal */}
+      <AnimatePresence>
+        {viewModal.show && (
+          <motion.div 
+            className="fixed inset-0 flex items-center justify-center z-[100] p-4"
+            onClick={closeViewModal}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.5)'
+            }}
+          >
+            <motion.div 
+              className="bg-white rounded-lg p-6 w-full max-w-3xl mx-auto shadow-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Request Details
+                </h3>
+                <button
+                  onClick={closeViewModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {viewLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Basic Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Request ID</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.applicationId || viewModal.request?.id || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          requestDetails?.status === 'Approved' || viewModal.request?.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                          requestDetails?.status === 'Rejected' || viewModal.request?.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                          requestDetails?.status === 'Under Principal' || viewModal.request?.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
+                          requestDetails?.status === 'Under HOD' || viewModal.request?.status === 'Under HOD' ? 'bg-orange-100 text-orange-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {requestDetails?.status || viewModal.request?.status || 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Applicant Name</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.name || viewModal.request?.applicantName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Student ID</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Category</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.reimbursementType || requestDetails?.category || viewModal.request?.category || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Amount</label>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                        {requestDetails?.amount ? `₹${requestDetails.amount.toLocaleString()}` : viewModal.request?.amount || '₹0'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Academic Year</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.academicYear || viewModal.request?.year || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Division</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.division || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Submitted Date</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {requestDetails?.createdAt 
+                          ? new Date(requestDetails.createdAt).toLocaleDateString()
+                          : viewModal.request?.submittedDate || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Last Updated</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {requestDetails?.updatedAt 
+                          ? new Date(requestDetails.updatedAt).toLocaleDateString()
+                          : viewModal.request?.lastUpdated || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Remarks/Description */}
+                  {(requestDetails?.remarks || viewModal.request?.description) && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Remarks / Description</label>
+                      <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-3 rounded-lg">
+                        {requestDetails?.remarks || viewModal.request?.description || 'N/A'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Documents */}
+                  {requestDetails?.documents && requestDetails.documents.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">Documents</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {requestDetails.documents.map((doc, index) => (
+                          <a
+                            key={index}
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            <span className="text-sm text-blue-600 hover:underline">
+                              Document {index + 1}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Close Button */}
+                  <div className="flex justify-end pt-4 border-t border-gray-200">
+                    <button
+                      onClick={closeViewModal}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Reject Modal */}
       <AnimatePresence>
       {rejectModal.show && (
           <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
           onClick={closeRejectModal}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           >
             <motion.div 
-              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-xl"
+              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-2xl relative z-[101]"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

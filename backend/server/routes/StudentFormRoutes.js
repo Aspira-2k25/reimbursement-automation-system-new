@@ -77,6 +77,7 @@ router.post(
       const newStudentForm = new StudentForm({
         ...req.body,
         userId,
+        status: "Pending", // Ensure status is Pending when student submits
         documents: [
           nptelResultUpload
             ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
@@ -126,6 +127,102 @@ router.get(
     } catch (err) {
       console.error("Error fetching user forms:", err);
       res.status(500).json({ error: "Failed to fetch user forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/pending - Get pending requests for coordinators
+router.get(
+  "/pending",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Only coordinators, HODs, and principals can access this endpoint
+      const userRole = req.user.role?.toLowerCase();
+      if (!['coordinator', 'hod', 'principal'].includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
+      }
+
+      // Fetch forms with status "Pending" (awaiting coordinator approval)
+      const forms = await StudentForm.find({ status: "Pending" }).sort({ createdAt: -1 });
+      
+      return res.json({ forms });
+    } catch (err) {
+      console.error("Error fetching pending forms:", err);
+      res.status(500).json({ error: "Failed to fetch pending forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/approved - Get approved requests for coordinators
+router.get(
+  "/approved",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Only coordinators, HODs, and principals can access this endpoint
+      const userRole = req.user.role?.toLowerCase();
+      if (!['coordinator', 'hod', 'principal'].includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
+      }
+
+      // Fetch forms with status "Under HOD", "Under Principal", or "Approved"
+      const forms = await StudentForm.find({ 
+        status: { $in: ["Under HOD", "Under Principal", "Approved"] }
+      }).sort({ updatedAt: -1 });
+      
+      return res.json({ forms });
+    } catch (err) {
+      console.error("Error fetching approved forms:", err);
+      res.status(500).json({ error: "Failed to fetch approved forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/rejected - Get rejected requests for coordinators
+router.get(
+  "/rejected",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Only coordinators, HODs, and principals can access this endpoint
+      const userRole = req.user.role?.toLowerCase();
+      if (!['coordinator', 'hod', 'principal'].includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
+      }
+
+      // Fetch forms with status "Rejected"
+      const forms = await StudentForm.find({ 
+        status: "Rejected"
+      }).sort({ updatedAt: -1 });
+      
+      return res.json({ forms });
+    } catch (err) {
+      console.error("Error fetching rejected forms:", err);
+      res.status(500).json({ error: "Failed to fetch rejected forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/for-hod - Get requests approved by coordinator (status: Under HOD)
+router.get(
+  "/for-hod",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Only HODs and principals can access this endpoint
+      const userRole = req.user.role?.toLowerCase();
+      if (!['hod', 'principal'].includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden: Only HODs and principals can access this endpoint" });
+      }
+
+      // Fetch forms with status "Under HOD" (approved by coordinator, awaiting HOD approval)
+      const forms = await StudentForm.find({ status: "Under HOD" }).sort({ updatedAt: -1 });
+      
+      return res.json({ forms });
+    } catch (err) {
+      console.error("Error fetching HOD forms:", err);
+      res.status(500).json({ error: "Failed to fetch HOD forms", details: err.message });
     }
   }
 );
@@ -182,9 +279,17 @@ router.get(
         return res.status(404).json({ error: "Form not found" });
       }
       
-      // Ensure users can only access their own form unless they have elevated roles
+      // Check access permissions
       const userId = req.user.userId || req.user.email || req.user.id;
-      if (form.userId !== userId) {
+      const userRole = req.user.role?.toLowerCase();
+      
+      // Allow access if:
+      // 1. User is the owner of the form
+      // 2. User is a coordinator, HOD, or principal (they need to view requests)
+      const isOwner = form.userId === userId;
+      const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
+      
+      if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
       
@@ -219,7 +324,8 @@ router.put(
 
       const userId = req.user.userId || req.user.email || req.user.id;
       const isOwner = form.userId === userId;
-      const isAdmin = ['coordinator', 'hod', 'principal'].includes(req.user.role);
+      const userRole = req.user.role?.toLowerCase();
+      const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
       
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
@@ -240,8 +346,29 @@ router.put(
         allowedUpdates = ['remarks'];
       }
       
-      if (isAdmin) {
-        // Admins can update status and review fields
+      if (userRole === 'coordinator') {
+        // Coordinators can approve/reject pending requests and update status to "Under HOD" or "Rejected"
+        if (form.status === 'Pending') {
+          allowedUpdates = ['status', 'remarks'];
+          // Validate status change - coordinators can only set to "Under HOD" or "Rejected"
+          if (req.body.status && !['Under HOD', 'Rejected'].includes(req.body.status)) {
+            return res.status(400).json({ error: 'Coordinators can only approve (Under HOD) or reject requests' });
+          }
+        }
+      } else if (userRole === 'hod') {
+        // HODs can approve/reject requests with status "Under HOD"
+        if (form.status === 'Under HOD') {
+          allowedUpdates = ['status', 'remarks'];
+          // Validate status change - HODs can set to "Under Principal", "Approved", or "Rejected"
+          if (req.body.status && !['Under Principal', 'Approved', 'Rejected'].includes(req.body.status)) {
+            return res.status(400).json({ error: 'Invalid status transition for HOD' });
+          }
+        } else {
+          // HOD cannot modify requests that are not "Under HOD" (already approved/rejected)
+          return res.status(403).json({ error: 'HOD can only approve/reject requests with status "Under HOD"' });
+        }
+      } else if (userRole === 'principal') {
+        // Principals can update status and review fields
         allowedUpdates = ['remarks', 'status', 'reviewedBy', 'reviewedAt'];
       }
 
@@ -251,6 +378,11 @@ router.put(
           updates[field] = req.body[field];
         }
       });
+
+      // Check if there are any updates to apply
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update or insufficient permissions" });
+      }
 
       // Update updatedAt timestamp
       updates.updatedAt = new Date();
@@ -278,8 +410,9 @@ router.delete(
       const form = await StudentForm.findById(req.params.id);
       if (!form) return res.status(404).json({ error: "Form not found" });
 
-      const userId = req.user.userId || req.user.email;
-      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(req.user.role)) {
+      const userId = req.user.userId || req.user.email || req.user.id;
+      const userRole = req.user.role?.toLowerCase();
+      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(userRole)) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
