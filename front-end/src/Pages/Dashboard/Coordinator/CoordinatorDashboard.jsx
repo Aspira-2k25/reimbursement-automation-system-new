@@ -11,6 +11,7 @@ import ProfileSettings from "./ProfileSettings"
 import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle } from "lucide-react"
 import { toast } from "react-hot-toast"
+import { studentFormsAPI } from "../../../services/api"
 
 const initialUserProfile = {
   fullName: "Dr. Sarah Johnson",
@@ -89,32 +90,124 @@ export default function CoordinatorDashboard() {
       })
     }
   }, [user])
-  const [studentRequests, setStudentRequests] = useState(initialStudentRequests)
-  // Dynamic approved requests calculation
-  const approvedRequests = useMemo(() => {
-    return studentRequests.filter((req) => req.status === "Approved")
-  }, [studentRequests])
+  const [studentRequests, setStudentRequests] = useState([])
+  const [approvedRequests, setApprovedRequests] = useState([])
+  const [rejectedRequests, setRejectedRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Helper function to map backend data to table format
+  const mapFormToRequest = (f) => ({
+    id: f.applicationId || f._id || `form-${f._id}`,
+    _id: f._id,
+    applicationId: f.applicationId,
+    studentName: f.name || 'N/A',
+    studentId: f.studentId || 'N/A',
+    category: f.reimbursementType || f.category || "NPTEL",
+    status: f.status || "Pending",
+    amount: f.amount ? `₹${f.amount.toLocaleString()}` : '₹0',
+    submittedDate: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : 'N/A',
+    lastUpdated: f.updatedAt ? new Date(f.updatedAt).toLocaleDateString() : 'N/A',
+  })
+
+  // Function to fetch requests (extracted for reuse)
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch pending, approved, and rejected requests in parallel, but handle errors separately
+      const [pendingResult, approvedResult, rejectedResult] = await Promise.allSettled([
+        studentFormsAPI.listPending(),
+        studentFormsAPI.listApproved(),
+        studentFormsAPI.listRejected()
+      ])
+      
+      // Handle pending requests
+      let pendingForms = []
+      if (pendingResult.status === 'fulfilled') {
+        const pendingData = pendingResult.value
+        pendingForms = pendingData?.forms || pendingData || []
+        console.log('Fetched pending requests:', pendingForms.length)
+      } else {
+        console.error('Error fetching pending requests:', pendingResult.reason)
+        toast.error('Failed to fetch pending requests')
+      }
+      
+      // Handle approved requests
+      let approvedForms = []
+      if (approvedResult.status === 'fulfilled') {
+        const approvedData = approvedResult.value
+        approvedForms = approvedData?.forms || approvedData || []
+        console.log('Fetched approved requests:', approvedForms.length)
+      } else {
+        console.error('Error fetching approved requests:', approvedResult.reason)
+        // Don't show error toast for approved requests if it's just empty or 403
+        const status = approvedResult.reason?.response?.status
+        if (status && status !== 404 && status !== 403) {
+          toast.error('Failed to fetch approved requests')
+        }
+      }
+      
+      // Handle rejected requests
+      let rejectedForms = []
+      if (rejectedResult.status === 'fulfilled') {
+        const rejectedData = rejectedResult.value
+        rejectedForms = rejectedData?.forms || rejectedData || []
+        console.log('Fetched rejected requests:', rejectedForms.length)
+      } else {
+        console.error('Error fetching rejected requests:', rejectedResult.reason)
+        // Don't show error toast for rejected requests if it's just empty or 403
+        const status = rejectedResult.reason?.response?.status
+        if (status && status !== 404 && status !== 403) {
+          toast.error('Failed to fetch rejected requests')
+        }
+      }
+      
+      // Map backend data to table format
+      const mappedPending = pendingForms.map(mapFormToRequest)
+      const mappedApproved = approvedForms.map(mapFormToRequest)
+      const mappedRejected = rejectedForms.map(mapFormToRequest)
+      
+      console.log('Mapped pending:', mappedPending.length, 'Mapped approved:', mappedApproved.length, 'Mapped rejected:', mappedRejected.length)
+      
+      setStudentRequests(mappedPending)
+      setApprovedRequests(mappedApproved)
+      setRejectedRequests(mappedRejected)
+    } catch (error) {
+      console.error('Unexpected error fetching requests:', error)
+      toast.error(error?.error || 'Failed to fetch requests')
+      setStudentRequests([])
+      setApprovedRequests([])
+      setRejectedRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Fetch requests on component mount
+  useEffect(() => {
+    fetchRequests()
+  }, [fetchRequests])
+
+  // Combine all requests for stats calculation
+  const allRequests = useMemo(() => {
+    return [...studentRequests, ...approvedRequests, ...rejectedRequests]
+  }, [studentRequests, approvedRequests, rejectedRequests])
 
   // Memoize dashboard stats to prevent unnecessary recalculations
   const dashboardStats = useMemo(() => {
-    // Calculate pending requests including all pending statuses
-    const pendingRequests = studentRequests.filter((req) => 
-      req.status === "Pending" || 
-      req.status === "Under Principal" || 
-      req.status === "Under HOD"
-    )
+    // Coordinators only see "Pending" requests in the main table (not "Under HOD" or "Under Principal")
+    const pendingRequests = studentRequests.filter((req) => req.status === "Pending")
     
     // Calculate total disbursed amount for approved requests
-    const approvedRequests = studentRequests.filter((req) => req.status === "Approved")
     const totalDisbursed = approvedRequests.reduce((sum, req) => {
-      const amount = parseFloat(req.amount.replace(/[₹,]/g, ''))
+      const amount = parseFloat(String(req.amount || '0').replace(/[₹,]/g, ''))
       return sum + (isNaN(amount) ? 0 : amount)
     }, 0)
 
     return [
       {
         title: "Total Requests",
-        value: studentRequests.length.toString(),
+        value: allRequests.length.toString(),
         icon: Users,
         color: "blue",
         subtitle: "+2 this month",
@@ -135,28 +228,35 @@ export default function CoordinatorDashboard() {
       },
       {
         title: "Rejected Requests",
-        value: studentRequests.filter((req) => req.status === "Rejected").length.toString(),
+        value: rejectedRequests.length.toString(),
         icon: XCircle,
         color: "red",
         subtitle: "Need revision",
       },
     ]
-  }, [studentRequests])
+  }, [studentRequests, approvedRequests, rejectedRequests, allRequests])
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleViewRequest = useCallback((request) => {
     toast.info(`Viewing request ${request.id} for ${request.studentName}`)
   }, [])
 
-  const handleApproveRequest = useCallback((request) => {
-    setStudentRequests((prev) =>
-      prev.map((req) =>
-        req.id === request.id ? { ...req, status: "Approved", lastUpdated: new Date().toLocaleDateString() } : req,
-      ),
-    )
+  const handleApproveRequest = useCallback(async (request) => {
+    try {
+      const formId = request._id || request.applicationId || request.id
+      
+      // Update status to "Under HOD" when coordinator approves
+      await studentFormsAPI.updateById(formId, { status: "Under HOD" })
+      
+      // Refresh the requests to get updated data from server
+      await fetchRequests()
 
-    toast.success(`Request ${request.id} approved for ${request.studentName}`)
-  }, [])
+      toast.success(`Request ${request.id} approved and sent to HOD for ${request.studentName}`)
+    } catch (error) {
+      console.error('Error approving request:', error)
+      toast.error(error?.error || 'Failed to approve request')
+    }
+  }, [fetchRequests])
 
   const [rejectModal, setRejectModal] = useState({ show: false, request: null })
   const [rejectReason, setRejectReason] = useState("")
@@ -165,21 +265,29 @@ export default function CoordinatorDashboard() {
     setRejectModal({ show: true, request })
   }, [])
 
-  const confirmReject = useCallback(() => {
-    if (rejectReason.trim()) {
-      setStudentRequests((prev) =>
-        prev.map((req) =>
-          req.id === rejectModal.request.id
-            ? { ...req, status: "Rejected", lastUpdated: new Date().toLocaleDateString() }
-            : req,
-        ),
-      )
+  const confirmReject = useCallback(async () => {
+    if (rejectReason.trim() && rejectModal.request) {
+      try {
+        const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
+        
+        // Update status to "Rejected" with remarks
+        await studentFormsAPI.updateById(formId, { 
+          status: "Rejected",
+          remarks: rejectReason
+        })
+        
+        // Refresh the requests to get updated data from server
+        await fetchRequests()
 
-      toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
-      setRejectModal({ show: false, request: null })
-      setRejectReason("")
+        toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
+        setRejectModal({ show: false, request: null })
+        setRejectReason("")
+      } catch (error) {
+        console.error('Error rejecting request:', error)
+        toast.error(error?.error || 'Failed to reject request')
+      }
     }
-  }, [rejectReason, rejectModal.request])
+  }, [rejectReason, rejectModal.request, fetchRequests])
 
   const closeRejectModal = useCallback(() => {
     setRejectModal({ show: false, request: null })
@@ -250,14 +358,24 @@ export default function CoordinatorDashboard() {
                   {studentRequests.length} Total
                 </span>
               </div>
-              <RequestTable
-                requests={studentRequests}
-                showActions={true}
-                actionType="coordinator"
-                onView={handleViewRequest}
-                onApprove={handleApproveRequest}
-                onReject={handleRejectRequest}
-              />
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">
+                  Loading requests...
+                </div>
+              ) : studentRequests.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No pending requests found.
+                </div>
+              ) : (
+                <RequestTable
+                  requests={studentRequests}
+                  showActions={true}
+                  actionType="coordinator"
+                  onView={handleViewRequest}
+                  onApprove={handleApproveRequest}
+                  onReject={handleRejectRequest}
+                />
+              )}
             </div>
           </div>
         )

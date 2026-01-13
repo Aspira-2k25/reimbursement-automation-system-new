@@ -346,7 +346,8 @@ export const getMembersByType = (members, type) => {
 
 export const calculateStats = (requests) => {
   const total = requests.length
-  const pending = getRequestsByStatus(requests, 'Pending').length
+  // For HOD dashboard, "Under HOD" should be treated as "Pending"
+  const pending = getRequestsByStatus(requests, 'Pending').length + getRequestsByStatus(requests, 'Under HOD').length
   const approved = getRequestsByStatus(requests, 'Approved').length
   const rejected = getRequestsByStatus(requests, 'Rejected').length
   const processing = getRequestsByStatus(requests, 'Under Principal').length + getRequestsByStatus(requests, 'Processing').length
@@ -354,7 +355,8 @@ export const calculateStats = (requests) => {
   // Calculate amounts
   const totalAmount = getTotalAmount(requests)
   const approvedAmount = getTotalAmount(getRequestsByStatus(requests, 'Approved'))
-  const pendingAmount = getTotalAmount(getRequestsByStatus(requests, 'Pending'))
+  // Include "Under HOD" in pending amount calculation
+  const pendingAmount = getTotalAmount(getRequestsByStatus(requests, 'Pending')) + getTotalAmount(getRequestsByStatus(requests, 'Under HOD'))
   const rejectedAmount = getTotalAmount(getRequestsByStatus(requests, 'Rejected'))
   const processingAmount = getTotalAmount(requests.filter(r => r.status === 'Processing' || r.status === 'Under Principal'))
 
