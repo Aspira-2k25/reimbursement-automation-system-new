@@ -137,6 +137,38 @@ export const studentFormsAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+  listPending: async () => {
+    try {
+      const res = await api.get('/student-forms/pending');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForHOD: async () => {
+    try {
+      const res = await api.get('/student-forms/for-hod');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listApproved: async () => {
+    try {
+      const res = await api.get('/student-forms/approved');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listRejected: async () => {
+    try {
+      const res = await api.get('/student-forms/rejected');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
   getById: async (id) => {
     try {
       const res = await api.get(`/student-forms/${id}`);
