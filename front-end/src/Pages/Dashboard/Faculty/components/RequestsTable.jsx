@@ -1,5 +1,5 @@
 import React from "react"
-import { Eye, Pencil, Trash2, X, AlertCircle } from "lucide-react"
+import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -72,6 +72,18 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               <td className="px-4 py-3">{new Date(r.updatedDate).toLocaleDateString()}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
+                  <button
+                    className="icon-btn hover:bg-blue-50 disabled:opacity-50"
+                    onClick={() => {
+                      const docUrl = r.documents?.[0]?.url;
+                      if (docUrl) window.open(docUrl, '_blank');
+                    }}
+                    disabled={!r.documents?.[0]?.url}
+                    title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
+                    aria-label="Download"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
                   <button
                     className="icon-btn"
                     onClick={() => {

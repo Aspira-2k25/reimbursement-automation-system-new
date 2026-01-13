@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { studentFormsAPI } from '../../services/api';
+import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
 export default function ViewForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get authenticated user
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(null);
   const [error, setError] = useState(null);
@@ -13,7 +15,14 @@ export default function ViewForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const { form } = await studentFormsAPI.getById(id);
+        // Select API based on user role
+        const api = user?.role === 'Faculty' ? facultyFormsAPI : studentFormsAPI;
+
+        // Note: facultyFormsAPI might return the form directly or wrapped. 
+        // Student API returns { form: ... }, let's handle both.
+        const response = await api.getById(id);
+        const form = response.form || response; // Handle both structures if they differ
+
         setFormData(form);
         setError(null);
       } catch (err) {
@@ -24,8 +33,10 @@ export default function ViewForm() {
       }
     };
 
-    fetchForm();
-  }, [id]);
+    if (user) { // Only fetch if user is loaded
+      fetchForm();
+    }
+  }, [id, user]);
 
   if (loading) {
     return (
@@ -122,7 +133,7 @@ export default function ViewForm() {
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                   ${formData.status === 'Approved' ? 'bg-green-100 text-green-800' :
                     formData.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'}`}>
+                      'bg-yellow-100 text-yellow-800'}`}>
                   {formData.status}
                 </span>
               </div>

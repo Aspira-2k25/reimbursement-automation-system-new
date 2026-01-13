@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
@@ -83,8 +84,8 @@ const StudentNptelForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if(name ==="amount") {
-      if (value === "" || (value>0 && value<=1500)) {
+    if (name === "amount") {
+      if (value === "" || (value > 0 && value <= 1500)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -97,7 +98,7 @@ const StudentNptelForm = () => {
       });
     }
 
-    if(errors[name]) {
+    if (errors[name]) {
       setErrors({
         ...errors,
         [name]: "",
@@ -138,7 +139,7 @@ const StudentNptelForm = () => {
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
       } else {
-        alert("Error: "+ data.error);
+        alert("Error: " + data.error);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
@@ -149,6 +150,14 @@ const StudentNptelForm = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back
+        </button>
+
         <div className="border-b border-gray-200 pb-4 mb-6">
           <h1 className="text-2xl font-bold text-center text-gray-800">
             Department of Information Technology
@@ -186,9 +195,8 @@ const StudentNptelForm = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
@@ -204,9 +212,8 @@ const StudentNptelForm = () => {
                   value={formData.studentId}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.studentId ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.studentId ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.studentId && <p className="text-red-500 text-xs mt-1">{errors.studentId}</p>}
               </div>
@@ -222,9 +229,8 @@ const StudentNptelForm = () => {
                   value={formData.division}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.division ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.division ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.division && <p className="text-red-500 text-xs mt-1">{errors.division}</p>}
               </div>
@@ -240,9 +246,8 @@ const StudentNptelForm = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
@@ -265,9 +270,8 @@ const StudentNptelForm = () => {
                   onChange={handleChange}
                   placeholder="e.g. 2023-2024"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.academicYear ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
               </div>
@@ -286,9 +290,8 @@ const StudentNptelForm = () => {
                   max="1500"
                   step="0.01"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.amount ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amount ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
                 <p className="text-xs text-gray-500 mt-1">Amount must be between ₹1 and ₹1500</p>
@@ -331,9 +334,8 @@ const StudentNptelForm = () => {
                   value={formData.accountName}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountName ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
               </div>
@@ -349,9 +351,8 @@ const StudentNptelForm = () => {
                   value={formData.ifscCode}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.ifscCode ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.ifscCode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="e.g., SBIN0000123"
                 />
                 {errors.ifscCode && <p className="text-red-500 text-xs mt-1">{errors.ifscCode}</p>}
@@ -368,9 +369,8 @@ const StudentNptelForm = () => {
                   value={formData.accountNumber}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountNumber ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountNumber && <p className="text-red-500 text-xs mt-1">{errors.accountNumber}</p>}
               </div>
