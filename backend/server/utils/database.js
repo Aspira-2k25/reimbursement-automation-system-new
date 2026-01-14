@@ -153,6 +153,42 @@ const dbUtils = {
     }
   },
 
+  // Update staff profile (limited editable fields)
+  updateStaffProfile: async (userId, updates) => {
+    try {
+      const allowed = ['name', 'department', 'email'];
+      const fields = allowed.filter((k) => updates[k] !== undefined);
+
+      if (fields.length === 0) {
+        return null;
+      }
+
+      const setClauses = fields.map((field, idx) => `${field} = $${idx + 2}`);
+      const values = fields.map((field) => updates[field]);
+
+      const query = `
+        UPDATE staff
+        SET ${setClauses.join(', ')}
+        WHERE id = $1 AND is_active = true
+        RETURNING 
+        id, 
+        username, 
+        name, 
+        department, 
+        role, 
+        email, 
+        created_at, 
+        last_login
+      `;
+
+      const result = await pool.query(query, [userId, ...values]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  },
+
   // Get staff by department (public data only)
   getStaffByDepartment: async (department) => {
     try {

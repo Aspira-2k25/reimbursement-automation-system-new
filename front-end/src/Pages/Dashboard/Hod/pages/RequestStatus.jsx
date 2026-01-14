@@ -4,18 +4,37 @@ import { useHODContext } from './HODLayout'
 import StatCard from '../components/StatCard'
 import RequestTable from '../components/RequestTable'
 import { calculateStats } from '../data/mockData'
+import { useAuth } from '../../../../context/AuthContext'
 
 const RequestStatus = () => {
-  const { allRequests, userProfile, getFilteredRequests } = useHODContext()
+  const { user } = useAuth()
+  const { allRequests, userProfile } = useHODContext()
 
   // Show HOD's own requests (requests where applicant is the HOD themselves)
   const hodRequests = useMemo(() => {
-    return allRequests.filter(r => 
-      r.applicantName === userProfile?.fullName || 
-      r.applicantEmail === userProfile?.email ||
-      r.applicantType === 'HOD'
-    )
-  }, [allRequests, userProfile])
+    const currentUserId = user?.id ?? user?.userId
+    const resolvedEmail =
+      userProfile?.email ||
+      user?.email ||
+      (typeof user?.username === 'string' && user.username.includes('@') ? user.username : null) ||
+      (typeof user?.userId === 'string' && user.userId.includes('@') ? user.userId : null)
+
+    return allRequests.filter((r) => {
+      const matchesId =
+        currentUserId !== undefined &&
+        currentUserId !== null &&
+        r.userId !== undefined &&
+        r.userId !== null &&
+        String(r.userId) === String(currentUserId)
+
+      const matchesEmail =
+        resolvedEmail &&
+        r.applicantEmail &&
+        String(r.applicantEmail).toLowerCase() === String(resolvedEmail).toLowerCase()
+
+      return Boolean(matchesId || matchesEmail)
+    })
+  }, [allRequests, userProfile?.email, user?.email, user?.id, user?.userId, user?.username])
 
   const stats = useMemo(() => calculateStats(hodRequests), [hodRequests])
 

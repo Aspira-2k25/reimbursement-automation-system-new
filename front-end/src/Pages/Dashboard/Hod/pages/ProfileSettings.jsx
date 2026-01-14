@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useHODContext } from './HODLayout'
+import { authAPI } from '../../../../services/api'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile } = useHODContext()
@@ -31,6 +32,42 @@ const ProfileSettings = () => {
   })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+
+  // Load profile from backend (so the screen isn't just static mock data)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await authAPI.getProfile()
+        const u = data?.user
+        if (!u) return
+
+        const nextProfile = {
+          ...userProfile,
+          fullName: u.name || userProfile?.fullName,
+          department: u.department || userProfile?.department,
+          role: u.role || userProfile?.role,
+          email: u.email || userProfile?.email
+        }
+        setUserProfile(nextProfile)
+
+        setFormData((prev) => ({
+          ...prev,
+          fullName: nextProfile.fullName || '',
+          email: nextProfile.email || '',
+          department: nextProfile.department || '',
+          designation: nextProfile.designation || prev.designation || '',
+          employeeId: nextProfile.employeeId || prev.employeeId || '',
+          joinDate: nextProfile.joinDate || prev.joinDate || ''
+        }))
+      } catch (e) {
+        // Non-fatal: keep whatever is already in context
+        console.error('Failed to load profile:', e)
+      }
+    }
+
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({
@@ -80,18 +117,28 @@ const ProfileSettings = () => {
 
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setUserProfile({
-        ...userProfile,
-        ...formData
-      })
+      // Persist supported fields to backend
+      const payload = {
+        name: formData.fullName,
+        email: formData.email,
+        department: formData.department
+      }
+
+      const res = await authAPI.updateProfile(payload)
+      const updatedUser = res?.user
+
+      // Update local state/context so header + dropdown refresh immediately
+      setUserProfile((prev) => ({
+        ...prev,
+        fullName: updatedUser?.name ?? formData.fullName,
+        email: updatedUser?.email ?? formData.email,
+        department: updatedUser?.department ?? formData.department
+      }))
       
       setIsEditing(false)
       toast.success('Profile updated successfully!')
     } catch (error) {
-      toast.error('Failed to update profile. Please try again.')
+      toast.error(error?.error || 'Failed to update profile. Please try again.')
     } finally {
       setIsLoading(false)
     }
