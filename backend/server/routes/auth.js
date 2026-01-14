@@ -12,6 +12,7 @@ router.post('/google', authController.googleLogin);
 
 // Protected routes (authentication required)
 router.get('/profile', verifyToken, authController.getProfile);
+router.put('/profile', verifyToken, authController.updateProfile);
 router.get('/staff', verifyToken, authController.getAllStaff);
 router.get('/staff/department/:department', verifyToken, authController.getStaffByDepartment);
 
