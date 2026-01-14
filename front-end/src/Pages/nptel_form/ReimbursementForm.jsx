@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 const ReimbursementForm = () => {
   const navigate = useNavigate();
@@ -91,11 +92,11 @@ const ReimbursementForm = () => {
 
   //handle input change
   const handleChange = (e) => {
-    const { name, value } =e.target;
+    const { name, value } = e.target;
 
     //for amount field
-    if(name ==="amount") {
-      if (value === "" || (value>0 && value<=1500)) {
+    if (name === "amount") {
+      if (value === "" || (value > 0 && value <= 1500)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -109,7 +110,7 @@ const ReimbursementForm = () => {
     }
 
     //clear errors when user sttarts typing
-    if(errors[name]) {
+    if (errors[name]) {
       setErrors({
         ...errors,
         [name]: "",
@@ -123,24 +124,24 @@ const ReimbursementForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    try{
+    try {
       const formDataToSend = new FormData();
 
       //append all text fields
-      Object.keys(formData).forEach((key)=> {
+      Object.keys(formData).forEach((key) => {
         formDataToSend.append(key, formData[key]);
       });
 
       //append files
       const nptelFile = document.getElementById("nptelResult").files[0];
       const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult",nptelFile);
-      if (idCardFile) formDataToSend.append("idCard",idCardFile);
+      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
+      if (idCardFile) formDataToSend.append("idCard", idCardFile);
 
       //get jwt tocken from login
       const token = localStorage.getItem("token");
 
-      const res = await fetch("http://localhost:5000/api/forms/submit",{
+      const res = await fetch("http://localhost:5000/api/forms/submit", {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,  // add tocken for authorization
@@ -148,16 +149,16 @@ const ReimbursementForm = () => {
         body: formDataToSend,
       });
 
-      const data =  await res.json();
+      const data = await res.json();
       if (res.ok) {
         alert("Form submitted successfully!!");
         console.log(data);
         // Navigate to request status page after successful submission
         navigate('/dashboard/faculty/requests');
       } else {
-        alert("Error: "+ data.error);
+        alert("Error: " + data.error);
       }
-    }  catch (err) {
+    } catch (err) {
       console.error("Error submitting form:", err);
       alert("Form submission failed. Try Again");
     }
@@ -169,6 +170,13 @@ const ReimbursementForm = () => {
   return (
     <div className="min-h-screen bg-green-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back
+        </button>
         <div className="border-b border-gray-200 pb-4 mb-6">
           <h1 className="text-2xl font-bold text-center text-gray-800">
             Department of Information Technology
@@ -206,9 +214,8 @@ const ReimbursementForm = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
@@ -225,13 +232,12 @@ const ReimbursementForm = () => {
                   value={formData.id}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.id
-                      ? 'border-red-500'
-                      : formData.id.trim()
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.id
+                    ? 'border-red-500'
+                    : formData.id.trim()
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-300'
-                  }`}
+                    }`}
                 />
                 {errors.id && <p className="text-red-500 text-xs mt-1">{errors.id}</p>}
               </div>
@@ -247,37 +253,35 @@ const ReimbursementForm = () => {
                   value={formData.jobTitle}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.id ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.id ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
               </div>
 
               {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
-                Email *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.email
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email
                     ? 'border-red-500'
                     : formData.email.trim()
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300'
-                }`}
-              />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300'
+                    }`}
+                />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              </div>
             </div>
-            </div>
-            </div>
+          </div>
 
 
 
@@ -297,9 +301,8 @@ const ReimbursementForm = () => {
                   onChange={handleChange}
                   placeholder="e.g. 2023-2024"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.academicYear ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
               </div>
@@ -319,18 +322,17 @@ const ReimbursementForm = () => {
                   max="1500"
                   step="0.01"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.amount
-                      ? 'border-red-500'
-                      : formData.amount
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amount
+                    ? 'border-red-500'
+                    : formData.amount
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-300'
-                  }`}
+                    }`}
                 />
                 {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
                 <p className="text-xs text-gray-500 mt-1">Amount must be between ₹1 and ₹1500</p>
               </div>
-              </div>
+            </div>
 
 
             <div className="mt-4">
@@ -369,9 +371,8 @@ const ReimbursementForm = () => {
                   value={formData.accountName}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountName ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
               </div>
@@ -387,9 +388,8 @@ const ReimbursementForm = () => {
                   value={formData.ifscCode}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.ifscCode ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.ifscCode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="e.g., SBIN0000123"
                 />
                 {errors.ifscCode && <p className="text-red-500 text-xs mt-1">{errors.ifscCode}</p>}
@@ -406,9 +406,8 @@ const ReimbursementForm = () => {
                   value={formData.accountNumber}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountNumber ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountNumber && <p className="text-red-500 text-xs mt-1">{errors.accountNumber}</p>}
               </div>
@@ -437,59 +436,59 @@ const ReimbursementForm = () => {
           </div>
 
           {/* Document Upload Section */}
-<div className="border-t border-gray-200 pt-4">
-  <h3 className="text-lg font-medium text-gray-800 mb-4">
-    Supporting Documents (pdf)
-  </h3>
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">
+              Supporting Documents (pdf)
+            </h3>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* NPTEL Result */}
-    <div>
-      <label
-        htmlFor="nptelResult"
-        className="block text-sm font-semibold text-gray-800 mb-2"
-      >
-        Upload NPTEL Result *
-      </label>
-      <input
-        type="file"
-        id="nptelResult"
-        name="nptelResult"
-        accept=".pdf,.jpg,.jpeg,.png"
-        required
-        className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* NPTEL Result */}
+              <div>
+                <label
+                  htmlFor="nptelResult"
+                  className="block text-sm font-semibold text-gray-800 mb-2"
+                >
+                  Upload NPTEL Result *
+                </label>
+                <input
+                  type="file"
+                  id="nptelResult"
+                  name="nptelResult"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  required
+                  className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-blue-50 file:text-blue-700
                    hover:file:bg-blue-100"
-      />
+                />
 
-    </div>
+              </div>
 
-    {/* Faculty ID Card */}
-    <div>
-      <label
-        htmlFor="idCard"
-        className="block text-sm font-semibold text-gray-800 mb-2"
-      >
-        Upload Faculty ID Card *
-      </label>
-      <input
-        type="file"
-        id="idCard"
-        name="idCard"
-        accept=".pdf,.jpg,.jpeg,.png"
-        required
-        className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
+              {/* Faculty ID Card */}
+              <div>
+                <label
+                  htmlFor="idCard"
+                  className="block text-sm font-semibold text-gray-800 mb-2"
+                >
+                  Upload Faculty ID Card *
+                </label>
+                <input
+                  type="file"
+                  id="idCard"
+                  name="idCard"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  required
+                  className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-blue-50 file:text-blue-700
                    hover:file:bg-blue-100"
-      />
+                />
 
-    </div>
-  </div>
-</div>
+              </div>
+            </div>
+          </div>
 
 
           <div className="flex justify-center mt-8">
