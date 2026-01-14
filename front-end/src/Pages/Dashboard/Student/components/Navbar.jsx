@@ -79,12 +79,12 @@ export default function Navbar() {
   ]
 
   return (
-    <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{background: 'linear-gradient(135deg, color-mix(in oklab, #3B945E 70%, white) 0%, color-mix(in oklab, #57BA98 85%, white) 100%)', borderBottom: '1px solid color-mix(in oklab, #3B945E 35%, white)'}}>
+    <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{ background: 'linear-gradient(135deg, color-mix(in oklab, #3B945E 70%, white) 0%, color-mix(in oklab, #57BA98 85%, white) 100%)', borderBottom: '1px solid color-mix(in oklab, #3B945E 35%, white)' }}>
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
         <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Logo section */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shadow-sm" style={{background: 'linear-gradient(135deg, #3B945E, #65CCB8)'}}>
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shadow-sm" style={{ background: 'linear-gradient(135deg, #3B945E, #65CCB8)' }}>
               <div className="h-3 w-3 sm:h-4 sm:w-4 rounded-sm bg-white/20"></div>
             </div>
             <span className="font-bold text-white text-base sm:text-lg">Reimbursement Portal</span>
@@ -117,7 +117,7 @@ export default function Navbar() {
           </nav>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10">
+          <nav className="hidden md:grid grid-cols-2 gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
             <div
               className={[
                 "absolute top-1 bottom-1 rounded-xl sliding-block",
@@ -136,7 +136,7 @@ export default function Navbar() {
                 key={item.path}
                 to={item.path}
                 className={[
-                  "relative flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl font-medium z-10",
+                  "relative flex items-center justify-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl font-medium z-10 whitespace-nowrap",
                   "transition-all duration-300 ease-out group",
                   "backdrop-blur-sm",
                   isActive(item.path)
@@ -189,7 +189,7 @@ export default function Navbar() {
                 aria-expanded={open}
                 className="flex items-center gap-2 sm:gap-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-2 sm:px-3 py-2 hover:bg-white/20 active:bg-white/25 transition-all duration-200 hover:shadow-lg hover:shadow-slate-900/10 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60"
               >
-                <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white font-semibold text-sm" style={{backgroundColor: '#182628'}}>
+                <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white font-semibold text-sm" style={{ backgroundColor: '#182628' }}>
                   {initials(profile.name)}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">
@@ -203,11 +203,10 @@ export default function Navbar() {
 
               {/* Profile dropdown menu with smooth transitions */}
               <div
-                className={`absolute right-0 top-full mt-2 w-64 sm:w-72 rounded-xl border border-white/20 bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/20 z-30 transition-all duration-300 ease-out ${
-                  open
-                    ? 'opacity-100 translate-y-0 scale-100'
-                    : 'opacity-0 translate-y-2 scale-95 pointer-events-none'
-                }`}
+                className={`absolute right-0 top-full mt-2 w-64 sm:w-72 rounded-xl border border-white/20 bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/20 z-30 transition-all duration-300 ease-out ${open
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-2 scale-95 pointer-events-none'
+                  }`}
               >
                 <div className="p-2">
                   <button
@@ -224,8 +223,8 @@ export default function Navbar() {
                     }}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-[#65CCB8]/40 active:bg-[#65CCB8]/60 rounded-lg transition-colors duration-150 focus:outline-none"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 35%, white)'}}>
-                      <Settings className="h-4 w-4" style={{color: '#3B945E'}} />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 35%, white)' }}>
+                      <Settings className="h-4 w-4" style={{ color: '#3B945E' }} />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-[#182628]">Profile Settings</span>
@@ -234,9 +233,9 @@ export default function Navbar() {
                   </button>
                   <button
                     onClick={() => {
-                    logout()
-                    handleClose()
-                    navigate("/")
+                      logout()
+                      handleClose()
+                      navigate("/")
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
