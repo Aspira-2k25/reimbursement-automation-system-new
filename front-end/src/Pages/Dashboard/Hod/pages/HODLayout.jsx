@@ -113,17 +113,19 @@ const HODLayout = ({ children }) => {
   const mapFormToRequest = useCallback((f) => {
     // Ensure amount is a number for calculations, but format as string for display
     const amountNum = typeof f.amount === 'number' ? f.amount : parseFloat(f.amount) || 0
-    
+
     return {
       id: f.applicationId || f._id || `form-${f._id}`,
       _id: f._id,
       applicationId: f.applicationId,
+      userId: f.userId,
       applicantName: f.name || 'N/A',
       applicantId: f.studentId || f.facultyId || 'N/A',
       applicantType: f.applicantType || 'Student',
+      applicantEmail: f.email,
       category: f.reimbursementType || f.category || "NPTEL",
       amount: `₹${amountNum.toLocaleString()}`,
-      amountNum: amountNum, // Store numeric value for calculations
+      amountNum: amountNum, 
       status: f.status || "Pending",
       submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       lastUpdated: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -136,41 +138,35 @@ const HODLayout = ({ children }) => {
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true)
-      
-      // Fetch all requests that HOD should see:
-      // 1. "Under HOD" - awaiting HOD approval
-      // 2. "Under Principal" - approved by HOD, sent to Principal
-      // 3. "Approved" - fully approved requests
-      // 4. "Rejected" - rejected requests
       const [hodData, approvedData, rejectedData] = await Promise.allSettled([
-        studentFormsAPI.listForHOD(), // Gets "Under HOD" status
-        studentFormsAPI.listApproved(), // Gets "Under Principal" and "Approved"
-        studentFormsAPI.listRejected() // Gets "Rejected"
+        studentFormsAPI.listForHOD(),
+        studentFormsAPI.listApproved(),
+        studentFormsAPI.listRejected()
       ])
-      
+
       let allForms = []
-      
+
       // Combine all requests
       if (hodData.status === 'fulfilled') {
         const forms = hodData.value?.forms || hodData.value || []
         allForms = [...allForms, ...forms]
       }
-      
+
       if (approvedData.status === 'fulfilled') {
         const forms = approvedData.value?.forms || approvedData.value || []
         // Filter to only include "Under Principal" (already approved by HOD)
         const underPrincipal = forms.filter(f => f.status === 'Under Principal')
         allForms = [...allForms, ...underPrincipal]
       }
-      
+
       if (rejectedData.status === 'fulfilled') {
         const forms = rejectedData.value?.forms || rejectedData.value || []
         allForms = [...allForms, ...forms]
       }
-      
+
       // Map backend data to HOD dashboard format
       const mappedRequests = allForms.map(mapFormToRequest)
-      
+
       console.log('Fetched HOD requests - Total:', mappedRequests.length)
       console.log('Requests by status:', {
         'Under HOD': mappedRequests.filter(r => r.status === 'Under HOD').length,
@@ -198,12 +194,18 @@ const HODLayout = ({ children }) => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
+      // Some logins store the email in `username` (or omit email in DB). Prefer `email`, then fall back.
+      const resolvedEmail =
+        user.email ||
+        (typeof user.username === 'string' && user.username.includes('@') ? user.username : null) ||
+        (typeof user.userId === 'string' && user.userId.includes('@') ? user.userId : null)
+
       setUserProfile({
-        fullName: user.fullName || user.name || 'Dr. Jagan Kumar',
-        department: user.department || 'Information Technology',
-        designation: user.designation || user.role || 'Head of Department',
+        fullName: user.fullName || user.name ,
+        department: user.department ,
+        designation: user.designation || user.role,
         role: user.role || 'HOD',
-        email: user.email || 'jagan.kumar@college.edu',
+        email: resolvedEmail,
         phone: user.phone || '+91-9876543210',
         joinDate: user.joinDate || 'August 15, 2018',
         employeeId: user.employeeId || user.id || 'IT-HOD-001'
@@ -240,7 +242,7 @@ const HODLayout = ({ children }) => {
     setActiveTab,
     isCollapsed,
     setIsCollapsed,
-    
+
     // Data State
     userProfile,
     setUserProfile,
@@ -250,10 +252,10 @@ const HODLayout = ({ children }) => {
     departmentMembers,
     setDepartmentMembers,
     fetchRequests,
-    
+
     // Computed values
     reimbursementOptions: initialHodData.reimbursementOptions,
-    
+
     // UI State
     notifications,
     setNotifications,
@@ -263,7 +265,7 @@ const HODLayout = ({ children }) => {
     setStatusFilter,
     typeFilter,
     setTypeFilter,
-    
+
   // Helper methods
   updateRequestStatus: useCallback(async (requestId, newStatus, remarks = '') => {
     try {
@@ -271,18 +273,18 @@ const HODLayout = ({ children }) => {
       if (!request) return
 
       const formId = request._id || request.applicationId || request.id
-      
+
       // Update status via API
       const updateData = { status: newStatus }
       if (remarks) {
         updateData.remarks = remarks
       }
-      
+
       await studentFormsAPI.updateById(formId, updateData)
-      
+
       // Refresh requests from server
       await fetchRequests()
-      
+
       // Add notification for status change
       const newNotification = {
         id: Date.now(),
@@ -294,7 +296,7 @@ const HODLayout = ({ children }) => {
         timestamp: new Date().toISOString()
       }
       setNotifications(prev => [newNotification, ...prev])
-      
+
       return true
     } catch (error) {
       console.error('Error updating request status:', error)
@@ -302,10 +304,10 @@ const HODLayout = ({ children }) => {
       return false
     }
   }, [allRequests, fetchRequests]),
-    
+
     addNewRequest: useCallback((newRequest) => {
       setAllRequests(prev => [newRequest, ...prev])
-      
+
       // Add notification for new request
       const newNotification = {
         id: Date.now(),
@@ -318,28 +320,28 @@ const HODLayout = ({ children }) => {
       }
       setNotifications(prev => [newNotification, ...prev])
     }, []),
-    
+
     deleteRequest: useCallback((requestId) => {
       setAllRequests(prev => prev.filter(req => req.id !== requestId))
     }, []),
-    
+
     // Notification management
     markNotificationAsRead: useCallback((notificationId) => {
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === notificationId
             ? { ...notification, unread: false }
             : notification
         )
       )
     }, []),
-    
+
     markAllNotificationsAsRead: useCallback(() => {
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(notification => ({ ...notification, unread: false }))
       )
     }, []),
-    
+
     addNotification: useCallback((notification) => {
       const newNotification = {
         id: Date.now(),
@@ -348,15 +350,15 @@ const HODLayout = ({ children }) => {
       }
       setNotifications(prev => [newNotification, ...prev])
     }, []),
-    
+
     // Filtering and search
     getFilteredRequests: useCallback(() => {
       const filtered = allRequests.filter(request => {
-        const matchesSearch = 
+        const matchesSearch =
           request.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.category.toLowerCase().includes(searchQuery.toLowerCase())
-        
+
         // Handle status filtering - "Under HOD" should match "Pending" filter for HOD dashboard
         let matchesStatus = false
         if (statusFilter === 'All') {
@@ -370,12 +372,12 @@ const HODLayout = ({ children }) => {
         } else {
           matchesStatus = request.status === statusFilter
         }
-        
+
         const matchesType = typeFilter === 'All' || request.applicantType === typeFilter
-        
+
         return matchesSearch && matchesStatus && matchesType
       })
-      
+
       console.log('Filtered requests:', {
         totalRequests: allRequests.length,
         statusFilter,
@@ -384,7 +386,7 @@ const HODLayout = ({ children }) => {
         filteredCount: filtered.length,
         filteredRequests: filtered
       })
-      
+
       return filtered
     }, [allRequests, searchQuery, statusFilter, typeFilter])
   }
@@ -413,7 +415,7 @@ const HODLayout = ({ children }) => {
           isCollapsed ? 'ml-16' : 'ml-64'
         }`}>
           {/* Header */}
-          <Header 
+          <Header
             userProfile={userProfile}
             currentPage={
               activeTab === 'home' ? 'HOD Dashboard' :
@@ -436,8 +438,8 @@ const HODLayout = ({ children }) => {
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                  transition={{ 
-                    duration: 0.4, 
+                  transition={{
+                    duration: 0.4,
                     ease: [0.4, 0, 0.2, 1],
                     scale: { duration: 0.3 }
                   }}

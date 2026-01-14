@@ -72,14 +72,14 @@ const PrincipalLayout = ({ children }) => {
   useEffect(() => {
     if (user) {
       setUserProfile({
-        fullName: user.fullName || user.name || 'Dr. Rajesh Kumar',
-        college: user.college || 'Engineering College',
-        designation: user.designation || user.role || 'Principal',
-        role: user.role || 'Principal',
-        email: user.email || 'principal@college.edu',
-        phone: user.phone || '+91-9876543210',
-        joinDate: user.joinDate || 'August 15, 2018',
-        employeeId: user.employeeId || user.id || 'PRIN-001'
+        fullName: user.fullName || user.name ,
+        college: user.college ,
+        designation: user.designation || user.role ,
+        role: user.role,
+        email: user.email,
+        phone: user.phone ,
+        joinDate: user.joinDate ,
+        employeeId: user.employeeId || user.id 
       })
     }
   }, [user])
@@ -112,7 +112,7 @@ const PrincipalLayout = ({ children }) => {
     setActiveTab,
     isCollapsed,
     setIsCollapsed,
-    
+
     // Data State
     userProfile,
     setUserProfile,
@@ -122,10 +122,10 @@ const PrincipalLayout = ({ children }) => {
     setDepartments,
     activityLog,
     setActivityLog,
-    
+
     // Computed values
     collegeStats,
-    
+
     // UI State
     notifications,
     setNotifications,
@@ -137,21 +137,21 @@ const PrincipalLayout = ({ children }) => {
     setDepartmentFilter,
     typeFilter,
     setTypeFilter,
-    
+
     // Helper methods
     updateRequestStatus: useCallback((requestId, newStatus, comments = '') => {
       setAllRequests(prev => {
-        const updatedRequests = prev.map(req => 
-          req.id === requestId 
-            ? { 
-                ...req, 
-                status: newStatus, 
+        const updatedRequests = prev.map(req =>
+          req.id === requestId
+            ? {
+                ...req,
+                status: newStatus,
                 lastUpdated: new Date().toISOString().split('T')[0],
                 principalComments: comments
               }
             : req
         )
-        
+
         // Find the updated request for notifications and activity log
         const updatedRequest = updatedRequests.find(req => req.id === requestId)
         if (updatedRequest) {
@@ -166,7 +166,7 @@ const PrincipalLayout = ({ children }) => {
             timestamp: new Date().toISOString()
           }
           setNotifications(prev => [newNotification, ...prev])
-          
+
           // Add to activity log
           const newActivity = {
             id: Date.now(),
@@ -180,17 +180,17 @@ const PrincipalLayout = ({ children }) => {
           }
           setActivityLog(prev => [newActivity, ...prev])
         }
-        
+
         return updatedRequests
       })
     }, [userProfile]),
-    
+
     addComment: useCallback((requestId, comment) => {
-      setAllRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { 
-                ...req, 
+      setAllRequests(prev =>
+        prev.map(req =>
+          req.id === requestId
+            ? {
+                ...req,
                 principalComments: comment,
                 lastUpdated: new Date().toISOString().split('T')[0]
               }
@@ -198,10 +198,10 @@ const PrincipalLayout = ({ children }) => {
         )
       )
     }, []),
-    
+
     addNewRequest: useCallback((newRequest) => {
       setAllRequests(prev => [newRequest, ...prev])
-      
+
       // Add notification for new request
       const newNotification = {
         id: Date.now(),
@@ -214,29 +214,29 @@ const PrincipalLayout = ({ children }) => {
       }
       setNotifications(prev => [newNotification, ...prev])
     }, []),
-    
+
     deleteRequest: useCallback((requestId) => {
       setAllRequests(prev => prev.filter(req => req.id !== requestId))
     }, []),
-    
-    
+
+
     // Notification management
     markNotificationAsRead: useCallback((notificationId) => {
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === notificationId
             ? { ...notification, unread: false }
             : notification
         )
       )
     }, []),
-    
+
     markAllNotificationsAsRead: useCallback(() => {
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(notification => ({ ...notification, unread: false }))
       )
     }, []),
-    
+
     addNotification: useCallback((notification) => {
       const newNotification = {
         id: Date.now(),
@@ -245,25 +245,25 @@ const PrincipalLayout = ({ children }) => {
       }
       setNotifications(prev => [newNotification, ...prev])
     }, []),
-    
+
     // Filtering and search
     getFilteredRequests: useCallback(() => {
       return allRequests.filter(request => {
-        const matchesSearch = 
+        const matchesSearch =
           request.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.department.toLowerCase().includes(searchQuery.toLowerCase())
-        
+
         const matchesStatus = statusFilter === 'All' || request.status === statusFilter
         const matchesDepartment = departmentFilter === 'All' || request.department === departmentFilter
         const matchesType = typeFilter === 'All' || request.applicantType === typeFilter
-        
+
         return matchesSearch && matchesStatus && matchesDepartment && matchesType
       })
     }, [allRequests, searchQuery, statusFilter, departmentFilter, typeFilter]),
-    
-    
+
+
   }
 
   return (
@@ -290,7 +290,7 @@ const PrincipalLayout = ({ children }) => {
           isCollapsed ? 'ml-16' : 'ml-64'
         }`}>
           {/* Header */}
-          <Header 
+          <Header
             userProfile={userProfile}
             currentPage={
               activeTab === 'home' ? 'Principal Dashboard' :
@@ -310,8 +310,8 @@ const PrincipalLayout = ({ children }) => {
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                  transition={{ 
-                    duration: 0.4, 
+                  transition={{
+                    duration: 0.4,
                     ease: [0.4, 0, 0.2, 1],
                     scale: { duration: 0.3 }
                   }}
