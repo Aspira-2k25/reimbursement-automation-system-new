@@ -107,12 +107,12 @@ export default function ApplyReimbursement() {
   // Dynamic faculty stats calculation
   const facultyStats = useMemo(() => {
     // Calculate pending requests including all pending statuses
-    const pendingRequests = facultyRequests.filter((req) => 
-      req.status === "Pending" || 
-      req.status === "Under Principal" || 
+    const pendingRequests = facultyRequests.filter((req) =>
+      req.status === "Pending" ||
+      req.status === "Under Principal" ||
       req.status === "Under HOD"
     )
-    
+
     // Calculate total disbursed amount for approved requests
     const approvedRequests = facultyRequests.filter((req) => req.status === "Approved")
     const totalDisbursed = approvedRequests.reduce((sum, req) => {
@@ -121,33 +121,33 @@ export default function ApplyReimbursement() {
     }, 0)
 
     return [
-      { 
-        title: "Total Applications", 
-        value: facultyRequests.length.toString(), 
-        icon: FileText, 
-        color: "blue", 
-        subtitle: "This month and earlier" 
+      {
+        title: "Total Applications",
+        value: facultyRequests.length.toString(),
+        icon: FileText,
+        color: "blue",
+        subtitle: "This month and earlier"
       },
-      { 
-        title: "Total Approved", 
-        value: approvedRequests.length.toString(), 
-        icon: CheckCircle, 
-        color: "green", 
-        subtitle: `₹${totalDisbursed.toLocaleString()} disbursed` 
+      {
+        title: "Total Approved",
+        value: approvedRequests.length.toString(),
+        icon: CheckCircle,
+        color: "green",
+        subtitle: `₹${totalDisbursed.toLocaleString()} disbursed`
       },
-      { 
-        title: "Pending Review", 
-        value: pendingRequests.length.toString(), 
-        icon: Clock, 
-        color: "orange", 
-        subtitle: "Awaiting approval" 
+      {
+        title: "Pending Review",
+        value: pendingRequests.length.toString(),
+        icon: Clock,
+        color: "orange",
+        subtitle: "Awaiting approval"
       },
-      { 
-        title: "Rejected", 
-        value: facultyRequests.filter((req) => req.status === "Rejected").length.toString(), 
-        icon: XCircle, 
-        color: "red", 
-        subtitle: "Need revision" 
+      {
+        title: "Rejected",
+        value: facultyRequests.filter((req) => req.status === "Rejected").length.toString(),
+        icon: XCircle,
+        color: "red",
+        subtitle: "Need revision"
       },
     ]
   }, [])
@@ -159,11 +159,6 @@ export default function ApplyReimbursement() {
       {/* Welcome Banner - Responsive */}
       <div className="flex justify-center mb-6 sm:mb-8">
         <div className="px-4 sm:px-6 py-2 sm:py-3 rounded-lg w-full max-w-2xl" style={{backgroundColor: 'color-mix(in oklab, var(--color-moss-lime) 30%, white)', border: '1px solid color-mix(in oklab, var(--color-moss-sage) 40%, white)'}}>
-          <div className="text-center">
-            <h2 className="text-base sm:text-lg font-medium mb-1" style={{color: 'var(--color-moss-olive)'}}>
-              WELCOME, Dr. Sarah Johnson 👋
-            </h2>
-          </div>
         </div>
       </div>
 

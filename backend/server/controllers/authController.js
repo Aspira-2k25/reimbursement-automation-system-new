@@ -205,6 +205,41 @@ const authController = {
     }
   },
 
+  // Update user profile (limited fields)
+  updateProfile: async (req, res) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { name, department, email } = req.body || {};
+
+      // Basic validation
+      if (email !== undefined && email !== null) {
+        const emailStr = String(email).trim();
+        if (emailStr && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+          return res.status(400).json({ error: 'Invalid email address' });
+        }
+      }
+
+      const updated = await dbUtils.updateStaffProfile(userId, {
+        name,
+        department,
+        email
+      });
+
+      if (!updated) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      return res.json({ message: 'Profile updated', user: updated });
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   // Logout function (client-side token removal)
   logout: async (req, res) => {
     try {
