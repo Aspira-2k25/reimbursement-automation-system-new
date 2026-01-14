@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useBackNavigation } from '../../hooks/useBackNavigation';
-import { studentFormsAPI } from '../../services/api';
+import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
+import { useAuth } from '../../context/AuthContext'; // Import useAuth   
 
 export default function EditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const navigateBack = useBackNavigation();
+  const { user } = useAuth(); // Get authenticated user
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
@@ -16,7 +18,12 @@ export default function EditForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const { form } = await studentFormsAPI.getById(id);
+        // Select API based on user role
+        const api = user?.role === 'Faculty' ? facultyFormsAPI : studentFormsAPI;
+
+        const response = await api.getById(id);
+        const form = response.form || response; // Handle both structures
+
         setFormData(form);
         setErrors({});
       } catch (err) {
@@ -28,8 +35,10 @@ export default function EditForm() {
       }
     };
 
-    fetchForm();
-  }, [id, navigateBack]);
+    if (user) {
+      fetchForm();
+    }
+  }, [id, navigateBack, user]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -158,7 +167,10 @@ export default function EditForm() {
         }
       }
 
-      await studentFormsAPI.updateById(id, formDataToSend);
+      // Select API based on user role
+      const api = user?.role === 'Faculty' ? facultyFormsAPI : studentFormsAPI;
+      await api.updateById(id, formDataToSend);
+
       alert('Form updated successfully!');
       navigate('/dashboard/requests');
     } catch (err) {
