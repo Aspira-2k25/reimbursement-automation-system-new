@@ -130,18 +130,27 @@ app.use((err, req, res, next) => {
 });
 
 // ----------------- Server bootstrap -----------------
+// In serverless / test environments we export the app and let the platform
+// handle the HTTP server. We still want to establish a Mongo connection once
+// on cold start, but we must not crash the process on failure.
+connectMongoDB().catch((err) => {
+  console.error('❌ Failed to connect MongoDB on startup', err);
+  // Let the Express error handler respond with 500 instead of exiting.
+});
+
+// When running this file directly (local dev), start the HTTP server
 async function startServer() {
   try {
     await connectMongoDB();
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {
-    console.error('❌ Failed to connect MongoDB', err);
+    console.error('❌ Failed to start server', err);
+    // In local dev it's okay to exit; in serverless this path isn't used.
     process.exit(1);
   }
 }
 
-// Allow this file to be required (for tests/hosting) and also start when run directly
 if (require.main === module) {
   startServer();
 }
