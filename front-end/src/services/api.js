@@ -74,6 +74,16 @@ export const authAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+
+  // Update user profile (limited fields)
+  updateProfile: async (data) => {
+    try {
+      const response = await api.put('/auth/profile', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
 };
 
 // User API functions
