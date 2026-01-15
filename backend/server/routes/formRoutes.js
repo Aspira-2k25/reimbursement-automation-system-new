@@ -110,8 +110,12 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     if (!form) {
       return res.status(404).json({ error: "Form not found" });
     }
-    // Check if user is authorized to view this form
-    if (form.userId !== req.user.userId) {
+    // Get userId from token (handle both email-based and numeric IDs)
+    const tokenUserId = req.user.userId || req.user.email || req.user.id;
+    const formUserId = form.userId;
+
+    // Check if user is authorized to view this form (normalize to strings for comparison)
+    if (String(formUserId) !== String(tokenUserId)) {
       return res.status(403).json({ error: "Not authorized to view this form" });
     }
     res.json(form);
@@ -134,8 +138,12 @@ router.put(
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
       }
-      // Check if user is authorized to edit this form
-      if (form.userId !== req.user.userId) {
+      // Get userId from token (handle both email-based and numeric IDs)
+      const tokenUserId = req.user.userId || req.user.email || req.user.id;
+      const formUserId = form.userId;
+
+      // Check if user is authorized to edit this form (normalize to strings for comparison)
+      if (String(formUserId) !== String(tokenUserId)) {
         return res.status(403).json({ error: "Not authorized to edit this form" });
       }
 
@@ -207,8 +215,12 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
     if (!form) {
       return res.status(404).json({ error: "Form not found" });
     }
-    // Check if user is authorized to delete this form
-    if (form.userId !== req.user.userId) {
+    // Get userId from token (handle both email-based and numeric IDs)
+    const tokenUserId = req.user.userId || req.user.email || req.user.id;
+    const formUserId = form.userId;
+
+    // Check if user is authorized to delete this form (normalize to strings for comparison)
+    if (String(formUserId) !== String(tokenUserId)) {
       return res.status(403).json({ error: "Not authorized to delete this form" });
     }
 
