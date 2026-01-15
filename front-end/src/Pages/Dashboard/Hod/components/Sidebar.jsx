@@ -19,7 +19,6 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
   const menuItems = [
     { id: 'home', label: 'Home Dashboard', icon: Home },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
-    { id: 'roster', label: 'Department Roster', icon: Users },
     { id: 'apply', label: 'Apply Reimbursement', icon: FileText },
     { id: 'request-status', label: 'Request Status', icon: Building },
     { id: 'all-departments', label: 'ALL Department\nOverview', icon: Eye },
@@ -44,7 +43,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
 
   return (
     <motion.div
-      className="bg-white border-r border-gray-200 flex flex-col shadow-sm"
+      className="bg-white border-r border-gray-200 flex flex-col shadow-sm h-screen"
       initial={false}
       animate={{ width: isCollapsed ? 64 : 256 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}

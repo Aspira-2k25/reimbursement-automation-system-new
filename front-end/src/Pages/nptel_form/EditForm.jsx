@@ -19,9 +19,11 @@ export default function EditForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Select API based on user role (Faculty and Coordinator use forms API, Students use student-forms)
+        // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API, Students use student-forms)
         const userRole = user?.role?.toLowerCase();
-        const api = (userRole === 'faculty' || userRole === 'coordinator') ? facultyFormsAPI : studentFormsAPI;
+        const api = (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal')
+          ? facultyFormsAPI
+          : studentFormsAPI;
 
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures
