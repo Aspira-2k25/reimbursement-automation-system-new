@@ -1,10 +1,10 @@
 import React, { useMemo, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Users, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Users,
+  Clock,
+  CheckCircle,
+  XCircle,
   FileText,
   TrendingUp,
   Building,
@@ -19,10 +19,10 @@ import { useHODContext } from './HODLayout'
 import { calculateStats, getRequestsByStatus } from '../data/mockData'
 
 const HomeDashboard = () => {
-  const { 
-    userProfile, 
-    allRequests, 
-    updateRequestStatus, 
+  const {
+    userProfile,
+    allRequests,
+    updateRequestStatus,
     getFilteredRequests,
     searchQuery,
     setSearchQuery,
@@ -42,7 +42,7 @@ const HomeDashboard = () => {
   const handleViewRequest = useCallback(async (request) => {
     setViewModal({ show: true, request })
     setViewLoading(true)
-    
+
     try {
       // Fetch full request details from API
       const { studentFormsAPI } = await import('../../../../services/api')
@@ -57,7 +57,7 @@ const HomeDashboard = () => {
       setViewLoading(false)
     }
   }, [])
-  
+
   const closeViewModal = useCallback(() => {
     setViewModal({ show: false, request: null })
     setRequestDetails(null)
@@ -113,23 +113,23 @@ const HomeDashboard = () => {
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
     const stats = calculateStats(allRequests)
-    
+
     // Calculate dynamic trends based on actual data
     const processedRequests = stats.total - stats.pending
     const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
     const avgAmount = stats.approved > 0 ? Math.round(stats.approvedAmount / stats.approved) : 0
-    
+
     return [
       {
         title: "Total Requests",
         value: stats.total.toString(),
         subtitle: `${approvalRate}% approval rate`,
         icon: FileText,
-        color: 'blue',
+        color: 'teal',
         onClick: () => handleStatCardClick('Total Requests')
       },
       {
-        title: "Pending Requests", 
+        title: "Pending Requests",
         value: stats.pending.toString(),
         subtitle: "Awaiting approval",
         icon: Clock,
@@ -138,7 +138,7 @@ const HomeDashboard = () => {
       },
       {
         title: "Approved Requests",
-        value: stats.approved.toString(), 
+        value: stats.approved.toString(),
         subtitle: `₹${stats.approvedAmount.toLocaleString()} disbursed`,
         icon: CheckCircle,
         color: 'green',
@@ -147,7 +147,7 @@ const HomeDashboard = () => {
       {
         title: "Rejected Requests",
         value: stats.rejected.toString(),
-        subtitle: "Need revision", 
+        subtitle: "Need revision",
         icon: XCircle,
         color: 'red',
         onClick: () => handleStatCardClick('Rejected Requests')
@@ -192,8 +192,8 @@ const HomeDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <motion.div 
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
+      <motion.div
+        className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -203,10 +203,10 @@ const HomeDashboard = () => {
             <h1 className="text-xl sm:text-2xl font-bold mb-2">
               Welcome back, {userProfile?.fullName || 'Dr. Jagan Kumar'} 👋
             </h1>
-            <p className="text-blue-100 mb-4 text-sm sm:text-base">
+            <p className="text-green-100 mb-4 text-sm sm:text-base">
               Head of Department • {userProfile?.department || 'Civil Engineering'}
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-blue-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
               <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
                 <span>Engineering College</span>
@@ -218,7 +218,7 @@ const HomeDashboard = () => {
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div 
+            <motion.div
               className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
@@ -244,47 +244,47 @@ const HomeDashboard = () => {
       </div>
 
       {/* Department Overview */}
-      <motion.div 
+      <motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Department Overview</h3>
-            <TrendingUp className="w-5 h-5 text-green-600" />
-          </div>
-          
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Department Overview</h3>
+          <TrendingUp className="w-5 h-5 text-green-600" />
+        </div>
+
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
             const stats = calculateStats(allRequests)
             const processedRequests = stats.total - stats.pending
             const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-            
+
             return [
-              { 
+              {
                 value: allRequests.filter(r => r.applicantType === 'Faculty').length,
                 label: 'Faculty Requests',
-                color: 'blue'
+                color: 'teal'
               },
-              { 
+              {
                 value: allRequests.filter(r => r.applicantType === 'Student').length,
                 label: 'Student Requests',
                 color: 'green'
               },
-              { 
+              {
                 value: `₹${stats.approvedAmount.toLocaleString()}`,
                 label: 'Total Disbursed',
                 color: 'purple'
               },
-              { 
+              {
                 value: `${approvalRate}%`,
                 label: 'Approval Rate',
                 color: 'orange'
               }
             ]
           })().map((item, index) => (
-            <motion.div 
+            <motion.div
               key={index}
               className={`text-center p-3 sm:p-4 bg-${item.color}-50 rounded-lg`}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -294,7 +294,7 @@ const HomeDashboard = () => {
             >
               <div className={`text-lg sm:text-2xl font-bold text-${item.color}-600`}>
                 {item.value}
-            </div>
+              </div>
               <div className="text-xs sm:text-sm text-gray-600">{item.label}</div>
             </motion.div>
           ))}
@@ -320,7 +320,7 @@ const HomeDashboard = () => {
                 placeholder="Search requests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-64"
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm w-full sm:w-64"
               />
             </div>
 
@@ -329,7 +329,7 @@ const HomeDashboard = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Status</option>
                 <option value="Pending">Pending / Under HOD</option>
@@ -341,7 +341,7 @@ const HomeDashboard = () => {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Types</option>
                 <option value="Faculty">Faculty</option>
@@ -366,18 +366,18 @@ const HomeDashboard = () => {
       {/* View Modal */}
       <AnimatePresence>
         {viewModal.show && (
-          <motion.div 
+          <motion.div
             className="fixed inset-0 flex items-center justify-center z-[100] p-4"
             onClick={closeViewModal}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            style={{ 
+            style={{
               backgroundColor: 'rgba(0, 0, 0, 0.5)'
             }}
           >
-            <motion.div 
+            <motion.div
               className="bg-white rounded-lg p-6 w-full max-w-3xl mx-auto shadow-2xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -399,7 +399,7 @@ const HomeDashboard = () => {
 
               {viewLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-green-600" />
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -412,13 +412,12 @@ const HomeDashboard = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Status</label>
                       <p className="text-sm text-gray-900 mt-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          requestDetails?.status === 'Approved' || viewModal.request?.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                          requestDetails?.status === 'Rejected' || viewModal.request?.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                          requestDetails?.status === 'Under Principal' || viewModal.request?.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
-                          requestDetails?.status === 'Under HOD' || viewModal.request?.status === 'Under HOD' ? 'bg-orange-100 text-orange-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${requestDetails?.status === 'Approved' || viewModal.request?.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                            requestDetails?.status === 'Rejected' || viewModal.request?.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                              requestDetails?.status === 'Under Principal' || viewModal.request?.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
+                                requestDetails?.status === 'Under HOD' || viewModal.request?.status === 'Under HOD' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-gray-100 text-gray-800'
+                          }`}>
                           {requestDetails?.status || viewModal.request?.status || 'N/A'}
                         </span>
                       </p>
@@ -456,7 +455,7 @@ const HomeDashboard = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Submitted Date</label>
                       <p className="text-sm text-gray-900 mt-1">
-                        {requestDetails?.createdAt 
+                        {requestDetails?.createdAt
                           ? new Date(requestDetails.createdAt).toLocaleDateString()
                           : viewModal.request?.submittedDate || 'N/A'}
                       </p>
@@ -464,7 +463,7 @@ const HomeDashboard = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Last Updated</label>
                       <p className="text-sm text-gray-900 mt-1">
-                        {requestDetails?.updatedAt 
+                        {requestDetails?.updatedAt
                           ? new Date(requestDetails.updatedAt).toLocaleDateString()
                           : viewModal.request?.lastUpdated || 'N/A'}
                       </p>
@@ -494,8 +493,8 @@ const HomeDashboard = () => {
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                           >
-                            <FileText className="w-5 h-5 text-blue-600" />
-                            <span className="text-sm text-blue-600 hover:underline">
+                            <FileText className="w-5 h-5 text-green-600" />
+                            <span className="text-sm text-green-600 hover:underline">
                               Document {index + 1}
                             </span>
                           </a>
@@ -522,57 +521,57 @@ const HomeDashboard = () => {
 
       {/* Reject Modal */}
       <AnimatePresence>
-      {rejectModal.show && (
-          <motion.div 
+        {rejectModal.show && (
+          <motion.div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
-          onClick={closeRejectModal}
+            onClick={closeRejectModal}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-2xl relative z-[101]"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.3 }}
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Reject Request {rejectModal.request?.id}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Please provide a reason for rejecting {rejectModal.request?.applicantName}'s request:
-            </p>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-              rows="3"
-              placeholder="Enter rejection reason..."
-              autoFocus
-            />
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={closeRejectModal}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmReject}
-                disabled={!rejectReason.trim() || isLoading}
-                className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center gap-2"
-              >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isLoading ? 'Rejecting...' : 'Reject Request'}
-              </button>
-            </div>
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Reject Request {rejectModal.request?.id}
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please provide a reason for rejecting {rejectModal.request?.applicantName}'s request:
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                rows="3"
+                placeholder="Enter rejection reason..."
+                autoFocus
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={closeRejectModal}
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReject}
+                  disabled={!rejectReason.trim() || isLoading}
+                  className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center gap-2"
+                >
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isLoading ? 'Rejecting...' : 'Reject Request'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
-      )}
+        )}
       </AnimatePresence>
     </div>
   )

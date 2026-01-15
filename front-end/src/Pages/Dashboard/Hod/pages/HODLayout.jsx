@@ -4,11 +4,10 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialHodData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
-import { studentFormsAPI } from '../../../../services/api'
+import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
-import DepartmentRoster from './DepartmentRoster'
 import ApplyForReimbursement from './ApplyForReimbursement'
 import ProfileSettings from './ProfileSettings'
 import RequestStatus from './RequestStatus'
@@ -32,45 +31,8 @@ const HODLayout = ({ children }) => {
   const [userProfile, setUserProfile] = useState(initialHodData.userProfile)
   const [allRequests, setAllRequests] = useState([])
   const [loading, setLoading] = useState(true)
-  const [departmentMembers, setDepartmentMembers] = useState(initialHodData.departmentMembers)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'request',
-      title: 'New Reimbursement Request',
-      message: 'Rajesh Kumar submitted a new request for ₹3,500',
-      time: '5 min ago',
-      unread: true,
-      timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    },
-    {
-      id: 2,
-      type: 'approval',
-      title: 'Request Approved',
-      message: 'Dr. Priya Sharma\'s research grant has been approved',
-      time: '1 hour ago',
-      unread: true,
-      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 3,
-      type: 'reminder',
-      title: 'Pending Reviews',
-      message: '3 requests are pending your review',
-      time: '2 hours ago',
-      unread: false,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 4,
-      type: 'system',
-      title: 'System Update',
-      message: 'New features have been added to the dashboard',
-      time: '1 day ago',
-      unread: false,
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    }
-  ])
+  const [departmentMembers, setDepartmentMembers] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('Pending') // Default to show pending/Under HOD requests
   const [typeFilter, setTypeFilter] = useState('All')
@@ -134,33 +96,63 @@ const HODLayout = ({ children }) => {
     }
   }, [])
 
-  // Fetch student requests from API
+  // Fetch both student AND faculty requests from API
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true)
-      const [hodData, approvedData, rejectedData] = await Promise.allSettled([
+
+      // Fetch student forms AND faculty forms in parallel
+      const [
+        studentHodData, studentApprovedData, studentRejectedData,
+        facultyHodData, facultyApprovedData, facultyRejectedData
+      ] = await Promise.allSettled([
         studentFormsAPI.listForHOD(),
         studentFormsAPI.listApproved(),
-        studentFormsAPI.listRejected()
+        studentFormsAPI.listRejected(),
+        facultyFormsAPI.listForHOD(),
+        facultyFormsAPI.listApproved(),
+        facultyFormsAPI.listRejected()
       ])
 
       let allForms = []
 
-      // Combine all requests
-      if (hodData.status === 'fulfilled') {
-        const forms = hodData.value?.forms || hodData.value || []
+      // Process student forms (add applicantType: 'Student')
+      if (studentHodData.status === 'fulfilled') {
+        const forms = (studentHodData.value?.forms || studentHodData.value || [])
+          .map(f => ({ ...f, applicantType: 'Student' }))
         allForms = [...allForms, ...forms]
       }
 
-      if (approvedData.status === 'fulfilled') {
-        const forms = approvedData.value?.forms || approvedData.value || []
-        // Filter to only include "Under Principal" (already approved by HOD)
-        const underPrincipal = forms.filter(f => f.status === 'Under Principal')
-        allForms = [...allForms, ...underPrincipal]
+      if (studentApprovedData.status === 'fulfilled') {
+        const forms = (studentApprovedData.value?.forms || studentApprovedData.value || [])
+          .filter(f => f.status === 'Under Principal')
+          .map(f => ({ ...f, applicantType: 'Student' }))
+        allForms = [...allForms, ...forms]
       }
 
-      if (rejectedData.status === 'fulfilled') {
-        const forms = rejectedData.value?.forms || rejectedData.value || []
+      if (studentRejectedData.status === 'fulfilled') {
+        const forms = (studentRejectedData.value?.forms || studentRejectedData.value || [])
+          .map(f => ({ ...f, applicantType: 'Student' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      // Process faculty forms (already have applicantType from backend)
+      if (facultyHodData.status === 'fulfilled') {
+        const forms = (facultyHodData.value?.forms || facultyHodData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      if (facultyApprovedData.status === 'fulfilled') {
+        const forms = (facultyApprovedData.value?.forms || facultyApprovedData.value || [])
+          .filter(f => f.status === 'Under Principal')
+          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      if (facultyRejectedData.status === 'fulfilled') {
+        const forms = (facultyRejectedData.value?.forms || facultyRejectedData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
         allForms = [...allForms, ...forms]
       }
 
@@ -168,14 +160,15 @@ const HODLayout = ({ children }) => {
       const mappedRequests = allForms.map(mapFormToRequest)
 
       console.log('Fetched HOD requests - Total:', mappedRequests.length)
-      console.log('Requests by status:', {
+      console.log('By type:', {
+        'Student': mappedRequests.filter(r => r.applicantType === 'Student').length,
+        'Faculty': mappedRequests.filter(r => r.applicantType === 'Faculty').length
+      })
+      console.log('By status:', {
         'Under HOD': mappedRequests.filter(r => r.status === 'Under HOD').length,
         'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
-        'Approved': mappedRequests.filter(r => r.status === 'Approved').length,
-        'Rejected': mappedRequests.filter(r => r.status === 'Rejected').length,
-        'Pending': mappedRequests.filter(r => r.status === 'Pending').length
+        'Rejected': mappedRequests.filter(r => r.status === 'Rejected').length
       })
-      console.log('All requests:', mappedRequests)
       setAllRequests(mappedRequests)
     } catch (error) {
       console.error('Error fetching HOD requests:', error)
@@ -220,8 +213,6 @@ const HODLayout = ({ children }) => {
         return <HomeDashboard />
       case 'reports':
         return <ReportsAndAnalytics />
-      case 'roster':
-        return <DepartmentRoster />
       case 'apply':
         return <ApplyForReimbursement />
       case 'request-status':
@@ -274,13 +265,18 @@ const HODLayout = ({ children }) => {
 
         const formId = request._id || request.applicationId || request.id
 
-        // Update status via API
+        // Update status via API - choose correct API based on applicantType
         const updateData = { status: newStatus }
         if (remarks) {
           updateData.remarks = remarks
         }
 
-        await studentFormsAPI.updateById(formId, updateData)
+        // Use correct API based on request type
+        if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
+          await facultyFormsAPI.updateById(formId, updateData)
+        } else {
+          await studentFormsAPI.updateById(formId, updateData)
+        }
 
         // Refresh requests from server
         await fetchRequests()

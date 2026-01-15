@@ -15,9 +15,11 @@ export default function ViewForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Select API based on user role (Faculty and Coordinator use forms API, Students use student-forms)
+        // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API, Students use student-forms)
         const userRole = user?.role?.toLowerCase();
-        const api = (userRole === 'faculty' || userRole === 'coordinator') ? facultyFormsAPI : studentFormsAPI;
+        const api = (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal')
+          ? facultyFormsAPI
+          : studentFormsAPI;
 
         // Note: facultyFormsAPI might return the form directly or wrapped. 
         // Student API returns { form: ... }, let's handle both.
@@ -84,6 +86,10 @@ export default function ViewForm() {
               const userRole = user?.role?.toLowerCase();
               if (userRole === 'coordinator') {
                 navigate('/dashboard/coordinator');
+              } else if (userRole === 'hod') {
+                navigate('/dashboard/hod/request-status');
+              } else if (userRole === 'principal') {
+                navigate('/dashboard/principal');
               } else if (userRole === 'faculty') {
                 navigate('/dashboard/faculty/requests');
               } else {
