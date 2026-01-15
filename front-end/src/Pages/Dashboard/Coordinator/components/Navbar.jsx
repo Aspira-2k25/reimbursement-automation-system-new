@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { useAuth } from "../../../../context/AuthContext.jsx"
 import { useNavigate } from "react-router-dom"
-import { Home, FileText, CheckCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
+import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
 import { toast } from "react-hot-toast"
 
@@ -20,6 +20,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
     { id: "home", label: "Home", icon: Home },
     { id: "apply", label: "Apply for Reimbursement", icon: FileText },
     { id: "approved", label: "Approved Applications", icon: CheckCircle },
+    { id: "rejected", label: "Rejected Applications", icon: XCircle },
   ]
 
   const handleProfileSettings = useCallback(() => {
@@ -82,12 +83,12 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
   }, [])
 
   return (
-    <nav className="shadow-sm" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)'}}>
+    <nav className="shadow-sm" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)' }}>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo and Title - Responsive */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)'}}>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)' }}>
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white rounded-md opacity-90"></div>
             </div>
             <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
@@ -103,11 +104,10 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                 <button
                   key={item.id}
                   onClick={() => handleNavItemClick(item.id)}
-                  className={`flex items-center gap-1.5 xl:gap-2 px-2 xl:px-3 py-1.5 xl:py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${
-                    activeTab === item.id
-                      ? "bg-white/20 text-white shadow-sm"
-                      : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
-                  }`}
+                  className={`flex items-center gap-1.5 xl:gap-2 px-2 xl:px-3 py-1.5 xl:py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${activeTab === item.id
+                    ? "bg-white/20 text-white shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
+                    }`}
                 >
                   <Icon className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
                   <span className="hidden xl:inline">{item.label}</span>
@@ -124,20 +124,19 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             <div className="relative" ref={profileDropdownRef}>
               <button
                 onClick={toggleProfileDropdown}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${
-                  isProfileDropdownOpen 
-                    ? "text-white bg-white/20" 
-                    : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
-                }`}
+                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${isProfileDropdownOpen
+                  ? "text-white bg-white/20"
+                  : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
+                  }`}
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center" style={{backgroundColor: '#182628'}}>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#182628' }}>
                   <span className="text-white text-xs sm:text-sm font-medium">
                     {userProfile?.fullName
                       ? userProfile.fullName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2)
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
                       : "CC"}
                   </span>
                 </div>
@@ -150,9 +149,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                   </div>
                   <div className="text-xs text-gray-500">{userProfile?.designation || "Class Coordinator"}</div>
                 </div>
-                <ChevronDown className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-200 ${
-                  isProfileDropdownOpen ? 'rotate-180' : ''
-                }`} />
+                <ChevronDown className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''
+                  }`} />
               </button>
 
               {/* Profile Dropdown - Enhanced with smooth transitions */}
@@ -163,8 +161,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                       onClick={handleProfileSettings}
                       className="flex items-center gap-2 sm:gap-3 w-full px-2 sm:px-3 py-2 sm:py-3 rounded-md hover:bg-[#65CCB8]/40 active:bg-[#65CCB8]/60 transition-colors focus:outline-none"
                     >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 40%, white)'}}>
-                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" style={{color: '#3B945E'}} />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 40%, white)' }}>
+                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#3B945E' }} />
                       </div>
                       <div className="text-left">
                         <div className="text-xs sm:text-sm font-medium text-[#182628]">Profile Settings</div>
@@ -192,11 +190,10 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             {/* Mobile menu button - Enhanced */}
             <button
               onClick={toggleMobileMenu}
-              className={`lg:hidden p-1.5 sm:p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                isMobileMenuOpen 
-                  ? "text-blue-600 bg-blue-50" 
-                  : "text-gray-600 hover:text-blue-600 hover:bg-gray-50 active:bg-gray-100"
-              }`}
+              className={`lg:hidden p-1.5 sm:p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60 focus:ring-offset-2 ${isMobileMenuOpen
+                ? "text-white bg-white/20"
+                : "text-white/80 hover:text-white hover:bg-white/20 active:bg-white/30"
+                }`}
             >
               {isMobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
             </button>
@@ -213,11 +210,10 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                   <button
                     key={item.id}
                     onClick={() => handleNavItemClick(item.id)}
-                    className={`flex items-center gap-2 w-full px-3 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      activeTab === item.id
-                        ? "bg-blue-100 text-blue-700 shadow-sm"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-gray-50 active:bg-gray-100"
-                    }`}
+                    className={`flex items-center gap-2 w-full px-3 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8] focus:ring-offset-2 ${activeTab === item.id
+                      ? "bg-[#65CCB8]/30 text-[#3B945E] shadow-sm"
+                      : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20"
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}

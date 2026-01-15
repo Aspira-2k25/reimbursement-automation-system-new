@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
@@ -134,16 +135,16 @@ const StudentNptelForm = () => {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Form submitted successfully!!");
+        toast.success("Form submitted successfully!");
         console.log(data);
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
       } else {
-        alert("Error: " + data.error);
+        toast.error("Error: " + data.error);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+      toast.error("Form submission failed. Try Again");
     }
   };
 

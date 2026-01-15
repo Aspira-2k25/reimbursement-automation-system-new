@@ -125,7 +125,7 @@ const HODLayout = ({ children }) => {
       applicantEmail: f.email,
       category: f.reimbursementType || f.category || "NPTEL",
       amount: `₹${amountNum.toLocaleString()}`,
-      amountNum: amountNum, 
+      amountNum: amountNum,
       status: f.status || "Pending",
       submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       lastUpdated: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -201,8 +201,8 @@ const HODLayout = ({ children }) => {
         (typeof user.userId === 'string' && user.userId.includes('@') ? user.userId : null)
 
       setUserProfile({
-        fullName: user.fullName || user.name ,
-        department: user.department ,
+        fullName: user.fullName || user.name,
+        department: user.department,
         designation: user.designation || user.role,
         role: user.role || 'HOD',
         email: resolvedEmail,
@@ -266,44 +266,44 @@ const HODLayout = ({ children }) => {
     typeFilter,
     setTypeFilter,
 
-  // Helper methods
-  updateRequestStatus: useCallback(async (requestId, newStatus, remarks = '') => {
-    try {
-      const request = allRequests.find(req => req.id === requestId)
-      if (!request) return
+    // Helper methods
+    updateRequestStatus: useCallback(async (requestId, newStatus, remarks = '') => {
+      try {
+        const request = allRequests.find(req => req.id === requestId)
+        if (!request) return
 
-      const formId = request._id || request.applicationId || request.id
+        const formId = request._id || request.applicationId || request.id
 
-      // Update status via API
-      const updateData = { status: newStatus }
-      if (remarks) {
-        updateData.remarks = remarks
+        // Update status via API
+        const updateData = { status: newStatus }
+        if (remarks) {
+          updateData.remarks = remarks
+        }
+
+        await studentFormsAPI.updateById(formId, updateData)
+
+        // Refresh requests from server
+        await fetchRequests()
+
+        // Add notification for status change
+        const newNotification = {
+          id: Date.now(),
+          type: 'status_change',
+          title: `Request ${newStatus}`,
+          message: `${request.applicantName}'s request has been ${newStatus.toLowerCase()}`,
+          time: 'Just now',
+          unread: true,
+          timestamp: new Date().toISOString()
+        }
+        setNotifications(prev => [newNotification, ...prev])
+
+        return true
+      } catch (error) {
+        console.error('Error updating request status:', error)
+        toast.error(error?.error || 'Failed to update request status')
+        return false
       }
-
-      await studentFormsAPI.updateById(formId, updateData)
-
-      // Refresh requests from server
-      await fetchRequests()
-
-      // Add notification for status change
-      const newNotification = {
-        id: Date.now(),
-        type: 'status_change',
-        title: `Request ${newStatus}`,
-        message: `${request.applicantName}'s request has been ${newStatus.toLowerCase()}`,
-        time: 'Just now',
-        unread: true,
-        timestamp: new Date().toISOString()
-      }
-      setNotifications(prev => [newNotification, ...prev])
-
-      return true
-    } catch (error) {
-      console.error('Error updating request status:', error)
-      toast.error(error?.error || 'Failed to update request status')
-      return false
-    }
-  }, [allRequests, fetchRequests]),
+    }, [allRequests, fetchRequests]),
 
     addNewRequest: useCallback((newRequest) => {
       setAllRequests(prev => [newRequest, ...prev])
@@ -393,7 +393,7 @@ const HODLayout = ({ children }) => {
 
   return (
     <HODContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10">
         {/* Sidebar - Fixed positioned, independent of main content scroll */}
         <motion.div
           initial={false}
@@ -411,21 +411,20 @@ const HODLayout = ({ children }) => {
         </motion.div>
 
         {/* Main Content Area - Has left margin to account for fixed sidebar */}
-        <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'ml-16' : 'ml-64'
-        }`}>
+        <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'
+          }`}>
           {/* Header */}
           <Header
             userProfile={userProfile}
             currentPage={
               activeTab === 'home' ? 'HOD Dashboard' :
-              activeTab === 'reports' ? 'Reports & Analytics' :
-              activeTab === 'roster' ? 'Department Roster' :
-              activeTab === 'apply' ? 'Apply for Reimbursement' :
-              activeTab === 'request-status' ? 'Request Status' :
-              activeTab === 'all-departments' ? 'ALL Department Overview' :
-              activeTab === 'profile' ? 'Profile Settings' :
-              'HOD Dashboard'
+                activeTab === 'reports' ? 'Reports & Analytics' :
+                  activeTab === 'roster' ? 'Department Roster' :
+                    activeTab === 'apply' ? 'Apply for Reimbursement' :
+                      activeTab === 'request-status' ? 'Request Status' :
+                        activeTab === 'all-departments' ? 'ALL Department Overview' :
+                          activeTab === 'profile' ? 'Profile Settings' :
+                            'HOD Dashboard'
             }
           />
 
