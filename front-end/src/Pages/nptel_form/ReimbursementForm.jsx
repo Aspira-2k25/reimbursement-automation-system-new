@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const ReimbursementForm = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     id: '',
@@ -151,16 +154,21 @@ const ReimbursementForm = () => {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Form submitted successfully!!");
+        toast.success("Form submitted successfully!");
         console.log(data);
-        // Navigate to request status page after successful submission
-        navigate('/dashboard/faculty/requests');
+        // Navigate based on user role after successful submission
+        const userRole = user?.role?.toLowerCase();
+        if (userRole === 'coordinator') {
+          navigate('/dashboard/coordinator');
+        } else {
+          navigate('/dashboard/faculty/requests');
+        }
       } else {
-        alert("Error: " + data.error);
+        toast.error("Error: " + data.error);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+      toast.error("Form submission failed. Try Again");
     }
   };
 
