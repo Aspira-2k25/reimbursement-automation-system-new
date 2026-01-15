@@ -216,8 +216,33 @@ router.get(
         return res.status(403).json({ error: "Forbidden: Only HODs and principals can access this endpoint" });
       }
 
-      // Fetch forms with status "Under HOD" (approved by coordinator, awaiting HOD approval)
-      const forms = await StudentForm.find({ status: "Under HOD" }).sort({ updatedAt: -1 });
+      // Get HOD's department for filtering
+      const hodDepartment = req.user.department;
+      console.log('Student Forms - HOD Department:', hodDepartment);
+
+      // Build query
+      let query = { status: "Under HOD" };
+
+      // If HOD has a department, filter by it OR forms without department (Principal sees all)
+      if (hodDepartment && userRole === 'hod') {
+        query = {
+          $and: [
+            { status: "Under HOD" },
+            {
+              $or: [
+                { department: hodDepartment },
+                { department: { $exists: false } },
+                { department: null },
+                { department: "" }
+              ]
+            }
+          ]
+        };
+      }
+
+      console.log('Fetching student forms with query:', JSON.stringify(query));
+      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
+      console.log('Student forms for HOD found:', forms.length);
 
       return res.json({ forms });
     } catch (err) {
