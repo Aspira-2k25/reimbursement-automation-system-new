@@ -8,6 +8,7 @@ const StudentFormSchema = new mongoose.Schema({
     name: { type: String, required: true },
     studentId: { type: String, required: true },
     division: { type: String, required: true },
+    department: { type: String }, // Department for HOD filtering
     email: { type: String, required: true },
     academicYear: { type: String },
     amount: { type: Number },

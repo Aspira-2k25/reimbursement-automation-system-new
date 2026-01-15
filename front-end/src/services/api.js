@@ -111,6 +111,30 @@ export const facultyFormsAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+  listForHOD: async () => {
+    try {
+      const res = await api.get('/forms/for-hod');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listApproved: async () => {
+    try {
+      const res = await api.get('/forms/approved');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listRejected: async () => {
+    try {
+      const res = await api.get('/forms/rejected');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
   getById: async (id) => {
     try {
       const res = await api.get(`/forms/${id}`);
