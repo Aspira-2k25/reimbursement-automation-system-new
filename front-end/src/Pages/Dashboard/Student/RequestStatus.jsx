@@ -1,5 +1,6 @@
 import React from "react"
 import { useLocation } from "react-router-dom"
+import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
 import { FileText, CheckCircle, Clock, XCircle } from "lucide-react"
 import "../Dashboard.css"
@@ -66,13 +67,13 @@ const useStudentRequests = () => {
   React.useEffect(() => {
     // Check if we're on the requests page
     const isRequestsPage = location.pathname === '/dashboard/requests' || location.pathname.includes('/requests')
-    
+
     if (isRequestsPage) {
       // Small delay to ensure navigation is complete
       const timeoutId = setTimeout(() => {
         fetchRequests()
       }, 100)
-      
+
       return () => clearTimeout(timeoutId)
     }
   }, [location.pathname, fetchRequests])
@@ -90,23 +91,23 @@ const useStudentRequests = () => {
 function SummaryCard({ title, value, sub }) {
   // Icon mapping for consistent icons across summary cards
   const iconMap = {
-    "Total Applications": <FileText className="h-5 w-5" style={{color: '#3B945E'}} />,
-    "Total Approved": <CheckCircle className="h-5 w-5" style={{color: '#3B945E'}} />,
-    "Pending Review": <Clock className="h-5 w-5" style={{color: '#57BA98'}} />,
-    "Rejected": <XCircle className="h-5 w-5" style={{color: '#3B945E'}} />
+    "Total Applications": <FileText className="h-5 w-5" style={{ color: '#3B945E' }} />,
+    "Total Approved": <CheckCircle className="h-5 w-5" style={{ color: '#3B945E' }} />,
+    "Pending Review": <Clock className="h-5 w-5" style={{ color: '#57BA98' }} />,
+    "Rejected": <XCircle className="h-5 w-5" style={{ color: '#3B945E' }} />
   }
 
-  const icon = iconMap[title] || <FileText className="h-5 w-5" style={{color: '#3B945E'}} />
+  const icon = iconMap[title] || <FileText className="h-5 w-5" style={{ color: '#3B945E' }} />
 
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-medium" style={{color: '#182628'}}>{title}</div>
-          <div className="text-2xl font-semibold mt-1" style={{color: '#182628'}}>{value}</div>
-          <div className="text-xs mt-1" style={{color: '#3B945E'}}>{sub}</div>
+          <div className="font-medium" style={{ color: '#182628' }}>{title}</div>
+          <div className="text-2xl font-semibold mt-1" style={{ color: '#182628' }}>{value}</div>
+          <div className="text-xs mt-1" style={{ color: '#3B945E' }}>{sub}</div>
         </div>
-        <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)'}}>
+        <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)' }}>
           {icon}
         </div>
       </div>
@@ -170,8 +171,8 @@ export default function RequestStatus() {
       {/* Requests table section */}
       <div className="section mt-4 sm:mt-6">
         <div className="mb-3 sm:mb-4">
-          <h3 className="section-title text-lg sm:text-xl" style={{color: '#182628'}}>Your Requests</h3>
-          <p className="section-subtitle text-sm sm:text-base" style={{color: '#3B945E'}}>Track the status of your reimbursement applications</p>
+          <h3 className="section-title text-lg sm:text-xl" style={{ color: '#182628' }}>Your Requests</h3>
+          <p className="section-subtitle text-sm sm:text-base" style={{ color: '#3B945E' }}>Track the status of your reimbursement applications</p>
         </div>
         {error ? (
           <div className="card p-4 text-red-600">
@@ -207,7 +208,7 @@ export default function RequestStatus() {
                 await refetch();
               } catch (error) {
                 console.error('Error deleting form:', error);
-                alert('Failed to delete form. ' + (error.error || 'Please try again.'));
+                toast.error('Failed to delete form. ' + (error.error || 'Please try again.'));
               }
             }}
           />

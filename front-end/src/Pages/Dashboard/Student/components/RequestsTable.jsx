@@ -1,6 +1,8 @@
 import React, { useState } from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "react-hot-toast"
+import { studentFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
 
@@ -9,7 +11,7 @@ function StatusBadge({ status }) {
 
   const pendingStatuses = new Set([
     "pending",
-    "at under cordinator",
+    "at under coordinator",
     "under coordinator",
     "under principal",
   ])
@@ -267,7 +269,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       setDeleteItem(null);
                     } catch (error) {
                       console.error('Error deleting form:', error);
-                      alert('Failed to delete form. Please try again.');
+                      toast.error('Failed to delete form. Please try again.');
                     }
                   }}
                 >
@@ -300,10 +302,17 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               <EditForm
                 item={editItem}
                 onCancel={() => setEditItem(null)}
-                onSave={(payload) => {
-                  // TODO: Implement actual save logic
-                  console.log('Saving request:', payload)
-                  setEditItem(null)
+                onSave={async (payload) => {
+                  try {
+                    await studentFormsAPI.updateById(editItem._id || editItem.id, payload);
+                    toast.success('Request updated successfully!');
+                    setEditItem(null);
+                    // Trigger a refetch if parent provided a callback
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Error updating form:', error);
+                    toast.error('Failed to update form. Please try again.');
+                  }
                 }}
               />
             </div>
