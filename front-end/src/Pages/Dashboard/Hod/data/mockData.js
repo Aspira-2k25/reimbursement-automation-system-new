@@ -348,20 +348,30 @@ export const calculateStats = (requests) => {
   const total = requests.length
   // For HOD dashboard, "Under HOD" should be treated as "Pending"
   const pending = getRequestsByStatus(requests, 'Pending').length + getRequestsByStatus(requests, 'Under HOD').length
-  const approved = getRequestsByStatus(requests, 'Approved').length
+
+  // Approved includes "Under Principal" (HOD approved, waiting on Principal) and "Approved" (fully approved)
+  const underPrincipal = getRequestsByStatus(requests, 'Under Principal').length
+  const fullyApproved = getRequestsByStatus(requests, 'Approved').length
+  const approved = underPrincipal + fullyApproved
+
   const rejected = getRequestsByStatus(requests, 'Rejected').length
-  const processing = getRequestsByStatus(requests, 'Under Principal').length + getRequestsByStatus(requests, 'Processing').length
+  const processing = getRequestsByStatus(requests, 'Processing').length
 
   // Calculate amounts
   const totalAmount = getTotalAmount(requests)
-  const approvedAmount = getTotalAmount(getRequestsByStatus(requests, 'Approved'))
+
+  // Approved amount includes both "Under Principal" and "Approved"
+  const approvedAmount = getTotalAmount(getRequestsByStatus(requests, 'Approved')) +
+    getTotalAmount(getRequestsByStatus(requests, 'Under Principal'))
+
   // Include "Under HOD" in pending amount calculation
   const pendingAmount = getTotalAmount(getRequestsByStatus(requests, 'Pending')) + getTotalAmount(getRequestsByStatus(requests, 'Under HOD'))
   const rejectedAmount = getTotalAmount(getRequestsByStatus(requests, 'Rejected'))
-  const processingAmount = getTotalAmount(requests.filter(r => r.status === 'Processing' || r.status === 'Under Principal'))
+  const processingAmount = getTotalAmount(getRequestsByStatus(requests, 'Processing'))
 
   // Calculate percentages with proper rounding
-  const processedRequests = total - pending
+  // "Processed" means not pending (either approved, rejected, or processing)
+  const processedRequests = approved + rejected
   const approvalRate = processedRequests > 0 ? Math.round((approved / processedRequests) * 100) : 0
   const pendingRate = total > 0 ? Math.round((pending / total) * 100) : 0
   const rejectedRate = total > 0 ? Math.round((rejected / total) * 100) : 0

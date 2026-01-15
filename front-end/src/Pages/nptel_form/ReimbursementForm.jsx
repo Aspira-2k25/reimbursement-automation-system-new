@@ -160,6 +160,10 @@ const ReimbursementForm = () => {
         const userRole = user?.role?.toLowerCase();
         if (userRole === 'coordinator') {
           navigate('/dashboard/coordinator');
+        } else if (userRole === 'hod') {
+          navigate('/dashboard/hod/request-status');
+        } else if (userRole === 'principal') {
+          navigate('/dashboard/principal');
         } else {
           navigate('/dashboard/faculty/requests');
         }
