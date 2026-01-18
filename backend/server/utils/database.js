@@ -116,6 +116,7 @@ const dbUtils = {
           name,
           department,
           role,
+          email,
           password,
           is_active
         FROM staff
