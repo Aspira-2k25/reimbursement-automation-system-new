@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Users, 
-  GraduationCap, 
-  User, 
+import {
+  Users,
+  GraduationCap,
+  User,
   Plus,
   FileText,
   TrendingUp,
@@ -21,7 +21,6 @@ import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import MemberTable from '../components/MemberTable'
 import { usePrincipalContext } from './PrincipalLayout'
-import { getMembersByType } from '../data/mockData'
 
 const DepartmentRoster = () => {
   const { departments, allRequests, userProfile } = usePrincipalContext()
@@ -44,11 +43,11 @@ const DepartmentRoster = () => {
         value: totalMembers.toString(),
         subtitle: `Faculty: ${totalFaculty} | Students: ${totalStudents}`,
         icon: Users,
-        color: 'blue',
+        color: 'green',
         trend: { direction: 'up', value: '+3.2%' }
       },
       {
-        title: "Faculty Members", 
+        title: "Faculty Members",
         value: totalFaculty.toString(),
         subtitle: "Active teaching staff",
         icon: User,
@@ -59,14 +58,14 @@ const DepartmentRoster = () => {
         value: totalStudents.toString(),
         subtitle: "Enrolled students",
         icon: GraduationCap,
-        color: 'purple'
+        color: 'green'
       },
       {
         title: "Total Requests",
         value: totalRequests.toString(),
         subtitle: "Across all departments",
         icon: FileText,
-        color: 'orange',
+        color: 'green',
         trend: { direction: 'up', value: '+12.5%' }
       }
     ]
@@ -76,7 +75,7 @@ const DepartmentRoster = () => {
   const allMembers = useMemo(() => {
     return departments.flatMap(dept => {
       const members = []
-      
+
       // Add HOD
       members.push({
         id: `${dept.id}-hod`,
@@ -92,7 +91,7 @@ const DepartmentRoster = () => {
         totalReimbursements: Math.floor(Math.random() * 10) + 1,
         lastReimbursement: '2024-09-15'
       })
-      
+
       // Add mock faculty members
       for (let i = 1; i <= dept.facultyCount - 1; i++) {
         members.push({
@@ -110,7 +109,7 @@ const DepartmentRoster = () => {
           lastReimbursement: '2024-09-10'
         })
       }
-      
+
       // Add mock student members with FE/SE/TE/BE years
       const yearOptions = ['FE', 'SE', 'TE', 'BE']
       for (let i = 1; i <= Math.min(dept.studentCount, 10); i++) {
@@ -130,7 +129,7 @@ const DepartmentRoster = () => {
           lastReimbursement: '2024-09-05'
         })
       }
-      
+
       return members
     })
   }, [departments])
@@ -138,27 +137,27 @@ const DepartmentRoster = () => {
   // Filter members based on search and filters
   const filteredMembers = useMemo(() => {
     return allMembers.filter(member => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         member.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
         member.designation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         member.year?.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
       const matchesDepartment = selectedDepartment === 'All' || member.department === selectedDepartment
       const matchesType = selectedType === 'All' || member.type === selectedType
       const matchesYear = selectedYear === 'All' || member.year === selectedYear
-      
+
       return matchesSearch && matchesDepartment && matchesType && matchesYear
     })
   }, [allMembers, searchQuery, selectedDepartment, selectedType, selectedYear])
 
   // Faculty and Student breakdown
-  const facultyMembers = useMemo(() => 
-    getMembersByType(filteredMembers, 'Faculty'), [filteredMembers]
+  const facultyMembers = useMemo(() =>
+    filteredMembers.filter(m => m.type === 'Faculty'), [filteredMembers]
   )
-  
-  const studentMembers = useMemo(() => 
-    getMembersByType(filteredMembers, 'Student'), [filteredMembers]
+
+  const studentMembers = useMemo(() =>
+    filteredMembers.filter(m => m.type === 'Student'), [filteredMembers]
   )
 
   const handleAddMember = () => {
@@ -177,7 +176,7 @@ const DepartmentRoster = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <motion.div 
+      <motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -201,7 +200,7 @@ const DepartmentRoster = () => {
           </motion.button>
           <motion.button
             onClick={handleAddMember}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -212,8 +211,8 @@ const DepartmentRoster = () => {
       </motion.div>
 
       {/* College Overview */}
-      <motion.div 
-        className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-4 sm:p-6 text-white"
+      <motion.div
+        className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg p-4 sm:p-6 text-white"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -223,10 +222,10 @@ const DepartmentRoster = () => {
             <h2 className="text-xl font-bold mb-2">
               Engineering College
             </h2>
-            <p className="text-indigo-100 mb-4 text-sm sm:text-base">
+            <p className="text-green-50 mb-4 text-sm sm:text-base">
               Engineering College • Academic Year 2024-25
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-indigo-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-50">
               <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
                 <span>Principal: {userProfile?.fullName || 'Dr. Jagan Kumar'}</span>
@@ -238,7 +237,7 @@ const DepartmentRoster = () => {
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div 
+            <motion.div
               className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
@@ -271,14 +270,14 @@ const DepartmentRoster = () => {
             <User className="w-5 h-5 text-green-600" />
             <h3 className="text-lg font-semibold text-gray-900">Faculty Overview</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-green-50 rounded-lg">
                 <div className="text-xl font-bold text-green-600">{facultyMembers.length}</div>
                 <div className="text-sm text-gray-600">Total Faculty</div>
               </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-center p-3 bg-green-50 rounded-lg">
                 <div className="text-xl font-bold text-blue-600">
                   {facultyMembers.reduce((sum, f) => sum + (f.totalReimbursements || 0), 0)}
                 </div>
@@ -289,7 +288,7 @@ const DepartmentRoster = () => {
                 <div className="text-sm text-gray-600">Active</div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900">Top Contributors</h4>
               {facultyMembers
@@ -313,14 +312,14 @@ const DepartmentRoster = () => {
         {/* Student Overview */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-4">
-            <GraduationCap className="w-5 h-5 text-blue-600" />
+            <GraduationCap className="w-5 h-5 text-green-600" />
             <h3 className="text-lg font-semibold text-gray-900">Student Overview</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-xl font-bold text-blue-600">{studentMembers.length}</div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-xl font-bold text-green-600">{studentMembers.length}</div>
                 <div className="text-sm text-gray-600">Total Students</div>
               </div>
               <div className="text-center p-3 bg-green-50 rounded-lg">
@@ -329,14 +328,14 @@ const DepartmentRoster = () => {
                 </div>
                 <div className="text-sm text-gray-600">Reimbursements</div>
               </div>
-              <div className="text-center p-3 bg-orange-50 rounded-lg">
-                <div className="text-xl font-bold text-orange-600">
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-xl font-bold text-green-600">
                   {Math.round((studentMembers.filter(s => s.totalReimbursements > 0).length / studentMembers.length) * 100)}%
                 </div>
                 <div className="text-sm text-gray-600">Participation</div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900">Year-wise Distribution</h4>
               {(() => {
@@ -345,7 +344,7 @@ const DepartmentRoster = () => {
                   acc[year] = (acc[year] || 0) + 1
                   return acc
                 }, {})
-                
+
                 return Object.entries(yearGroups).map(([year, count]) => (
                   <div key={year} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <div className="text-sm font-medium">{year}</div>
@@ -364,7 +363,7 @@ const DepartmentRoster = () => {
           <Filter className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-gray-900">Search & Filter</h3>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Search Members</label>
@@ -425,7 +424,7 @@ const DepartmentRoster = () => {
       </div>
 
       {/* Complete Member Table */}
-      <MemberTable 
+      <MemberTable
         members={filteredMembers}
         title="Complete College Roster"
       />
@@ -433,7 +432,7 @@ const DepartmentRoster = () => {
       {/* Add Member Modal (placeholder) */}
       <AnimatePresence>
         {showAddModal && (
-          <motion.div 
+          <motion.div
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             onClick={() => setShowAddModal(false)}
             initial={{ opacity: 0 }}
@@ -441,7 +440,7 @@ const DepartmentRoster = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <motion.div 
+            <motion.div
               className="bg-white rounded-lg p-6 w-full max-w-md mx-auto"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -449,27 +448,27 @@ const DepartmentRoster = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.3 }}
             >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Member</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              This feature would allow adding new faculty or student members to the college roster.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddModal(false)
-                  toast.success('Member would be added to the roster')
-                }}
-                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Add Member
-              </button>
-            </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Member</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This feature would allow adding new faculty or student members to the college roster.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false)
+                    toast.success('Member would be added to the roster')
+                  }}
+                  className="flex-1 px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Add Member
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

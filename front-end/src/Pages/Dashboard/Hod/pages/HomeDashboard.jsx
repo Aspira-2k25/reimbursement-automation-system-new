@@ -44,15 +44,31 @@ const HomeDashboard = () => {
     setViewLoading(true)
 
     try {
-      // Fetch full request details from API
-      const { studentFormsAPI } = await import('../../../../services/api')
+      // Fetch full request details from API - use correct API based on applicant type
+      const { studentFormsAPI, facultyFormsAPI } = await import('../../../../services/api')
       const formId = request._id || request.applicationId || request.id
-      const data = await studentFormsAPI.getById(formId)
-      setRequestDetails(data?.form || data)
+
+      let data
+      // Use Faculty API for Faculty/Coordinator, Student API for Students
+      if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
+        data = await facultyFormsAPI.getById(formId)
+      } else {
+        data = await studentFormsAPI.getById(formId)
+      }
+
+      const formData = data?.form || data
+      console.log('Fetched request details:', formData)
+      setRequestDetails(formData)
     } catch (error) {
       console.error('Error fetching request details:', error)
-      toast.error('Failed to load request details')
-      setRequestDetails(request) // Fallback to basic request data
+      // Don't show error toast anymore since we'll use fallback data
+      // Instead, check if request already has documents
+      if (request.documents && request.documents.length > 0) {
+        setRequestDetails(request) // Use the request data which now includes documents
+      } else {
+        toast.error('Failed to load full request details')
+        setRequestDetails(request) // Fallback to basic request data
+      }
     } finally {
       setViewLoading(false)
     }
@@ -413,10 +429,10 @@ const HomeDashboard = () => {
                       <label className="text-sm font-medium text-gray-500">Status</label>
                       <p className="text-sm text-gray-900 mt-1">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${requestDetails?.status === 'Approved' || viewModal.request?.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                            requestDetails?.status === 'Rejected' || viewModal.request?.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                              requestDetails?.status === 'Under Principal' || viewModal.request?.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
-                                requestDetails?.status === 'Under HOD' || viewModal.request?.status === 'Under HOD' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-gray-100 text-gray-800'
+                          requestDetails?.status === 'Rejected' || viewModal.request?.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                            requestDetails?.status === 'Under Principal' || viewModal.request?.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
+                              requestDetails?.status === 'Under HOD' || viewModal.request?.status === 'Under HOD' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
                           }`}>
                           {requestDetails?.status || viewModal.request?.status || 'N/A'}
                         </span>
@@ -427,7 +443,9 @@ const HomeDashboard = () => {
                       <p className="text-sm text-gray-900 mt-1">{requestDetails?.name || viewModal.request?.applicantName || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Student ID</label>
+                      <label className="text-sm font-medium text-gray-500">
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Student ID' : 'Employee ID'}
+                      </label>
                       <p className="text-sm text-gray-900 mt-1">{requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
                     </div>
                     <div>
@@ -449,8 +467,15 @@ const HomeDashboard = () => {
                       <p className="text-sm text-gray-900 mt-1">{requestDetails?.academicYear || viewModal.request?.year || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Division</label>
-                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.division || 'N/A'}</p>
+                      <label className="text-sm font-medium text-gray-500">
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Division' : 'Role / Designation'}
+                      </label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student'
+                          ? (requestDetails?.division || 'N/A')
+                          : (requestDetails?.jobTitle || viewModal.request?.applicantType || 'N/A')
+                        }
+                      </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Submitted Date</label>
