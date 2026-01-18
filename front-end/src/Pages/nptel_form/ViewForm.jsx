@@ -93,7 +93,7 @@ export default function ViewForm() {
               } else if (userRole === 'faculty') {
                 navigate('/dashboard/faculty/requests');
               } else {
-                navigate('/dashboard/student/request-status');
+                navigate('/dashboard/requests');
               }
             }}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"

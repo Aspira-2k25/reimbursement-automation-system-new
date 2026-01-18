@@ -76,9 +76,12 @@ const HODLayout = ({ children }) => {
     // Ensure amount is a number for calculations, but format as string for display
     const amountNum = typeof f.amount === 'number' ? f.amount : parseFloat(f.amount) || 0
 
+    // Ensure _id is preserved as a string for API calls
+    const mongoId = f._id ? String(f._id) : null
+
     return {
       id: f.applicationId || f._id || `form-${f._id}`,
-      _id: f._id,
+      _id: mongoId, // Always preserve MongoDB _id as string
       applicationId: f.applicationId,
       userId: f.userId,
       applicantName: f.name || 'N/A',
@@ -88,7 +91,7 @@ const HODLayout = ({ children }) => {
       category: f.reimbursementType || f.category || "NPTEL",
       amount: `₹${amountNum.toLocaleString()}`,
       amountNum: amountNum,
-      status: f.status || "Pending",
+      status: f.status || "Pending", // Preserve exact status from backend
       submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       lastUpdated: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       year: f.academicYear || f.year || 'N/A',
@@ -177,9 +180,24 @@ const HODLayout = ({ children }) => {
       })
       console.log('By status:', {
         'Under HOD': mappedRequests.filter(r => r.status === 'Under HOD').length,
+        'Pending': mappedRequests.filter(r => r.status === 'Pending').length,
+        'Under Coordinator': mappedRequests.filter(r => r.status === 'Under Coordinator').length,
         'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
         'Rejected': mappedRequests.filter(r => r.status === 'Rejected').length
       })
+      
+      // Log sample requests to debug ID and status issues
+      if (mappedRequests.length > 0) {
+        console.log('Sample requests:', mappedRequests.slice(0, 3).map(r => ({
+          id: r.id,
+          _id: r._id,
+          applicationId: r.applicationId,
+          status: r.status,
+          applicantType: r.applicantType,
+          applicantName: r.applicantName
+        })))
+      }
+      
       setAllRequests(mappedRequests)
     } catch (error) {
       console.error('Error fetching HOD requests:', error)
@@ -276,10 +294,114 @@ const HODLayout = ({ children }) => {
     // Helper methods
     updateRequestStatus: useCallback(async (requestId, newStatus, remarks = '') => {
       try {
-        const request = allRequests.find(req => req.id === requestId)
-        if (!request) return
+        // Try to find request by multiple ID fields
+        const request = allRequests.find(req => 
+          req.id === requestId || 
+          req._id === requestId || 
+          req.applicationId === requestId ||
+          String(req.id) === String(requestId) ||
+          String(req._id) === String(requestId) ||
+          String(req.applicationId) === String(requestId)
+        )
+        
+        if (!request) {
+          console.error('Request not found:', requestId)
+          console.error('Available requests:', allRequests.map(r => ({ 
+            id: r.id, 
+            _id: r._id, 
+            applicationId: r.applicationId,
+            applicantName: r.applicantName,
+            status: r.status
+          })))
+          toast.error(`Request ${requestId} not found. Please refresh the page.`)
+          return false
+        }
 
-        const formId = request._id || request.applicationId || request.id
+        // Validate request status - Backend requires exactly "Under HOD" for updates
+        const currentStatus = String(request.status || '').trim()
+        
+        // CRITICAL: Backend validation requires exactly "Under HOD" status
+        // Student forms backend (line 385 in StudentFormRoutes.js) requires exactly "Under HOD"
+        // Faculty forms backend (line 252 in formRoutes.js) doesn't check status, but we validate for consistency
+        if (currentStatus !== 'Under HOD') {
+          const statusMap = {
+            'Pending': 'Request is still pending coordinator approval. Coordinator must approve it first to change status to "Under HOD".',
+            'Under Coordinator': 'Request is under coordinator review. Coordinator must approve it first.',
+            'Under Principal': 'Request has already been sent to Principal and cannot be modified.',
+            'Approved': 'Request has already been approved and cannot be modified.',
+            'Rejected': 'Request has already been rejected and cannot be modified.'
+          }
+          
+          const errorMsg = statusMap[currentStatus] || `Cannot update request. Current status is "${currentStatus}". Only requests with status "Under HOD" can be approved/rejected by HOD.`
+          toast.error(errorMsg)
+          console.error('Invalid status for HOD update:', { 
+            currentStatus, 
+            requestId,
+            formId: request._id || request.applicationId,
+            applicantType: request.applicantType,
+            applicantName: request.applicantName,
+            request: {
+              id: request.id,
+              _id: request._id,
+              applicationId: request.applicationId,
+              status: request.status
+            },
+            expectedStatus: 'Under HOD',
+            allRequestStatuses: allRequests.map(r => ({ id: r.id, status: r.status }))
+          })
+          return false
+        }
+
+        // Get the correct form ID - backend expects MongoDB _id for student forms
+        // For faculty forms, it can use either _id or applicationId
+        let formId = null
+        
+        if (request.applicantType === 'Student') {
+          // Student forms: backend uses MongoDB _id (line 336 in StudentFormRoutes.js)
+          formId = request._id
+          if (!formId) {
+            // Fallback: try to extract from id if it's a MongoDB ObjectId format
+            const idStr = String(request.id || request.applicationId || '')
+            // MongoDB ObjectId is 24 hex characters
+            if (/^[0-9a-fA-F]{24}$/.test(idStr)) {
+              formId = idStr
+            } else if (idStr.startsWith('form-')) {
+              formId = idStr.replace('form-', '')
+            }
+          }
+        } else {
+          // Faculty forms: backend tries applicationId first, then _id (line 252 in formRoutes.js)
+          formId = request.applicationId || request._id || request.id
+        }
+        
+        // If formId is still a string like "form-123", extract the actual ID
+        if (formId && String(formId).startsWith('form-')) {
+          formId = String(formId).replace('form-', '')
+        }
+        
+        if (!formId) {
+          console.error('No valid form ID found for request:', {
+            request,
+            _id: request._id,
+            applicationId: request.applicationId,
+            id: request.id,
+            applicantType: request.applicantType
+          })
+          toast.error('Invalid request ID. Please refresh the page.')
+          return false
+        }
+        
+        // Ensure formId is a string
+        formId = String(formId)
+
+        console.log('Updating request:', { 
+          requestId, 
+          formId, 
+          currentStatus,
+          newStatus, 
+          applicantType: request.applicantType,
+          applicantName: request.applicantName 
+        })
 
         // Update status via API - choose correct API based on applicantType
         const updateData = { status: newStatus }
@@ -288,10 +410,20 @@ const HODLayout = ({ children }) => {
         }
 
         // Use correct API based on request type
-        if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
-          await facultyFormsAPI.updateById(formId, updateData)
-        } else {
-          await studentFormsAPI.updateById(formId, updateData)
+        let response
+        try {
+          if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
+            console.log('Calling facultyFormsAPI.updateById with:', { formId, updateData })
+            response = await facultyFormsAPI.updateById(formId, updateData)
+          } else {
+            console.log('Calling studentFormsAPI.updateById with:', { formId, updateData })
+            response = await studentFormsAPI.updateById(formId, updateData)
+          }
+          console.log('API response:', response)
+        } catch (apiError) {
+          console.error('API call failed:', apiError)
+          const apiErrorMessage = apiError?.response?.data?.error || apiError?.error || apiError?.message || 'API call failed'
+          throw new Error(apiErrorMessage)
         }
 
         // Refresh requests from server
@@ -312,7 +444,14 @@ const HODLayout = ({ children }) => {
         return true
       } catch (error) {
         console.error('Error updating request status:', error)
-        toast.error(error?.error || 'Failed to update request status')
+        console.error('Error details:', {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status,
+          statusText: error?.response?.statusText
+        })
+        const errorMessage = error?.response?.data?.error || error?.error || error?.message || 'Failed to update request status'
+        toast.error(errorMessage)
         return false
       }
     }, [allRequests, fetchRequests]),

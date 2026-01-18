@@ -183,7 +183,7 @@ export default function EditForm() {
       } else if (userRole === 'faculty') {
         navigate('/dashboard/faculty/requests');
       } else {
-        navigate('/dashboard/student/request-status');
+        navigate('/dashboard/requests');
       }
     } catch (err) {
       console.error('Error updating form:', err);

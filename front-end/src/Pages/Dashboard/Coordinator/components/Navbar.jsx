@@ -5,9 +5,10 @@ import { useAuth } from "../../../../context/AuthContext.jsx"
 import { useNavigate } from "react-router-dom"
 import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
+import { Check, CheckCheck } from "lucide-react"
 import { toast } from "react-hot-toast"
 
-export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile }) {
+export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile, notifications = [], markNotificationAsRead, markAllNotificationsAsRead }) {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -132,7 +133,11 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
           {/* Right Section: Profile & Notifications - Flex-1 to balance the left side */}
           <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4">
-            <NotificationMenu />
+            <NotificationMenu 
+              notifications={notifications}
+              markNotificationAsRead={markNotificationAsRead}
+              markAllNotificationsAsRead={markAllNotificationsAsRead}
+            />
 
             <div className="relative" ref={profileDropdownRef}>
               <button

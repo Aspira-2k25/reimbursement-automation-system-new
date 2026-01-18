@@ -82,12 +82,25 @@ const HomeDashboard = () => {
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)
     try {
-      const success = await updateRequestStatus(request.id, 'Under Principal')
+      // Use the most reliable ID - prioritize _id, then applicationId, then id
+      const requestId = request._id || request.applicationId || request.id
+      console.log('Approving request:', { request, requestId, status: request.status })
+      
+      if (!requestId) {
+        toast.error('Invalid request: Missing ID')
+        setIsLoading(false)
+        return
+      }
+
+      const success = await updateRequestStatus(requestId, 'Under Principal')
       if (success) {
-        toast.success(`Request ${request.id} approved and sent to Principal for ${request.applicantName}`)
+        toast.success(`Request ${request.id || requestId} approved and sent to Principal for ${request.applicantName}`)
+      } else {
+        // Error message already shown by updateRequestStatus
       }
     } catch (error) {
-      toast.error('Failed to approve request. Please try again.')
+      console.error('Error in handleApproveRequest:', error)
+      toast.error(error?.message || 'Failed to approve request. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -183,17 +196,30 @@ const HomeDashboard = () => {
   }, [filteredRequests])
 
   const confirmReject = useCallback(async () => {
-    if (rejectReason.trim()) {
+    if (rejectReason.trim() && rejectModal.request) {
       setIsLoading(true)
       try {
-        const success = await updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
+        // Use the most reliable ID - prioritize _id, then applicationId, then id
+        const requestId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
+        console.log('Rejecting request:', { request: rejectModal.request, requestId, status: rejectModal.request.status })
+        
+        if (!requestId) {
+          toast.error('Invalid request: Missing ID')
+          setIsLoading(false)
+          return
+        }
+
+        const success = await updateRequestStatus(requestId, 'Rejected', rejectReason)
         if (success) {
-          toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
+          toast.error(`Request ${rejectModal.request.id || requestId} rejected: ${rejectReason}`)
           setRejectModal({ show: false, request: null })
           setRejectReason('')
+        } else {
+          // Error message already shown by updateRequestStatus
         }
       } catch (error) {
-        toast.error('Failed to reject request. Please try again.')
+        console.error('Error in confirmReject:', error)
+        toast.error(error?.message || 'Failed to reject request. Please try again.')
       } finally {
         setIsLoading(false)
       }

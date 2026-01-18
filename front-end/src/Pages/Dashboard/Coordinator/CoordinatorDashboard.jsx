@@ -47,6 +47,7 @@ export default function CoordinatorDashboard() {
   const [viewModal, setViewModal] = useState({ show: false, request: null })
   const [viewLoading, setViewLoading] = useState(false)
   const [requestDetails, setRequestDetails] = useState(null)
+  const [notifications, setNotifications] = useState([])
 
   // Helper function to map backend data to table format
   const mapFormToRequest = (f) => ({
@@ -123,6 +124,30 @@ export default function CoordinatorDashboard() {
       const mappedRejected = rejectedForms.map(mapFormToRequest)
 
       console.log('Mapped pending:', mappedPending.length, 'Mapped approved:', mappedApproved.length, 'Mapped rejected:', mappedRejected.length)
+
+      // Check for new requests and generate notifications
+      const previousTotal = studentRequests.length + approvedRequests.length + rejectedRequests.length
+      const currentTotal = mappedPending.length + mappedApproved.length + mappedRejected.length
+      
+      if (previousTotal > 0 && currentTotal > previousTotal) {
+        // New request detected
+        const newRequests = [...mappedPending, ...mappedApproved, ...mappedRejected]
+        const previousRequestIds = new Set([...studentRequests, ...approvedRequests, ...rejectedRequests].map(r => r.id))
+        const newRequest = newRequests.find(r => !previousRequestIds.has(r.id))
+        
+        if (newRequest) {
+          const newNotification = {
+            id: Date.now(),
+            type: 'request',
+            title: 'New Reimbursement Request',
+            message: `${newRequest.studentName} submitted a new ${newRequest.category} request`,
+            time: 'Just now',
+            unread: true,
+            timestamp: new Date().toISOString()
+          }
+          setNotifications(prev => [newNotification, ...prev])
+        }
+      }
 
       setStudentRequests(mappedPending)
       setApprovedRequests(mappedApproved)
@@ -225,6 +250,18 @@ export default function CoordinatorDashboard() {
       // Refresh the requests to get updated data from server
       await fetchRequests()
 
+      // Add notification for approval
+      const newNotification = {
+        id: Date.now(),
+        type: 'status_change',
+        title: 'Request Approved',
+        message: `${request.studentName}'s request has been approved and sent to HOD`,
+        time: 'Just now',
+        unread: true,
+        timestamp: new Date().toISOString()
+      }
+      setNotifications(prev => [newNotification, ...prev])
+
       toast.success(`Request ${request.id} approved and sent to HOD for ${request.studentName}`)
     } catch (error) {
       console.error('Error approving request:', error)
@@ -252,6 +289,18 @@ export default function CoordinatorDashboard() {
 
         // Refresh the requests to get updated data from server
         await fetchRequests()
+
+        // Add notification for rejection
+        const newNotification = {
+          id: Date.now(),
+          type: 'status_change',
+          title: 'Request Rejected',
+          message: `${rejectModal.request.studentName}'s request has been rejected: ${rejectReason}`,
+          time: 'Just now',
+          unread: true,
+          timestamp: new Date().toISOString()
+        }
+        setNotifications(prev => [newNotification, ...prev])
 
         toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
         setRejectModal({ show: false, request: null })
@@ -366,6 +415,23 @@ export default function CoordinatorDashboard() {
     }
   }
 
+  // Notification management functions
+  const markNotificationAsRead = useCallback((notificationId) => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === notificationId
+          ? { ...notification, unread: false }
+          : notification
+      )
+    )
+  }, [])
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications(prev =>
+      prev.map(notification => ({ ...notification, unread: false }))
+    )
+  }, [])
+
   return (
     <div className="min-h-screen bg-[color:var(--color-moss-lime)]/10">
       <Navbar
@@ -373,6 +439,9 @@ export default function CoordinatorDashboard() {
         setActiveTab={setActiveTab}
         userProfile={userProfile}
         setUserProfile={setUserProfile}
+        notifications={notifications}
+        markNotificationAsRead={markNotificationAsRead}
+        markAllNotificationsAsRead={markAllNotificationsAsRead}
       />
       <PageContainer>{renderContent()}</PageContainer>
 
