@@ -192,13 +192,7 @@ export const getRequestsByDepartment = (requests, department) => {
 
 export const getTotalAmount = (requests) => {
   return requests.reduce((total, req) => {
-    // Handle both number and string formats
-    let amount = 0
-    if (typeof req.amount === 'number') {
-      amount = req.amount
-    } else if (typeof req.amount === 'string') {
-      amount = parseFloat(req.amount.replace(/[₹,]/g, '')) || 0
-    }
+    const amount = parseFloat(req.amount.replace(/[₹,]/g, ''))
     return total + (isNaN(amount) ? 0 : amount)
   }, 0)
 }
