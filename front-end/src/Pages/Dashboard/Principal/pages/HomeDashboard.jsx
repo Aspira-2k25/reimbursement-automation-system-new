@@ -48,7 +48,9 @@ const HomeDashboard = () => {
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)
     try {
-      await updateRequestStatus(request.id, 'Approved', 'Approved by Principal')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      updateRequestStatus(request.id, 'Approved', 'Approved by Principal')
+      toast.success(`Request ${request.id} approved for ${request.applicantName}`)
     } catch (error) {
       toast.error('Failed to approve request. Please try again.')
     } finally {
@@ -175,7 +177,9 @@ const HomeDashboard = () => {
     if (rejectReason.trim()) {
       setIsLoading(true)
       try {
-        await updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
+        toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
         setRejectModal({ show: false, request: null })
         setRejectReason('')
       } catch (error) {
@@ -193,18 +197,6 @@ const HomeDashboard = () => {
   }, [])
 
 
-
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading requests...</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -411,7 +403,7 @@ const HomeDashboard = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody>
               {recentRequests.map((request, index) => (
                 <motion.tr
                   key={request.id}
@@ -484,8 +476,7 @@ const HomeDashboard = () => {
                     </div>
                   </td>
                 </motion.tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -541,7 +532,7 @@ const HomeDashboard = () => {
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

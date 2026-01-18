@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { useAuth } from '../../../../context/AuthContext'
-import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
-import { toast } from 'react-hot-toast'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
 import DepartmentRoster from './DepartmentRoster'
@@ -25,97 +23,9 @@ const PrincipalLayout = ({ children }) => {
   const { user } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
-  const [userProfile, setUserProfile] = useState({
-    fullName: '',
-    college: '',
-    designation: '',
-    role: 'Principal',
-    email: '',
-    phone: '',
-    joinDate: '',
-    employeeId: ''
-  })
-  const [allRequests, setAllRequests] = useState([])
-  const [departments, setDepartments] = useState([
-    {
-      id: 'it',
-      name: 'Information Technology',
-      hod: { name: 'Dr. Jagan Kumar', email: 'jagan.kumar@college.edu', phone: '+91-9876543210' },
-      totalRequests: 45,
-      pendingRequests: 8,
-      approvedRequests: 32,
-      rejectedRequests: 5,
-      totalDisbursed: 125000,
-      approvalRate: 86,
-      facultyCount: 12,
-      studentCount: 200
-    },
-    {
-      id: 'ce',
-      name: 'Computer Engineering',
-      hod: { name: 'Dr. Rajesh Kumar', email: 'rajesh.kumar@college.edu', phone: '+91-9876543211' },
-      totalRequests: 52,
-      pendingRequests: 8,
-      approvedRequests: 38,
-      rejectedRequests: 6,
-      totalDisbursed: 145000,
-      approvalRate: 86,
-      facultyCount: 15,
-      studentCount: 240
-    },
-    {
-      id: 'cse-aiml',
-      name: 'CSE AIML',
-      hod: { name: 'Dr. Priya Sharma', email: 'priya.sharma@college.edu', phone: '+91-9876543212' },
-      totalRequests: 38,
-      pendingRequests: 5,
-      approvedRequests: 28,
-      rejectedRequests: 5,
-      totalDisbursed: 98000,
-      approvalRate: 85,
-      facultyCount: 10,
-      studentCount: 180
-    },
-    {
-      id: 'cse-ds',
-      name: 'CSE DS',
-      hod: { name: 'Dr. Amit Singh', email: 'amit.singh@college.edu', phone: '+91-9876543213' },
-      totalRequests: 42,
-      pendingRequests: 7,
-      approvedRequests: 30,
-      rejectedRequests: 5,
-      totalDisbursed: 112000,
-      approvalRate: 86,
-      facultyCount: 11,
-      studentCount: 190
-    },
-    {
-      id: 'mech',
-      name: 'Mechanical Engineering',
-      hod: { name: 'Dr. Sunita Patel', email: 'sunita.patel@college.edu', phone: '+91-9876543214' },
-      totalRequests: 35,
-      pendingRequests: 6,
-      approvedRequests: 25,
-      rejectedRequests: 4,
-      totalDisbursed: 89000,
-      approvalRate: 86,
-      facultyCount: 14,
-      studentCount: 220
-    },
-    {
-      id: 'civil',
-      name: 'Civil Engineering',
-      hod: { name: 'Dr. Sunil Kumar', email: 'sunil.kumar@college.edu', phone: '+91-9876543215' },
-      totalRequests: 28,
-      pendingRequests: 4,
-      approvedRequests: 20,
-      rejectedRequests: 4,
-      totalDisbursed: 75000,
-      approvalRate: 83,
-      facultyCount: 10,
-      studentCount: 170
-    }
-  ])
+  const [userProfile, setUserProfile] = useState(initialPrincipalData.userProfile)
+  const [allRequests, setAllRequests] = useState(initialPrincipalData.allRequests)
+  const [departments, setDepartments] = useState(initialPrincipalData.departments)
   const [activityLog, setActivityLog] = useState([])
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
@@ -157,124 +67,6 @@ const PrincipalLayout = ({ children }) => {
     window.addEventListener('error', handleGlobalError)
     return () => window.removeEventListener('error', handleGlobalError)
   }, [])
-
-  // Helper function to map backend data to Principal dashboard format
-  const mapFormToRequest = useCallback((f) => {
-    // Ensure amount is a number for calculations, but format as string for display
-    const amountNum = typeof f.amount === 'number' ? f.amount : parseFloat(f.amount) || 0
-
-    return {
-      id: f.applicationId || f._id || `form-${f._id}`,
-      _id: f._id,
-      applicationId: f.applicationId,
-      userId: f.userId,
-      applicantName: f.name || 'N/A',
-      applicantId: f.studentId || f.facultyId || 'N/A',
-      applicantType: f.applicantType || (f.studentId ? 'Student' : 'Faculty'),
-      applicantEmail: f.email,
-      category: f.reimbursementType || f.category || "NPTEL",
-      amount: amountNum,
-      amountFormatted: `₹${amountNum.toLocaleString()}`,
-      status: f.status || "Pending",
-      submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      lastUpdated: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      year: f.academicYear || f.year || 'N/A',
-      department: f.department || 'N/A',
-      description: f.remarks || f.description || f.name || 'N/A',
-    }
-  }, [])
-
-  // Fetch ALL requests (student and faculty) from API
-  const fetchRequests = useCallback(async () => {
-    try {
-      setLoading(true)
-
-      // Fetch ALL student and faculty forms in parallel (all statuses)
-      const [
-        studentPendingData, studentHodData, studentApprovedData, studentRejectedData,
-        facultyHodData, facultyApprovedData, facultyRejectedData
-      ] = await Promise.allSettled([
-        studentFormsAPI.listPending(),
-        studentFormsAPI.listForHOD(),
-        studentFormsAPI.listApproved(),
-        studentFormsAPI.listRejected(),
-        facultyFormsAPI.listForHOD(),
-        facultyFormsAPI.listApproved(),
-        facultyFormsAPI.listRejected()
-      ])
-
-      let allForms = []
-      const seenIds = new Set() // To avoid duplicates
-
-      // Process student forms
-      const processStudentForms = (data, status) => {
-        if (data.status === 'fulfilled') {
-          const forms = (data.value?.forms || data.value || [])
-            .map(f => ({ ...f, applicantType: 'Student' }))
-            .filter(f => {
-              const id = f.applicationId || f._id
-              if (seenIds.has(id)) return false
-              seenIds.add(id)
-              return true
-            })
-          allForms = [...allForms, ...forms]
-        }
-      }
-
-      processStudentForms(studentPendingData, 'Pending')
-      processStudentForms(studentHodData, 'Under HOD')
-      processStudentForms(studentApprovedData, 'Approved')
-      processStudentForms(studentRejectedData, 'Rejected')
-
-      // Process faculty forms
-      const processFacultyForms = (data, status) => {
-        if (data.status === 'fulfilled') {
-          const forms = (data.value?.forms || data.value || [])
-            .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
-            .filter(f => {
-              const id = f.applicationId || f._id
-              if (seenIds.has(id)) return false
-              seenIds.add(id)
-              return true
-            })
-          allForms = [...allForms, ...forms]
-        }
-      }
-
-      processFacultyForms(facultyHodData, 'Under HOD')
-      processFacultyForms(facultyApprovedData, 'Approved')
-      processFacultyForms(facultyRejectedData, 'Rejected')
-
-      // Map backend data to Principal dashboard format
-      const mappedRequests = allForms.map(mapFormToRequest)
-
-      console.log('Fetched Principal requests - Total:', mappedRequests.length)
-      console.log('By type:', {
-        'Student': mappedRequests.filter(r => r.applicantType === 'Student').length,
-        'Faculty': mappedRequests.filter(r => r.applicantType === 'Faculty').length
-      })
-      console.log('By status:', {
-        'Pending': mappedRequests.filter(r => r.status === 'Pending').length,
-        'Under HOD': mappedRequests.filter(r => r.status === 'Under HOD').length,
-        'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
-        'Approved': mappedRequests.filter(r => r.status === 'Approved').length,
-        'Rejected': mappedRequests.filter(r => r.status === 'Rejected').length
-      })
-
-      setAllRequests(mappedRequests)
-    } catch (error) {
-      console.error('Error fetching Principal requests:', error)
-      toast.error(error?.error || 'Failed to fetch requests')
-      setAllRequests([])
-    } finally {
-      setLoading(false)
-    }
-  }, [mapFormToRequest])
-
-  // Fetch requests on component mount
-  useEffect(() => {
-    fetchRequests()
-  }, [fetchRequests])
 
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
@@ -453,12 +245,10 @@ const PrincipalLayout = ({ children }) => {
     setUserProfile,
     allRequests,
     setAllRequests,
-    loading,
     departments,
     setDepartments,
     activityLog,
     setActivityLog,
-    fetchRequests,
 
     // Computed values
     collegeStats,
@@ -483,11 +273,11 @@ const PrincipalLayout = ({ children }) => {
         const updatedRequests = prev.map(req =>
           req.id === requestId
             ? {
-              ...req,
-              status: newStatus,
-              lastUpdated: new Date().toISOString().split('T')[0],
-              principalComments: comments
-            }
+                ...req,
+                status: newStatus,
+                lastUpdated: new Date().toISOString().split('T')[0],
+                principalComments: comments
+              }
             : req
         )
 
@@ -520,69 +310,9 @@ const PrincipalLayout = ({ children }) => {
           setActivityLog(prev => [newActivity, ...prev])
         }
 
-        // Determine which API to use based on applicant type
-        const isStudent = request.applicantType === 'Student'
-        const api = isStudent ? studentFormsAPI : facultyFormsAPI
-        const formId = request._id || request.applicationId || requestId
-
-        // Update via API
-        await api.updateById(formId, {
-          status: newStatus,
-          remarks: comments || request.description
-        })
-
-        // Update local state
-        setAllRequests(prev => {
-          const updatedRequests = prev.map(req =>
-            (req.id === requestId || req._id === requestId || req.applicationId === requestId)
-              ? {
-                  ...req,
-                  status: newStatus,
-                  lastUpdated: new Date().toISOString().split('T')[0],
-                  principalComments: comments,
-                  description: comments || req.description
-                }
-              : req
-          )
-
-          // Find the updated request for notifications and activity log
-          const updatedRequest = updatedRequests.find(req => req.id === requestId || req._id === requestId || req.applicationId === requestId)
-          if (updatedRequest) {
-            // Add notification for status change
-            const newNotification = {
-              id: Date.now(),
-              type: 'status_change',
-              title: `Request ${newStatus}`,
-              message: `${updatedRequest.applicantName}'s request has been ${newStatus.toLowerCase()}`,
-              time: 'Just now',
-              unread: true,
-              timestamp: new Date().toISOString()
-            }
-            setNotifications(prev => [newNotification, ...prev])
-
-            // Add to activity log
-            const newActivity = {
-              id: Date.now(),
-              action: `Request ${newStatus}`,
-              user: userProfile.fullName,
-              target: updatedRequest.applicantName,
-              details: `Request ${requestId} ${newStatus.toLowerCase()}${comments ? ` - ${comments}` : ''}`,
-              timestamp: new Date().toISOString(),
-              type: newStatus.toLowerCase(),
-              department: updatedRequest.department
-            }
-            setActivityLog(prev => [newActivity, ...prev])
-          }
-
-          return updatedRequests
-        })
-
-        toast.success(`Request ${newStatus.toLowerCase()} successfully`)
-      } catch (error) {
-        console.error('Error updating request status:', error)
-        toast.error(error?.error || 'Failed to update request status')
-      }
-    }, [userProfile, allRequests]),
+        return updatedRequests
+      })
+    }, [userProfile]),
 
     addComment: useCallback((requestId, comment) => {
       setAllRequests(prev =>
