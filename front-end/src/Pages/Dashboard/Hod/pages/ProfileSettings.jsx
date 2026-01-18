@@ -248,8 +248,8 @@ const ProfileSettings = () => {
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     disabled={!isEditing}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${errors.fullName
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'border-gray-200'
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200'
                       } ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
                       }`}
                   />
@@ -298,8 +298,8 @@ const ProfileSettings = () => {
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     disabled={!isEditing}
                     className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${errors.email
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'border-gray-200'
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200'
                       } ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
                       }`}
                   />
@@ -322,41 +322,7 @@ const ProfileSettings = () => {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    disabled={!isEditing}
-                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${errors.phone
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'border-gray-200'
-                      } ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
-                      }`}
-                  />
-                  {errors.phone && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <AlertCircle className="w-4 h-4 text-red-500" />
-                    </div>
-                  )}
-                </div>
-                {errors.phone && (
-                  <motion.p
-                    className="mt-1 text-sm text-red-600 flex items-center gap-1"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <AlertCircle className="w-3 h-3" />
-                    {errors.phone}
-                  </motion.p>
-                )}
-              </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -370,8 +336,8 @@ const ProfileSettings = () => {
                     onChange={(e) => handleInputChange('department', e.target.value)}
                     disabled={!isEditing}
                     className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${errors.department
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'border-gray-200'
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200'
                       } ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
                       }`}
                   />
@@ -408,22 +374,7 @@ const ProfileSettings = () => {
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Join Date
-                </label>
-                <div className="relative">
-                  <Calendar className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="date"
-                    value={formData.joinDate}
-                    onChange={(e) => handleInputChange('joinDate', e.target.value)}
-                    disabled={!isEditing}
-                    className={`w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
-                      }`}
-                  />
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -472,42 +423,7 @@ const ProfileSettings = () => {
             </div>
           </div>
 
-          {/* Account Statistics */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Statistics</h3>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Member Since</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {formData.joinDate
-                    ? new Date(formData.joinDate).toLocaleDateString('en-US', {
-                      month: 'long',
-                      year: 'numeric'
-                    })
-                    : 'August 2018'
-                  }
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total Requests</span>
-                <span className="text-sm font-medium text-gray-900">12</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Last Login</span>
-                <span className="text-sm font-medium text-gray-900">Today, 2:30 PM</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Account Status</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Active
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

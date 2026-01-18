@@ -93,6 +93,17 @@ const HODLayout = ({ children }) => {
       lastUpdated: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       year: f.academicYear || f.year || 'N/A',
       description: f.remarks || f.description || f.name || 'N/A',
+      // Preserve all backend fields for the view modal
+      email: f.email,
+      division: f.division,
+      studentId: f.studentId,
+      name: f.name,
+      remarks: f.remarks,
+      academicYear: f.academicYear,
+      createdAt: f.createdAt,
+      updatedAt: f.updatedAt,
+      documents: f.documents || [], // Very important for viewing documents!
+      reimbursementType: f.reimbursementType,
     }
   }, [])
 
@@ -187,21 +198,26 @@ const HODLayout = ({ children }) => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
-      // Some logins store the email in `username` (or omit email in DB). Prefer `email`, then fall back.
-      const resolvedEmail =
-        user.email ||
-        (typeof user.username === 'string' && user.username.includes('@') ? user.username : null) ||
-        (typeof user.userId === 'string' && user.userId.includes('@') ? user.userId : null)
+      console.log('HOD Dashboard - User data:', user)
+
+      // Build email: prefer stored email, otherwise construct from username
+      let userEmail = user.email
+      if (!userEmail && user.username) {
+        // If username looks like an email, use it; otherwise append domain
+        userEmail = user.username.includes('@')
+          ? user.username
+          : `${user.username.toLowerCase()}@apsit.edu.in`
+      }
 
       setUserProfile({
         fullName: user.fullName || user.name,
         department: user.department,
         designation: user.designation || user.role,
-        role: user.role || 'HOD',
-        email: resolvedEmail,
-        phone: user.phone || '+91-9876543210',
-        joinDate: user.joinDate || 'August 15, 2018',
-        employeeId: user.employeeId || user.id || 'IT-HOD-001'
+        role: user.role,
+        email: userEmail,
+        phone: user.phone,
+        joinDate: user.joinDate,
+        employeeId: user.employeeId || user.id
       })
     }
   }, [user])

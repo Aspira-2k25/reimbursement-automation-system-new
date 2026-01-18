@@ -1,32 +1,30 @@
 import React, { useMemo, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Users, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Users,
+  Clock,
+  CheckCircle,
+  XCircle,
   FileText,
   TrendingUp,
   Building2,
   Loader2,
   Search,
-  DollarSign,
+  IndianRupee,
   Eye,
   Download
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import { usePrincipalContext } from './PrincipalLayout'
-import { calculateCollegeStats, getRequestsByStatus } from '../data/mockData'
 
 const HomeDashboard = () => {
-  const { 
-    userProfile, 
-    allRequests, 
-    loading,
+  const {
+    userProfile,
+    allRequests,
     departments,
     collegeStats,
-    updateRequestStatus, 
+    updateRequestStatus,
     getFilteredRequests,
     searchQuery,
     setSearchQuery,
@@ -37,7 +35,7 @@ const HomeDashboard = () => {
     typeFilter,
     setTypeFilter
   } = usePrincipalContext()
-  
+
   const [rejectModal, setRejectModal] = useState({ show: false, request: null })
   const [rejectReason, setRejectReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -72,7 +70,7 @@ const HomeDashboard = () => {
         setSearchQuery('')
         break
       case 'Pending Requests':
-        setStatusFilter('Pending')
+        setStatusFilter('Under Principal')
         setDepartmentFilter('All')
         setTypeFilter('All')
         setSearchQuery('')
@@ -128,28 +126,28 @@ const HomeDashboard = () => {
 
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
-    const rejectedRequests = getRequestsByStatus(allRequests, 'Rejected')
-    
+    const rejectedRequests = allRequests.filter(r => r.status === 'Rejected')
+
     return [
       {
         title: "Total Requests",
         value: collegeStats.total.toString(),
         subtitle: `Across ${departments.length} departments`,
         icon: FileText,
-        color: 'blue',
+        color: 'green',
         onClick: () => handleStatCardClick('Total Requests')
       },
       {
-        title: "Pending Requests", 
+        title: "Pending Requests",
         value: collegeStats.pending.toString(),
         subtitle: "Awaiting approval",
         icon: Clock,
-        color: 'orange',
+        color: 'green',
         onClick: () => handleStatCardClick('Pending Requests')
       },
       {
         title: "Approved Requests",
-        value: collegeStats.approved.toString(), 
+        value: collegeStats.approved.toString(),
         subtitle: `₹${collegeStats.approvedAmount.toLocaleString()} disbursed`,
         icon: CheckCircle,
         color: 'green',
@@ -160,7 +158,7 @@ const HomeDashboard = () => {
         value: rejectedRequests.length.toString(),
         subtitle: "Declined requests",
         icon: XCircle,
-        color: 'red',
+        color: 'green',
         onClick: () => handleStatCardClick('Rejected Requests')
       }
     ]
@@ -211,8 +209,8 @@ const HomeDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <motion.div 
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
+      <motion.div
+        className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -222,10 +220,10 @@ const HomeDashboard = () => {
             <h1 className="text-xl sm:text-2xl font-bold mb-2">
               Welcome back, {userProfile?.fullName || 'Dr. Rajesh Kumar'} 👋
             </h1>
-            <p className="text-blue-100 mb-4 text-sm sm:text-base">
+            <p className="text-green-100 mb-4 text-sm sm:text-base">
               Principal • {userProfile?.college || 'Engineering College'}
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-blue-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 <span>{departments.length} Departments</span>
@@ -235,13 +233,13 @@ const HomeDashboard = () => {
                 <span>{collegeStats.total} Total Requests</span>
               </div>
               <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                <span>₹{collegeStats.approvedAmount.toLocaleString()} Disbursed</span>
+                <IndianRupee className="w-4 h-4" />
+                <span>{collegeStats.approvedAmount.toLocaleString()} Disbursed</span>
               </div>
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div 
+            <motion.div
               className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
@@ -268,7 +266,7 @@ const HomeDashboard = () => {
       </div>
 
       {/* College Overview */}
-      <motion.div 
+      <motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -278,51 +276,49 @@ const HomeDashboard = () => {
           <h3 className="text-lg font-semibold text-gray-900">College Overview</h3>
           <TrendingUp className="w-5 h-5 text-green-600" />
         </div>
-        
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { 
+            {
               value: departments.length,
               label: 'Departments',
               color: 'blue'
             },
-            { 
+            {
               value: `${collegeStats.approvalRate}%`,
               label: 'Approval Rate',
               color: 'green'
             },
-            { 
+            {
               value: `₹${collegeStats.approvedAmount.toLocaleString()}`,
               label: 'Total Disbursed',
               color: 'purple'
             },
-            { 
+            {
               value: `${collegeStats.budgetUtilization}%`,
               label: 'Budget Utilization',
               color: 'orange'
             }
           ].map((item, index) => (
-            <motion.div 
+            <motion.div
               key={index}
-              className={`text-center p-3 sm:p-4 rounded-lg ${
-                item.color === 'blue' ? 'bg-blue-50' :
+              className={`text-center p-3 sm:p-4 rounded-lg ${item.color === 'teal' ? 'bg-teal-50' :
                 item.color === 'green' ? 'bg-green-50' :
-                item.color === 'purple' ? 'bg-purple-50' :
-                item.color === 'orange' ? 'bg-orange-50' :
-                'bg-gray-50'
-              }`}
+                  item.color === 'purple' ? 'bg-purple-50' :
+                    item.color === 'orange' ? 'bg-orange-50' :
+                      'bg-gray-50'
+                }`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
               whileHover={{ scale: 1.05 }}
             >
-              <div className={`text-lg sm:text-2xl font-bold ${
-                item.color === 'blue' ? 'text-blue-600' :
+              <div className={`text-lg sm:text-2xl font-bold ${item.color === 'teal' ? 'text-teal-600' :
                 item.color === 'green' ? 'text-green-600' :
-                item.color === 'purple' ? 'text-purple-600' :
-                item.color === 'orange' ? 'text-orange-600' :
-                'text-gray-600'
-              }`}>
+                  item.color === 'purple' ? 'text-purple-600' :
+                    item.color === 'orange' ? 'text-orange-600' :
+                      'text-gray-600'
+                }`}>
                 {item.value}
               </div>
               <div className="text-xs sm:text-sm text-gray-600">{item.label}</div>
@@ -350,14 +346,14 @@ const HomeDashboard = () => {
                 placeholder="Search requests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-64"
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm w-full sm:w-64"
               />
             </div>
 
             {/* Export Button */}
             <button
               onClick={handleExportToCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
               Export CSV
@@ -368,14 +364,12 @@ const HomeDashboard = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
+                <option value="Under Principal">Under Principal</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
-                <option value="Under Principal">Under Principal</option>
-                <option value="Under HOD">Under HOD</option>
               </select>
 
               <select
@@ -404,66 +398,58 @@ const HomeDashboard = () => {
 
         {/* Request Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Request ID</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Applicant</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Category</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Amount</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Submitted ↓</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Applicant</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {recentRequests.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="py-8 text-center text-gray-500">
-                    No requests found. {allRequests.length === 0 ? 'No requests have been submitted yet.' : 'Try adjusting your filters.'}
-                  </td>
-                </tr>
-              ) : (
-                recentRequests.map((request, index) => (
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {recentRequests.map((request, index) => (
                 <motion.tr
                   key={request.id}
-                  className="border-b border-gray-100 hover:bg-gray-50"
+                  className="hover:bg-slate-50/60"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
                   <td className="py-3 px-4">
-                    <span className="font-mono text-sm text-gray-900">{request.id}</span>
+                    <span className="font-mono text-sm text-slate-900">{request.id}</span>
                   </td>
                   <td className="py-3 px-4">
                     <div>
-                      <div className="font-medium text-gray-900">{request.applicantName}</div>
-                      <div className="text-sm text-gray-500">{request.department}</div>
+                      <div className="font-medium text-slate-900">{request.applicantName}</div>
+                      <div className="text-sm text-slate-500">{request.department}</div>
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="text-sm text-gray-700">{request.applicantType}</span>
+                    <span className="text-sm text-slate-700">{request.applicantType}</span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="text-sm text-gray-700">{request.category}</span>
+                    <span className="text-sm text-slate-700">{request.category}</span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="font-medium text-gray-900">{request.amountFormatted || `₹${request.amount?.toLocaleString() || 0}`}</span>
+                    <span className="font-medium text-slate-900">{request.amountFormatted || (String(request.amount).includes('₹') ? request.amount : `₹${request.amount?.toLocaleString() || 0}`)}</span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      request.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${request.status === 'Approved' ? 'bg-green-100 text-green-800' :
                       request.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      request.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                      request.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                        request.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                          request.status === 'Under Principal' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-slate-800'
+                      }`}>
                       {request.status}
                     </span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="text-sm text-gray-700">{request.submittedDate}</span>
+                    <span className="text-sm text-slate-700">{request.submittedDate}</span>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
@@ -474,7 +460,7 @@ const HomeDashboard = () => {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      
+
                       {request.status === 'Under Principal' && (
                         <>
                           <button
@@ -494,7 +480,7 @@ const HomeDashboard = () => {
                           </button>
                         </>
                       )}
-                      
+
                     </div>
                   </td>
                 </motion.tr>
@@ -508,16 +494,16 @@ const HomeDashboard = () => {
       {/* Reject Modal */}
       <AnimatePresence>
         {rejectModal.show && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={closeRejectModal}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
             <motion.div
-              className="fixed inset-0 bg-black/50 transition-opacity duration-200"
-              onClick={closeRejectModal}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-            <motion.div 
-              className="relative z-10 w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-xl"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

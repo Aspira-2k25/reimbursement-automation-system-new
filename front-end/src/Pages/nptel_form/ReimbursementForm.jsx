@@ -135,6 +135,15 @@ const ReimbursementForm = () => {
         formDataToSend.append(key, formData[key]);
       });
 
+      // Set applicantType based on user role
+      const userRole = user?.role || 'Faculty';
+      formDataToSend.append('applicantType', userRole); // Will be HOD, Coordinator, or Faculty
+
+      // Add department from user profile
+      if (user?.department) {
+        formDataToSend.append('department', user.department);
+      }
+
       //append files
       const nptelFile = document.getElementById("nptelResult").files[0];
       const idCardFile = document.getElementById("idCard").files[0];
