@@ -61,9 +61,27 @@ router.post(
         );
       }
 
+      // Determine initial status based on applicant type
+      // HOD applications go directly to Principal (skip HOD review)
+      let initialStatus = "Under HOD"; // Default for Faculty/Coordinator
+      const applicantType = req.body.applicantType;
+
+      console.log('=== FORM SUBMISSION DEBUG ===');
+      console.log('Applicant Type:', applicantType);
+      console.log('User Role from JWT:', req.user.role);
+
+      if (applicantType === 'HOD') {
+        initialStatus = "Under Principal"; // HOD forms bypass HOD review
+        console.log('HOD detected! Setting status to Under Principal');
+      } else {
+        console.log('Not HOD. Status will be:', initialStatus);
+      }
+      console.log('Final status being set:', initialStatus);
+
       const newForm = new Form({
         ...req.body,
         userId, // attach it to the form
+        status: initialStatus, // Set based on applicant type (this should override model default)
         documents: [
           nptelResultUpload
             ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
@@ -75,6 +93,9 @@ router.post(
       });
 
       await newForm.save();
+      console.log('Form saved with status:', newForm.status);
+      console.log('Form saved with applicantType:', newForm.applicantType);
+      console.log('============================');
       res.status(201).json({ message: "Form saved successfully!", form: newForm });
     } catch (err) {
       console.error("Error saving form:", err);

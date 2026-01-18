@@ -57,7 +57,7 @@ export default function StatCard({ title, value, icon: Icon, color = 'blue', sub
             whileHover={{ scale: 1.1, rotate: 5 }}
             transition={{ duration: 0.2 }}
           >
-            <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${iconColorClasses[color]}`} />
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </motion.div>
         )}
       </div>
