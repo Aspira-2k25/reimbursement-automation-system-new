@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Activity, 
-  Search, 
+import {
+  Activity,
+  Search,
   Filter,
   Download,
   RefreshCw,
@@ -21,7 +21,7 @@ import { usePrincipalContext } from './PrincipalLayout'
 
 const ActivityLog = () => {
   const { activityLog } = usePrincipalContext()
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('All')
   const [departmentFilter, setDepartmentFilter] = useState('All')
@@ -31,21 +31,21 @@ const ActivityLog = () => {
   // Filter activities based on search and filters
   const filteredActivities = useMemo(() => {
     return activityLog.filter(activity => {
-      const matchesSearch = 
+      const matchesSearch =
         activity.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
         activity.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
         activity.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
         activity.details.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
       const matchesType = typeFilter === 'All' || activity.type === typeFilter
       const matchesDepartment = departmentFilter === 'All' || activity.department === departmentFilter
-      
+
       // Date filtering
       let matchesDate = true
       if (dateFilter !== 'All') {
         const activityDate = new Date(activity.timestamp)
         const now = new Date()
-        
+
         switch (dateFilter) {
           case 'Today':
             matchesDate = activityDate.toDateString() === now.toDateString()
@@ -55,8 +55,8 @@ const ActivityLog = () => {
             matchesDate = activityDate >= weekAgo
             break
           case 'This Month':
-            matchesDate = activityDate.getMonth() === now.getMonth() && 
-                         activityDate.getFullYear() === now.getFullYear()
+            matchesDate = activityDate.getMonth() === now.getMonth() &&
+              activityDate.getFullYear() === now.getFullYear()
             break
           case 'Last 3 Months':
             const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
@@ -64,7 +64,7 @@ const ActivityLog = () => {
             break
         }
       }
-      
+
       return matchesSearch && matchesType && matchesDepartment && matchesDate
     })
   }, [activityLog, searchQuery, typeFilter, departmentFilter, dateFilter])
@@ -83,17 +83,17 @@ const ActivityLog = () => {
       const now = new Date()
       return activityDate.toDateString() === now.toDateString()
     }).length
-    
+
     const thisWeek = activityLog.filter(activity => {
       const activityDate = new Date(activity.timestamp)
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       return activityDate >= weekAgo
     }).length
-    
-    const approvalActions = activityLog.filter(activity => 
+
+    const approvalActions = activityLog.filter(activity =>
       activity.type === 'approval' || activity.type === 'approved'
     ).length
-    
+
     return { total, today, thisWeek, approvalActions }
   }, [activityLog])
 
@@ -141,7 +141,7 @@ const ActivityLog = () => {
       case 'rejected':
         return 'border-red-200 bg-red-50'
       case 'budget':
-        return 'border-blue-200 bg-blue-50'
+        return 'border-blue-200 bg-green-50'
       case 'policy':
         return 'border-purple-200 bg-purple-50'
       case 'system':
@@ -155,7 +155,7 @@ const ActivityLog = () => {
     const date = new Date(timestamp)
     const now = new Date()
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
-    
+
     if (diffInHours < 1) {
       return 'Just now'
     } else if (diffInHours < 24) {
@@ -173,7 +173,7 @@ const ActivityLog = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <motion.div 
+      <motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -197,7 +197,7 @@ const ActivityLog = () => {
           </motion.button>
           <motion.button
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -208,7 +208,7 @@ const ActivityLog = () => {
       </motion.div>
 
       {/* College Overview */}
-      <motion.div 
+      <motion.div
         className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-4 sm:p-6 text-white"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -234,7 +234,7 @@ const ActivityLog = () => {
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div 
+            <motion.div
               className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
@@ -253,7 +253,7 @@ const ActivityLog = () => {
             value: activityStats.total.toString(),
             subtitle: "All time",
             icon: Activity,
-            color: 'blue'
+            color: 'green'
           },
           {
             title: "Today's Activities",
@@ -267,14 +267,14 @@ const ActivityLog = () => {
             value: activityStats.thisWeek.toString(),
             subtitle: "Last 7 days",
             icon: Clock,
-            color: 'orange'
+            color: 'green'
           },
           {
             title: "Approval Actions",
             value: activityStats.approvalActions.toString(),
             subtitle: "Approvals processed",
             icon: CheckCircle,
-            color: 'purple'
+            color: 'green'
           }
         ].map((stat, index) => (
           <motion.div
@@ -290,10 +290,10 @@ const ActivityLog = () => {
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
                 <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
               </div>
-              <div className={`p-3 rounded-full ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+              <div className={`p-3 rounded-full ${stat.color === 'green' ? 'bg-green-50 text-green-600' :
                 stat.color === 'green' ? 'bg-green-50 text-green-600' :
-                stat.color === 'orange' ? 'bg-orange-50 text-orange-600' :
-                'bg-purple-50 text-purple-600'}`}>
+                  stat.color === 'green' ? 'bg-green-50 text-green-600' :
+                    'bg-green-50 text-green-600'}`}>
                 <stat.icon className="w-6 h-6" />
               </div>
             </div>
@@ -302,7 +302,7 @@ const ActivityLog = () => {
       </div>
 
       {/* Filters and Search */}
-      <motion.div 
+      <motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -325,7 +325,7 @@ const ActivityLog = () => {
                 placeholder="Search activities..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-64"
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm w-full sm:w-64"
               />
             </div>
 
@@ -334,7 +334,7 @@ const ActivityLog = () => {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Types</option>
                 <option value="approval">Approvals</option>
@@ -428,13 +428,12 @@ const ActivityLog = () => {
                         </div>
                       </div>
                       <div className="ml-3 flex-shrink-0">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          activity.type === 'approval' || activity.type === 'approved' ? 'bg-green-100 text-green-800' :
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${activity.type === 'approval' || activity.type === 'approved' ? 'bg-green-100 text-green-800' :
                           activity.type === 'rejection' || activity.type === 'rejected' ? 'bg-red-100 text-red-800' :
-                          activity.type === 'budget' ? 'bg-blue-100 text-blue-800' :
-                          activity.type === 'policy' ? 'bg-purple-100 text-purple-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                            activity.type === 'budget' ? 'bg-green-100 text-blue-800' :
+                              activity.type === 'policy' ? 'bg-purple-100 text-purple-800' :
+                                'bg-gray-100 text-gray-800'
+                          }`}>
                           {activity.type}
                         </span>
                       </div>
