@@ -5,13 +5,15 @@ import { studentFormsAPI } from "../../../services/api"
 import { FileText, CheckCircle, Clock, XCircle } from "lucide-react"
 import "../Dashboard.css"
 import RequestsTable from "./components/RequestsTable.jsx"
+import { useNotificationContext } from "./NotificationContext"
 
 // Fetched data state
-const useStudentRequests = () => {
+const useStudentRequests = (addNotification) => {
   const location = useLocation()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(null)
   const [requests, setRequests] = React.useState([])
+  const [previousRequests, setPreviousRequests] = React.useState([])
   const mountedRef = React.useRef(true)
 
   const fetchRequests = React.useCallback(async () => {
@@ -44,7 +46,30 @@ const useStudentRequests = () => {
         description: f.remarks || f.name || f.description || "",
       }))
 
+      // Check for status changes and generate notifications
+      if (mountedRef.current && previousRequests.length > 0) {
+        mapped.forEach(newRequest => {
+          const oldRequest = previousRequests.find(r => r.id === newRequest.id)
+          if (oldRequest && oldRequest.status !== newRequest.status) {
+            const statusMessages = {
+              'Approved': 'Your request has been approved',
+              'Rejected': 'Your request has been rejected',
+              'Under HOD': 'Your request is now under HOD review',
+              'Under Principal': 'Your request is now under Principal review',
+              'Under Coordinator': 'Your request is now under Coordinator review'
+            }
+            addNotification({
+              type: 'status_change',
+              title: 'Request Status Updated',
+              message: `${statusMessages[newRequest.status] || `Your request status changed to ${newRequest.status}`} - ${newRequest.category}`,
+              time: 'Just now'
+            })
+          }
+        })
+      }
+
       if (mountedRef.current) {
+        setPreviousRequests(mapped)
         setRequests(mapped)
       }
     } catch (e) {
@@ -55,7 +80,7 @@ const useStudentRequests = () => {
     } finally {
       if (mountedRef.current) setLoading(false)
     }
-  }, [])
+  }, [addNotification])
 
   React.useEffect(() => {
     mountedRef.current = true
@@ -122,7 +147,8 @@ function SummaryCard({ title, value, sub }) {
 export default function RequestStatus() {
   // State for search functionality
   const [search, setSearch] = React.useState("")
-  const { loading, error, requests, refetch } = useStudentRequests()
+  const { addNotification } = useNotificationContext()
+  const { loading, error, requests, refetch } = useStudentRequests(addNotification)
 
   // Calculate summary statistics from fetched data
   const summary = React.useMemo(() => ({

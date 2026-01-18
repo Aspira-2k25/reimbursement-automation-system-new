@@ -14,11 +14,13 @@ import {
   Eye,
   Download
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import { usePrincipalContext } from './PrincipalLayout'
 
 const HomeDashboard = () => {
+  const navigate = useNavigate()
   const {
     userProfile,
     allRequests,
@@ -42,8 +44,8 @@ const HomeDashboard = () => {
 
   // Handler functions
   const handleViewRequest = useCallback((request) => {
-    toast.info(`Viewing request ${request.id} for ${request.applicantName}`)
-  }, [])
+    navigate(`/nptel-form/view/${request.id}`)
+  }, [navigate])
 
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)

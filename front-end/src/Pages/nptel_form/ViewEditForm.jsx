@@ -42,7 +42,7 @@ const ViewEditForm = ({ mode = 'view' }) => {
   }, [id, navigate]);
 
   const handleBack = () => {
-    navigate('/dashboard/student/request-status');
+    navigate('/dashboard/requests');
   };
 
   const handleChange = (e) => {
@@ -87,7 +87,7 @@ const ViewEditForm = ({ mode = 'view' }) => {
 
       if (response.ok) {
         toast.success('Form updated successfully!');
-        navigate('/dashboard/student/request-status');
+        navigate('/dashboard/requests');
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to update form');

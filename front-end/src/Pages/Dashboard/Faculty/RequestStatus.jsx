@@ -2,6 +2,7 @@ import React from "react"
 import "../Dashboard.css"
 import { Clock, CheckCircle, XCircle, FileText } from "lucide-react"
 import RequestsTable from "./components/RequestsTable.jsx"
+import { useNotificationContext } from "./NotificationContext"
 
 // Dummy data removed, using dynamic API
 import { facultyFormsAPI } from "../../../services/api"
@@ -50,6 +51,8 @@ export default function RequestStatus() {
   const [requests, setRequests] = React.useState([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(null)
+  const [previousRequests, setPreviousRequests] = React.useState([])
+  const { addNotification } = useNotificationContext()
 
   // Fetch data on mount
   React.useEffect(() => {
@@ -70,6 +73,28 @@ export default function RequestStatus() {
           description: f.remarks || f.name || "NPTEL Reimbursement"
         })) : []
 
+        // Check for status changes and generate notifications
+        if (previousRequests.length > 0) {
+          mapped.forEach(newRequest => {
+            const oldRequest = previousRequests.find(r => r.id === newRequest.id)
+            if (oldRequest && oldRequest.status !== newRequest.status) {
+              const statusMessages = {
+                'Approved': 'Your request has been approved',
+                'Rejected': 'Your request has been rejected',
+                'Under HOD': 'Your request is now under HOD review',
+                'Under Principal': 'Your request is now under Principal review'
+              }
+              addNotification({
+                type: 'status_change',
+                title: 'Request Status Updated',
+                message: `${statusMessages[newRequest.status] || `Your request status changed to ${newRequest.status}`} - ${newRequest.category}`,
+                time: 'Just now'
+              })
+            }
+          })
+        }
+
+        setPreviousRequests(mapped)
         setRequests(mapped)
         setError(null)
       } catch (err) {
@@ -81,7 +106,10 @@ export default function RequestStatus() {
     }
 
     fetchRequests()
-  }, [])
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchRequests, 30000)
+    return () => clearInterval(interval)
+  }, [addNotification])
 
   // Calculate summary statistics from dynamic data
   const summary = {
