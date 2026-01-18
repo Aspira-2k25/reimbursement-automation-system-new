@@ -405,7 +405,7 @@ const HomeDashboard = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody>
               {recentRequests.map((request, index) => (
                 <motion.tr
                   key={request.id}

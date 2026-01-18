@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { useAuth } from '../../../../context/AuthContext'
-import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
-import { toast } from 'react-hot-toast'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
 import DepartmentRoster from './DepartmentRoster'
@@ -25,97 +23,9 @@ const PrincipalLayout = ({ children }) => {
   const { user } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
-  const [userProfile, setUserProfile] = useState({
-    fullName: '',
-    college: '',
-    designation: '',
-    role: 'Principal',
-    email: '',
-    phone: '',
-    joinDate: '',
-    employeeId: ''
-  })
-  const [allRequests, setAllRequests] = useState([])
-  const [departments, setDepartments] = useState([
-    {
-      id: 'it',
-      name: 'Information Technology',
-      hod: { name: 'Dr. Jagan Kumar', email: 'jagan.kumar@college.edu', phone: '+91-9876543210' },
-      totalRequests: 45,
-      pendingRequests: 8,
-      approvedRequests: 32,
-      rejectedRequests: 5,
-      totalDisbursed: 125000,
-      approvalRate: 86,
-      facultyCount: 12,
-      studentCount: 200
-    },
-    {
-      id: 'ce',
-      name: 'Computer Engineering',
-      hod: { name: 'Dr. Rajesh Kumar', email: 'rajesh.kumar@college.edu', phone: '+91-9876543211' },
-      totalRequests: 52,
-      pendingRequests: 8,
-      approvedRequests: 38,
-      rejectedRequests: 6,
-      totalDisbursed: 145000,
-      approvalRate: 86,
-      facultyCount: 15,
-      studentCount: 240
-    },
-    {
-      id: 'cse-aiml',
-      name: 'CSE AIML',
-      hod: { name: 'Dr. Priya Sharma', email: 'priya.sharma@college.edu', phone: '+91-9876543212' },
-      totalRequests: 38,
-      pendingRequests: 5,
-      approvedRequests: 28,
-      rejectedRequests: 5,
-      totalDisbursed: 98000,
-      approvalRate: 85,
-      facultyCount: 10,
-      studentCount: 180
-    },
-    {
-      id: 'cse-ds',
-      name: 'CSE DS',
-      hod: { name: 'Dr. Amit Singh', email: 'amit.singh@college.edu', phone: '+91-9876543213' },
-      totalRequests: 42,
-      pendingRequests: 7,
-      approvedRequests: 30,
-      rejectedRequests: 5,
-      totalDisbursed: 112000,
-      approvalRate: 86,
-      facultyCount: 11,
-      studentCount: 190
-    },
-    {
-      id: 'mech',
-      name: 'Mechanical Engineering',
-      hod: { name: 'Dr. Sunita Patel', email: 'sunita.patel@college.edu', phone: '+91-9876543214' },
-      totalRequests: 35,
-      pendingRequests: 6,
-      approvedRequests: 25,
-      rejectedRequests: 4,
-      totalDisbursed: 89000,
-      approvalRate: 86,
-      facultyCount: 14,
-      studentCount: 220
-    },
-    {
-      id: 'civil',
-      name: 'Civil Engineering',
-      hod: { name: 'Dr. Sunil Kumar', email: 'sunil.kumar@college.edu', phone: '+91-9876543215' },
-      totalRequests: 28,
-      pendingRequests: 4,
-      approvedRequests: 20,
-      rejectedRequests: 4,
-      totalDisbursed: 75000,
-      approvalRate: 83,
-      facultyCount: 10,
-      studentCount: 170
-    }
-  ])
+  const [userProfile, setUserProfile] = useState(initialPrincipalData.userProfile)
+  const [allRequests, setAllRequests] = useState(initialPrincipalData.allRequests)
+  const [departments, setDepartments] = useState(initialPrincipalData.departments)
   const [activityLog, setActivityLog] = useState([])
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
@@ -363,11 +273,11 @@ const PrincipalLayout = ({ children }) => {
         const updatedRequests = prev.map(req =>
           req.id === requestId
             ? {
-              ...req,
-              status: newStatus,
-              lastUpdated: new Date().toISOString().split('T')[0],
-              principalComments: comments
-            }
+                ...req,
+                status: newStatus,
+                lastUpdated: new Date().toISOString().split('T')[0],
+                principalComments: comments
+              }
             : req
         )
 
