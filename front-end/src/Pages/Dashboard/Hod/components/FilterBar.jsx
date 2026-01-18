@@ -96,7 +96,7 @@ const FilterBar = ({
         <h3 className="text-lg font-semibold text-gray-900">Filter & Search</h3>
         <button
           onClick={clearFilters}
-          className="ml-auto text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="ml-auto text-sm text-green-600 hover:text-green-700 font-medium"
         >
           Clear All
         </button>
@@ -116,7 +116,7 @@ const FilterBar = ({
                   type="date"
                   value={dateRange.startDate}
                   onChange={(e) => handleDateChange('startDate', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
                   placeholder="Start Date"
                 />
               </div>
@@ -126,7 +126,7 @@ const FilterBar = ({
                 type="date"
                 value={dateRange.endDate}
                 onChange={(e) => handleDateChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
                 placeholder="End Date"
               />
             </div>
@@ -198,7 +198,7 @@ const FilterBar = ({
             </button>
             <button
               onClick={onExport}
-              className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
               title="Export Data"
             >
               <Download className="w-4 h-4" />
@@ -213,13 +213,13 @@ const FilterBar = ({
           <span className="text-sm font-medium text-gray-700">Active Filters:</span>
 
           {dateRange.startDate && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
               From: {new Date(dateRange.startDate).toLocaleDateString()}
             </span>
           )}
 
           {dateRange.endDate && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
               To: {new Date(dateRange.endDate).toLocaleDateString()}
             </span>
           )}
