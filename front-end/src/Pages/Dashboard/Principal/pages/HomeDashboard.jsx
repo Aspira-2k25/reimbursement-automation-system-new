@@ -23,6 +23,7 @@ const HomeDashboard = () => {
   const { 
     userProfile, 
     allRequests, 
+    loading,
     departments,
     collegeStats,
     updateRequestStatus, 
@@ -49,9 +50,7 @@ const HomeDashboard = () => {
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      updateRequestStatus(request.id, 'Approved', 'Approved by Principal')
-      toast.success(`Request ${request.id} approved for ${request.applicantName}`)
+      await updateRequestStatus(request.id, 'Approved', 'Approved by Principal')
     } catch (error) {
       toast.error('Failed to approve request. Please try again.')
     } finally {
@@ -178,9 +177,7 @@ const HomeDashboard = () => {
     if (rejectReason.trim()) {
       setIsLoading(true)
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
-        toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
+        await updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
         setRejectModal({ show: false, request: null })
         setRejectReason('')
       } catch (error) {
@@ -198,6 +195,18 @@ const HomeDashboard = () => {
   }, [])
 
 
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading requests...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -409,7 +418,14 @@ const HomeDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {recentRequests.map((request, index) => (
+              {recentRequests.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="py-8 text-center text-gray-500">
+                    No requests found. {allRequests.length === 0 ? 'No requests have been submitted yet.' : 'Try adjusting your filters.'}
+                  </td>
+                </tr>
+              ) : (
+                recentRequests.map((request, index) => (
                 <motion.tr
                   key={request.id}
                   className="border-b border-gray-100 hover:bg-gray-50"
@@ -482,7 +498,8 @@ const HomeDashboard = () => {
                     </div>
                   </td>
                 </motion.tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -491,16 +508,16 @@ const HomeDashboard = () => {
       {/* Reject Modal */}
       <AnimatePresence>
         {rejectModal.show && (
-          <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={closeRejectModal}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div
+              className="fixed inset-0 bg-black/50 transition-opacity duration-200"
+              onClick={closeRejectModal}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
             <motion.div 
-              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-xl"
+              className="relative z-10 w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -538,7 +555,7 @@ const HomeDashboard = () => {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
