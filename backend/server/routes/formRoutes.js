@@ -4,6 +4,7 @@ const Form = require("../models/Form");
 const authMiddleware = require("../middleware/auth");
 const upload = require("../middleware/multer");  // <-- multer setup
 const cloudinary = require("../utils/cloudinary");
+const { uploadFile } = require("../utils/cloudinary");
 
 // POST /api/forms/submit
 router.post(
@@ -34,12 +35,13 @@ router.post(
       }
 
       // Upload received files to Cloudinary (if present)
+      // Use memory buffer (serverless) or file path (local dev)
       let nptelResultUpload = null;
       let idCardUpload = null;
 
-      if (req.files?.nptelResult?.[0]?.path) {
-        nptelResultUpload = await cloudinary.uploader.upload(
-          req.files.nptelResult[0].path,
+      if (req.files?.nptelResult?.[0]) {
+        nptelResultUpload = await uploadFile(
+          req.files.nptelResult[0],
           {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
@@ -49,9 +51,9 @@ router.post(
         );
       }
 
-      if (req.files?.idCard?.[0]?.path) {
-        idCardUpload = await cloudinary.uploader.upload(
-          req.files.idCard[0].path,
+      if (req.files?.idCard?.[0]) {
+        idCardUpload = await uploadFile(
+          req.files.idCard[0],
           {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
@@ -270,16 +272,17 @@ router.put(
       }
 
       // Upload new files if provided
+      // Use memory buffer (serverless) or file path (local dev)
       let nptelResultUpload = null;
       let idCardUpload = null;
 
-      if (req.files?.nptelResult?.[0]?.path) {
+      if (req.files?.nptelResult?.[0]) {
         // Delete old file from Cloudinary if exists
         if (form.documents?.[0]?.publicId) {
           await cloudinary.uploader.destroy(form.documents[0].publicId);
         }
-        nptelResultUpload = await cloudinary.uploader.upload(
-          req.files.nptelResult[0].path,
+        nptelResultUpload = await uploadFile(
+          req.files.nptelResult[0],
           {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
@@ -289,13 +292,13 @@ router.put(
         );
       }
 
-      if (req.files?.idCard?.[0]?.path) {
+      if (req.files?.idCard?.[0]) {
         // Delete old file from Cloudinary if exists
         if (form.documents?.[1]?.publicId) {
           await cloudinary.uploader.destroy(form.documents[1].publicId);
         }
-        idCardUpload = await cloudinary.uploader.upload(
-          req.files.idCard[0].path,
+        idCardUpload = await uploadFile(
+          req.files.idCard[0],
           {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",

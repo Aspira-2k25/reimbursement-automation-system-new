@@ -1,4 +1,7 @@
-require("dotenv").config();
+// Only load dotenv in local development (not in Vercel/serverless)
+if (!process.env.VERCEL && !process.env.VERCEL_ENV && process.env.NODE_ENV !== 'production') {
+  require("dotenv").config({ quiet: true }); // Suppress dotenv logs
+}
 const mongoose = require("mongoose");
 
 // Cache connection state across serverless invocations
