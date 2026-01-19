@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Download, 
+import {
+  BarChart3,
+  TrendingUp,
+  Download,
   Calendar,
   Filter,
   Users,
@@ -15,7 +15,27 @@ import ReportLineChart from '../components/ReportLineChart'
 import ReportPieChart from '../components/ReportPieChart'
 import FilterBar from '../components/FilterBar'
 import { usePrincipalContext } from './PrincipalLayout'
-import { calculateCollegeStats, getRequestsByType } from '../data/mockData'
+
+// Helper functions (replacing mockData imports)
+const calculateCollegeStats = (requests) => {
+  const total = requests.length
+  const pending = requests.filter(r => r.status === 'Under Principal').length
+  const approved = requests.filter(r => r.status === 'Approved' || r.status === 'Under Principal').length
+  const rejected = requests.filter(r => r.status === 'Rejected').length
+  const approvedAmount = requests
+    .filter(r => r.status === 'Approved' || r.status === 'Under Principal')
+    .reduce((sum, r) => sum + (parseFloat(String(r.amount).replace(/[₹,]/g, '')) || 0), 0)
+
+  return { total, pending, approved, rejected, approvedAmount }
+}
+
+const getRequestsByType = (requests, type) => {
+  if (type === 'Faculty') {
+    // Include HOD as Faculty since HODs are faculty members
+    return requests.filter(r => r.applicantType === 'Faculty' || r.applicantType === 'HOD')
+  }
+  return requests.filter(r => r.applicantType === type)
+}
 
 const ReportsAndAnalytics = () => {
   const { allRequests, departments, collegeStats } = usePrincipalContext()
@@ -65,23 +85,23 @@ const ReportsAndAnalytics = () => {
   // Calculate filtered statistics with accurate calculations
   const filteredStats = useMemo(() => {
     const stats = calculateCollegeStats(filteredRequests)
-    
+
     // Calculate accurate approval rate: (approved / (total - pending)) * 100
     const processedRequests = stats.total - stats.pending
     const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-    
+
     // Calculate trend percentages based on previous period (simplified for demo)
     // In a real app, you'd compare with previous month/quarter data
     const totalTrend = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0
     const approvedTrend = stats.approved > 0 ? Math.round((stats.approvedAmount / stats.approved) / 1000) : 0
-    
+
     return [
       {
         title: "Total Requests",
         value: stats.total.toString(),
         subtitle: `${approvalRate}% approval rate`,
         icon: BarChart3,
-        color: 'blue',
+        color: 'green',
         trend: totalTrend > 0 ? { direction: 'up', value: `+${totalTrend}%`, percentage: totalTrend } : null
       },
       {
@@ -97,14 +117,14 @@ const ReportsAndAnalytics = () => {
         value: stats.pending.toString(),
         subtitle: "Awaiting approval",
         icon: Calendar,
-        color: 'orange'
+        color: 'green'
       },
       {
         title: "Total Amount",
         value: `₹${stats.approvedAmount.toLocaleString()}`,
         subtitle: "Approved amount",
         icon: IndianRupee,
-        color: 'purple',
+        color: 'green',
         trend: stats.approvedAmount > 0 ? { direction: 'up', value: `+${Math.round(stats.approvedAmount / 1000)}%` } : null
       }
     ]
@@ -153,26 +173,26 @@ const ReportsAndAnalytics = () => {
   const monthlyTrendData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     const currentYear = new Date().getFullYear()
-    
+
     // Group filtered requests by month
     const monthlyData = filteredRequests.reduce((acc, request) => {
       const date = new Date(request.submittedDate)
       const month = date.getMonth()
       const monthName = months[month]
-      
+
       if (!acc[monthName]) {
         acc[monthName] = { requests: 0, amount: 0 }
       }
-      
+
       acc[monthName].requests += 1
       if (request.status === 'Approved') {
         const amount = parseFloat(request.amount.replace(/[₹,]/g, ''))
         acc[monthName].amount += isNaN(amount) ? 0 : amount
       }
-      
+
       return acc
     }, {})
-    
+
     // Convert to array format for the chart
     return months.slice(0, 6).map(month => ({
       month,
@@ -181,9 +201,9 @@ const ReportsAndAnalytics = () => {
     }))
   }, [filteredRequests])
 
-  // Get unique values for filters
-  const uniqueCategories = [...new Set(allRequests.map(r => r.category))]
-  const uniqueStatuses = [...new Set(allRequests.map(r => r.status))]
+  // Get unique values for filters - use fixed valid Principal statuses
+  const uniqueCategories = [...new Set(allRequests.map(r => r.category))].filter(Boolean)
+  const uniqueStatuses = ['Under Principal', 'Approved', 'Rejected']
 
   const handleExport = () => {
     toast.success('Report exported successfully!')
@@ -196,18 +216,18 @@ const ReportsAndAnalytics = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <motion.div 
+      <motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-          <div>
+        <div>
           <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
           <p className="text-gray-600 mt-1">
             Comprehensive reimbursement analytics and insights
             {selectedDepartment !== 'All' && (
-              <span className="ml-2 inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+              <span className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full">
                 Department: {selectedDepartment}
               </span>
             )}
@@ -215,7 +235,7 @@ const ReportsAndAnalytics = () => {
         </div>
         <motion.button
           onClick={handleExport}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -255,7 +275,7 @@ const ReportsAndAnalytics = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trend Chart */}
-        <ReportLineChart 
+        <ReportLineChart
           data={monthlyTrendData}
           title="Monthly Trend"
           height={350}
@@ -267,17 +287,17 @@ const ReportsAndAnalytics = () => {
           title="Status Distribution"
           height={350}
         />
-        </div>
-        
+      </div>
+
       {/* Department Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Category Breakdown */}
         <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Category Breakdown</h3>
             <Filter className="w-5 h-5 text-gray-400" />
           </div>
-          
+
           <div className="space-y-4">
             {categoryBreakdown.map((category, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -300,32 +320,32 @@ const ReportsAndAnalytics = () => {
             <Users className="w-5 h-5 text-blue-600" />
             <h3 className="text-lg font-semibold text-gray-900">Performance Metrics</h3>
           </div>
-          
+
           <div className="space-y-4">
             {(() => {
               const stats = calculateCollegeStats(filteredRequests)
               const processedRequests = stats.total - stats.pending
               const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
               const avgAmount = stats.approved > 0 ? Math.round(stats.approvedAmount / stats.approved) : 0
-              
+
               // Calculate average processing days based on actual data
               const avgProcessingDays = (() => {
-                const processedRequests = filteredRequests.filter(req => 
+                const processedRequests = filteredRequests.filter(req =>
                   req.status === 'Approved' || req.status === 'Rejected'
                 )
-                
+
                 if (processedRequests.length === 0) return 0
-                
+
                 const totalDays = processedRequests.reduce((sum, req) => {
                   const submittedDate = new Date(req.submittedDate)
                   const lastUpdated = new Date(req.lastUpdated)
                   const daysDiff = Math.ceil((lastUpdated - submittedDate) / (1000 * 60 * 60 * 24))
                   return sum + Math.max(1, daysDiff) // Minimum 1 day
                 }, 0)
-                
+
                 return Math.round((totalDays / processedRequests.length) * 10) / 10 // Round to 1 decimal
               })()
-              
+
               return (
                 <>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -335,15 +355,15 @@ const ReportsAndAnalytics = () => {
                       {approvalRate >= 80 ? 'Excellent' : approvalRate >= 60 ? 'Good' : 'Needs improvement'}
                     </div>
                   </div>
-                  
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{avgProcessingDays}</div>
                     <div className="text-sm text-gray-600">Avg. Processing Days</div>
                     <div className="text-xs text-gray-500 mt-1">
                       {avgProcessingDays <= 3 ? 'Fast processing' : avgProcessingDays <= 7 ? 'Good' : 'Slow'}
                     </div>
                   </div>
-                  
+
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
                     <div className="text-2xl font-bold text-purple-600">
                       ₹{avgAmount.toLocaleString()}
@@ -361,7 +381,7 @@ const ReportsAndAnalytics = () => {
       {/* Faculty vs Student Analysis */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Faculty vs Student Analysis</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">Faculty Requests</h4>
@@ -374,19 +394,19 @@ const ReportsAndAnalytics = () => {
                     <div className="text-lg font-bold text-green-600">{facultyStats.total}</div>
                     <div className="text-xs text-gray-600">Total</div>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded">
+                  <div className="text-center p-3 bg-green-50 rounded">
                     <div className="text-lg font-bold text-blue-600">{facultyStats.approved}</div>
                     <div className="text-xs text-gray-600">Approved</div>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded">
-                    <div className="text-lg font-bold text-purple-600">₹{facultyStats.approvedAmount.toLocaleString()}</div>
+                  <div className="text-center p-3 bg-green-50 rounded">
+                    <div className="text-lg font-bold text-green-600">₹{facultyStats.approvedAmount.toLocaleString()}</div>
                     <div className="text-xs text-gray-600">Amount</div>
                   </div>
                 </div>
               )
             })()}
           </div>
-          
+
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">Student Requests</h4>
             {(() => {
@@ -398,12 +418,12 @@ const ReportsAndAnalytics = () => {
                     <div className="text-lg font-bold text-green-600">{studentStats.total}</div>
                     <div className="text-xs text-gray-600">Total</div>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded">
-                    <div className="text-lg font-bold text-blue-600">{studentStats.approved}</div>
+                  <div className="text-center p-3 bg-green-50 rounded">
+                    <div className="text-lg font-bold text-green-600">{studentStats.approved}</div>
                     <div className="text-xs text-gray-600">Approved</div>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded">
-                    <div className="text-lg font-bold text-purple-600">₹{studentStats.approvedAmount.toLocaleString()}</div>
+                  <div className="text-center p-3 bg-green-50 rounded">
+                    <div className="text-lg font-bold text-green-600">₹{studentStats.approvedAmount.toLocaleString()}</div>
                     <div className="text-xs text-gray-600">Amount</div>
                   </div>
                 </div>

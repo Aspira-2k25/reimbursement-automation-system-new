@@ -145,7 +145,7 @@ router.get(
 
       // Fetch forms with status "Pending" (awaiting coordinator approval)
       const forms = await StudentForm.find({ status: "Pending" }).sort({ createdAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching pending forms:", err);
@@ -167,10 +167,10 @@ router.get(
       }
 
       // Fetch forms with status "Under HOD", "Under Principal", or "Approved"
-      const forms = await StudentForm.find({ 
+      const forms = await StudentForm.find({
         status: { $in: ["Under HOD", "Under Principal", "Approved"] }
       }).sort({ updatedAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching approved forms:", err);
@@ -192,10 +192,10 @@ router.get(
       }
 
       // Fetch forms with status "Rejected"
-      const forms = await StudentForm.find({ 
+      const forms = await StudentForm.find({
         status: "Rejected"
       }).sort({ updatedAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching rejected forms:", err);
@@ -216,9 +216,34 @@ router.get(
         return res.status(403).json({ error: "Forbidden: Only HODs and principals can access this endpoint" });
       }
 
-      // Fetch forms with status "Under HOD" (approved by coordinator, awaiting HOD approval)
-      const forms = await StudentForm.find({ status: "Under HOD" }).sort({ updatedAt: -1 });
-      
+      // Get HOD's department for filtering
+      const hodDepartment = req.user.department;
+      console.log('Student Forms - HOD Department:', hodDepartment);
+
+      // Build query
+      let query = { status: "Under HOD" };
+
+      // If HOD has a department, filter by it OR forms without department (Principal sees all)
+      if (hodDepartment && userRole === 'hod') {
+        query = {
+          $and: [
+            { status: "Under HOD" },
+            {
+              $or: [
+                { department: hodDepartment },
+                { department: { $exists: false } },
+                { department: null },
+                { department: "" }
+              ]
+            }
+          ]
+        };
+      }
+
+      console.log('Fetching student forms with query:', JSON.stringify(query));
+      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
+      console.log('Student forms for HOD found:', forms.length);
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching HOD forms:", err);
@@ -269,30 +294,30 @@ router.get(
     try {
       // Try to find by MongoDB _id first, then by applicationId
       let form = await StudentForm.findById(req.params.id);
-      
+
       // If not found by _id, try applicationId
       if (!form) {
         form = await StudentForm.findOne({ applicationId: req.params.id });
       }
-      
+
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
       }
-      
+
       // Check access permissions
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
-      
+
       // Allow access if:
       // 1. User is the owner of the form
       // 2. User is a coordinator, HOD, or principal (they need to view requests)
       const isOwner = form.userId === userId;
       const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
-      
+
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      
+
       return res.json({ form });
     } catch (err) {
       console.error("Error fetching form by id:", err);
@@ -309,16 +334,16 @@ router.put(
     try {
       // Try to find by MongoDB _id first, then by applicationId
       let form = await StudentForm.findById(req.params.id);
-      
+
       // If not found by _id, try applicationId
       if (!form) {
         form = await StudentForm.findOne({ applicationId: req.params.id });
       }
-      
+
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
       }
-      
+
       // Use the MongoDB _id for the update
       const formId = form._id;
 
@@ -326,26 +351,26 @@ router.put(
       const isOwner = form.userId === userId;
       const userRole = req.user.role?.toLowerCase();
       const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
-      
+
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
       // Determine allowed fields based on user role and form status
       let allowedUpdates = [];
-      
+
       if (isOwner && form.status === 'Pending') {
         // Students can update their own pending forms (all editable fields)
         allowedUpdates = [
-          'name', 'studentId', 'division', 'email', 'academicYear', 
-          'amount', 'accountName', 'ifscCode', 'accountNumber', 
+          'name', 'studentId', 'division', 'email', 'academicYear',
+          'amount', 'accountName', 'ifscCode', 'accountNumber',
           'remarks', 'documents'
         ];
       } else if (isOwner) {
         // Students can only update remarks for non-pending forms
         allowedUpdates = ['remarks'];
       }
-      
+
       if (userRole === 'coordinator') {
         // Coordinators can approve/reject pending requests and update status to "Under HOD" or "Rejected"
         if (form.status === 'Pending') {

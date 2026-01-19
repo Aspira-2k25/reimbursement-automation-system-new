@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+// Use env var for API URL - same as api.js
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -31,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (username, password) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   // In production, send the credential to your backend to verify with Google
   // and return an app-specific JWT and user object with role
   const loginWithGoogle = async (credential) => {
-    const response = await fetch('http://localhost:5000/api/auth/google', {
+    const response = await fetch(`${API_BASE_URL}/auth/google`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential })

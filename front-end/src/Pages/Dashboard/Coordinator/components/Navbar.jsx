@@ -3,11 +3,12 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { useAuth } from "../../../../context/AuthContext.jsx"
 import { useNavigate } from "react-router-dom"
-import { Home, FileText, CheckCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
+import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
+import { Check, CheckCheck } from "lucide-react"
 import { toast } from "react-hot-toast"
 
-export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile }) {
+export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile, notifications = [], markNotificationAsRead, markAllNotificationsAsRead }) {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -20,6 +21,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
     { id: "home", label: "Home", icon: Home },
     { id: "apply", label: "Apply for Reimbursement", icon: FileText },
     { id: "approved", label: "Approved Applications", icon: CheckCircle },
+    { id: "rejected", label: "Rejected Applications", icon: XCircle },
   ]
 
   const handleProfileSettings = useCallback(() => {
@@ -82,62 +84,77 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
   }, [])
 
   return (
-    <nav className="shadow-sm" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)'}}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
-        <div className="flex justify-between items-center h-14 sm:h-16">
-          {/* Logo and Title - Responsive */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center" style={{background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)'}}>
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white rounded-md opacity-90"></div>
+    <nav className="shadow-sm" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)' }}>
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between lg:justify-normal h-16">
+          {/* Left Section: Logo - Flex-1 to push center items to true center */}
+          <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)' }}>
+              <div className="w-4 h-4 bg-white rounded-md opacity-90"></div>
             </div>
-            <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+            <span className="text-lg lg:text-xl font-semibold text-white truncate">
               Reimbursement Portal
             </span>
           </div>
 
-          {/* Desktop Navigation - Responsive */}
-          <div className="hidden lg:flex items-center space-x-4 xl:space-x-6">
+          {/* Center Section: Navigation - Centered and spacious */}
+          {/* Enhanced with sliding toggle animation */}
+          <div className="hidden lg:grid grid-cols-4 relative p-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10" style={{ width: 'max-content', minWidth: '680px' }}>
+            {/* Sliding animation block */}
+            <div
+              className="absolute top-1.5 bottom-1.5 rounded-xl shadow-sm border border-white/20 backdrop-blur-sm transition-all duration-300 ease-out z-0"
+              style={{
+                background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 100%)',
+                width: 'calc(25% - 6px)',
+                left: `calc(${navItems.findIndex(item => item.id === activeTab) * 25}% + 3px)`
+              }}
+            />
+
             {navItems.map((item) => {
               const Icon = item.icon
+              const isActive = activeTab === item.id
               return (
                 <button
                   key={item.id}
                   onClick={() => handleNavItemClick(item.id)}
-                  className={`flex items-center gap-1.5 xl:gap-2 px-2 xl:px-3 py-1.5 xl:py-2 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${
-                    activeTab === item.id
-                      ? "bg-white/20 text-white shadow-sm"
-                      : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
-                  }`}
+                  className={`relative z-10 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-0 ${isActive
+                    ? "text-white"
+                    : "text-white/70 hover:text-white"
+                    }`}
                 >
-                  <Icon className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
-                  <span className="hidden xl:inline">{item.label}</span>
-                  <span className="xl:hidden">{item.label.split(' ')[0]}</span>
+                  <Icon className={`h-4 w-4 transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100'}`} />
+                  <span className={`transition-all duration-300 ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                    {item.label}
+                  </span>
                 </button>
               )
             })}
           </div>
 
-          {/* Right Side - Profile and Notifications - Responsive */}
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <NotificationMenu />
+          {/* Right Section: Profile & Notifications - Flex-1 to balance the left side */}
+          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4">
+            <NotificationMenu 
+              notifications={notifications}
+              markNotificationAsRead={markNotificationAsRead}
+              markAllNotificationsAsRead={markAllNotificationsAsRead}
+            />
 
             <div className="relative" ref={profileDropdownRef}>
               <button
                 onClick={toggleProfileDropdown}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${
-                  isProfileDropdownOpen 
-                    ? "text-white bg-white/20" 
-                    : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/15"
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-0 ${isProfileDropdownOpen
+                  ? "bg-white/20 border-white/20 shadow-lg text-white"
+                  : "bg-white/10 border-white/10 text-white/90 hover:bg-white/20 hover:border-white/20 hover:shadow-lg"
+                  }`}
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center" style={{backgroundColor: '#182628'}}>
-                  <span className="text-white text-xs sm:text-sm font-medium">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#182628' }}>
+                  <span className="text-white text-sm font-medium">
                     {userProfile?.fullName
                       ? userProfile.fullName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2)
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
                       : "CC"}
                   </span>
                 </div>
@@ -146,13 +163,11 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                     {userProfile?.fullName || "Class Cordinator"}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {userProfile?.role || "Coordinator"} • {userProfile?.department || "Information Technology"}
+                    {userProfile?.role || "Coordinator"}
                   </div>
-                  <div className="text-xs text-gray-500">{userProfile?.designation || "Class Coordinator"}</div>
                 </div>
-                <ChevronDown className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-200 ${
-                  isProfileDropdownOpen ? 'rotate-180' : ''
-                }`} />
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''
+                  }`} />
               </button>
 
               {/* Profile Dropdown - Enhanced with smooth transitions */}
@@ -163,8 +178,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                       onClick={handleProfileSettings}
                       className="flex items-center gap-2 sm:gap-3 w-full px-2 sm:px-3 py-2 sm:py-3 rounded-md hover:bg-[#65CCB8]/40 active:bg-[#65CCB8]/60 transition-colors focus:outline-none"
                     >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 40%, white)'}}>
-                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" style={{color: '#3B945E'}} />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 40%, white)' }}>
+                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#3B945E' }} />
                       </div>
                       <div className="text-left">
                         <div className="text-xs sm:text-sm font-medium text-[#182628]">Profile Settings</div>
@@ -192,13 +207,12 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             {/* Mobile menu button - Enhanced */}
             <button
               onClick={toggleMobileMenu}
-              className={`lg:hidden p-1.5 sm:p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                isMobileMenuOpen 
-                  ? "text-blue-600 bg-blue-50" 
-                  : "text-gray-600 hover:text-blue-600 hover:bg-gray-50 active:bg-gray-100"
-              }`}
+              className={`lg:hidden p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60 focus:ring-offset-2 ${isMobileMenuOpen
+                ? "text-white bg-white/20"
+                : "text-white/80 hover:text-white hover:bg-white/20 active:bg-white/30"
+                }`}
             >
-              {isMobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
@@ -213,11 +227,10 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                   <button
                     key={item.id}
                     onClick={() => handleNavItemClick(item.id)}
-                    className={`flex items-center gap-2 w-full px-3 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      activeTab === item.id
-                        ? "bg-blue-100 text-blue-700 shadow-sm"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-gray-50 active:bg-gray-100"
-                    }`}
+                    className={`flex items-center gap-2 w-full px-3 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8] focus:ring-offset-2 ${activeTab === item.id
+                      ? "bg-[#65CCB8]/30 text-[#3B945E] shadow-sm"
+                      : "text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20"
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}

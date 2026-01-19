@@ -14,7 +14,7 @@ export const useBackNavigation = () => {
     // Navigate based on user role
     switch (user.role?.toLowerCase()) {
       case 'student':
-        navigate('/dashboard/student');
+        navigate('/dashboard');
         break;
       case 'faculty':
         navigate('/dashboard/faculty');
