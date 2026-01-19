@@ -111,25 +111,57 @@ const RequestTable = ({
    */
   const exportToCSV = () => {
     const headers = ['ID', 'Applicant', 'Type', 'Category', 'Amount', 'Status', 'Submitted Date']
+
+    // Helper function to escape CSV fields (wrap in quotes if contains comma or quotes)
+    const escapeCSV = (value) => {
+      if (value === null || value === undefined) return ''
+      const stringValue = String(value)
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      return stringValue
+    }
+
+    // Helper function to clean amount - remove currency symbol and format as plain number
+    const cleanAmount = (amount) => {
+      if (!amount) return '0'
+      // Remove rupee symbol, commas, and any other non-numeric characters except decimal
+      const cleaned = String(amount).replace(/[₹,\s]/g, '').replace(/[^\d.]/g, '')
+      return cleaned || '0'
+    }
+
+    // Format date for export (DD-MM-YYYY)
+    const formatExportDate = (dateString) => {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const year = date.getFullYear()
+      return `${day}-${month}-${year}`
+    }
+
     const csvContent = [
       headers.join(','),
       ...sortedRequests.map(request => [
-        request.id,
-        request.applicantName,
-        request.applicantType,
-        request.category,
-        request.amount,
-        request.status,
-        request.submittedDate
+        escapeCSV(request.id),
+        escapeCSV(request.applicantName),
+        escapeCSV(request.applicantType),
+        escapeCSV(request.category),
+        cleanAmount(request.amount),
+        escapeCSV(request.status),
+        formatExportDate(request.submittedDate)
       ].join(','))
     ].join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv' })
+    // Add UTF-8 BOM for proper Excel encoding
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `reimbursement-requests-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
+    window.URL.revokeObjectURL(url)
   }
 
   return (
@@ -230,63 +262,61 @@ const RequestTable = ({
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{request.id}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${
-                      request.applicantType === 'Student' ? 'bg-blue-600' : 'bg-green-600'
-                    }`}>
-                      {request.applicantType === 'Student' ? (
-                        <GraduationCap className="w-4 h-4" />
-                      ) : (
-                        <User className="w-4 h-4" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{request.applicantName}</div>
-                      <div className="text-sm text-gray-500">
-                        {request.applicantType === 'Student' ? request.year : request.designation}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{request.id}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${request.applicantType === 'Student' ? 'bg-blue-600' : 'bg-green-600'
+                        }`}>
+                        {request.applicantType === 'Student' ? (
+                          <GraduationCap className="w-4 h-4" />
+                        ) : (
+                          <User className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{request.applicantName}</div>
+                        <div className="text-sm text-gray-500">
+                          {request.applicantType === 'Student' ? request.year : request.designation}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    request.applicantType === 'Student'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {request.applicantType}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{request.category}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900">{request.amount}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <StatusPill status={request.status} />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(request.submittedDate)}
-                  </div>
-                </td>
-                {showActions && (
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <ActionButtons
-                      request={request}
-                      onView={onView}
-                      onApprove={onApprove}
-                      onReject={onReject}
-                      isLoading={isLoading}
-                    />
                   </td>
-                )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${request.applicantType === 'Student'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-green-100 text-green-800'
+                      }`}>
+                      {request.applicantType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{request.category}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900">{request.amount}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <StatusPill status={request.status} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <Calendar className="w-4 h-4" />
+                      {formatDate(request.submittedDate)}
+                    </div>
+                  </td>
+                  {showActions && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <ActionButtons
+                        request={request}
+                        onView={onView}
+                        onApprove={onApprove}
+                        onReject={onReject}
+                        isLoading={isLoading}
+                      />
+                    </td>
+                  )}
                 </motion.tr>
               ))}
             </AnimatePresence>
@@ -315,11 +345,10 @@ const RequestTable = ({
                 <button
                   key={i + 1}
                   onClick={() => handlePageChange(i + 1)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === i + 1
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === i + 1
                       ? 'bg-blue-600 text-white'
                       : 'border border-gray-200 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>

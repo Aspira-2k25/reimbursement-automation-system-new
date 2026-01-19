@@ -7,6 +7,7 @@ import StatCard from "./components/StatCard"
 import RequestTable from "./components/RequestTable"
 import ApplyReimbursement from "./ApplyReimbursement"
 import ApprovedRequest from "./ApprovedRequest"
+import RejectedApplications from "./RejectedApplications"
 import ProfileSettings from "./ProfileSettings"
 import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide-react"
@@ -46,6 +47,7 @@ export default function CoordinatorDashboard() {
   const [viewModal, setViewModal] = useState({ show: false, request: null })
   const [viewLoading, setViewLoading] = useState(false)
   const [requestDetails, setRequestDetails] = useState(null)
+  const [notifications, setNotifications] = useState([])
 
   // Helper function to map backend data to table format
   const mapFormToRequest = (f) => ({
@@ -122,6 +124,30 @@ export default function CoordinatorDashboard() {
       const mappedRejected = rejectedForms.map(mapFormToRequest)
 
       console.log('Mapped pending:', mappedPending.length, 'Mapped approved:', mappedApproved.length, 'Mapped rejected:', mappedRejected.length)
+
+      // Check for new requests and generate notifications
+      const previousTotal = studentRequests.length + approvedRequests.length + rejectedRequests.length
+      const currentTotal = mappedPending.length + mappedApproved.length + mappedRejected.length
+      
+      if (previousTotal > 0 && currentTotal > previousTotal) {
+        // New request detected
+        const newRequests = [...mappedPending, ...mappedApproved, ...mappedRejected]
+        const previousRequestIds = new Set([...studentRequests, ...approvedRequests, ...rejectedRequests].map(r => r.id))
+        const newRequest = newRequests.find(r => !previousRequestIds.has(r.id))
+        
+        if (newRequest) {
+          const newNotification = {
+            id: Date.now(),
+            type: 'request',
+            title: 'New Reimbursement Request',
+            message: `${newRequest.studentName} submitted a new ${newRequest.category} request`,
+            time: 'Just now',
+            unread: true,
+            timestamp: new Date().toISOString()
+          }
+          setNotifications(prev => [newNotification, ...prev])
+        }
+      }
 
       setStudentRequests(mappedPending)
       setApprovedRequests(mappedApproved)
@@ -224,6 +250,18 @@ export default function CoordinatorDashboard() {
       // Refresh the requests to get updated data from server
       await fetchRequests()
 
+      // Add notification for approval
+      const newNotification = {
+        id: Date.now(),
+        type: 'status_change',
+        title: 'Request Approved',
+        message: `${request.studentName}'s request has been approved and sent to HOD`,
+        time: 'Just now',
+        unread: true,
+        timestamp: new Date().toISOString()
+      }
+      setNotifications(prev => [newNotification, ...prev])
+
       toast.success(`Request ${request.id} approved and sent to HOD for ${request.studentName}`)
     } catch (error) {
       console.error('Error approving request:', error)
@@ -251,6 +289,18 @@ export default function CoordinatorDashboard() {
 
         // Refresh the requests to get updated data from server
         await fetchRequests()
+
+        // Add notification for rejection
+        const newNotification = {
+          id: Date.now(),
+          type: 'status_change',
+          title: 'Request Rejected',
+          message: `${rejectModal.request.studentName}'s request has been rejected: ${rejectReason}`,
+          time: 'Just now',
+          unread: true,
+          timestamp: new Date().toISOString()
+        }
+        setNotifications(prev => [newNotification, ...prev])
 
         toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
         setRejectModal({ show: false, request: null })
@@ -295,9 +345,9 @@ export default function CoordinatorDashboard() {
 
             {/* Welcome Banner - Responsive */}
             <div className="flex justify-center mb-6 sm:mb-8">
-              <div className="bg-blue-50 bg-opacity-60 px-4 sm:px-6 py-2 sm:py-3 rounded-lg border border-blue-100 w-full max-w-2xl">
+              <div className="bg-[#65CCB8]/20 px-4 sm:px-6 py-2 sm:py-3 rounded-lg border border-[#65CCB8]/40 w-full max-w-2xl">
                 <div className="text-center">
-                  <h2 className="text-base sm:text-lg font-medium text-blue-800 mb-1">
+                  <h2 className="text-base sm:text-lg font-medium text-[#3B945E] mb-1">
                     WELCOME, {userProfile?.fullName} 👋
                   </h2>
                 </div>
@@ -322,7 +372,7 @@ export default function CoordinatorDashboard() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-2 sm:gap-0">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B945E]" />
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                     Student Reimbursement Requests
                   </h3>
@@ -356,12 +406,31 @@ export default function CoordinatorDashboard() {
         return <ApplyReimbursement />
       case "approved":
         return <ApprovedRequest approvedRequests={approvedRequests} />
+      case "rejected":
+        return <RejectedApplications rejectedRequests={rejectedRequests} />
       case "profile":
         return <ProfileSettings userProfile={userProfile} setUserProfile={setUserProfile} />
       default:
         return null
     }
   }
+
+  // Notification management functions
+  const markNotificationAsRead = useCallback((notificationId) => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === notificationId
+          ? { ...notification, unread: false }
+          : notification
+      )
+    )
+  }, [])
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications(prev =>
+      prev.map(notification => ({ ...notification, unread: false }))
+    )
+  }, [])
 
   return (
     <div className="min-h-screen bg-[color:var(--color-moss-lime)]/10">
@@ -370,6 +439,9 @@ export default function CoordinatorDashboard() {
         setActiveTab={setActiveTab}
         userProfile={userProfile}
         setUserProfile={setUserProfile}
+        notifications={notifications}
+        markNotificationAsRead={markNotificationAsRead}
+        markAllNotificationsAsRead={markAllNotificationsAsRead}
       />
       <PageContainer>{renderContent()}</PageContainer>
 
@@ -397,7 +469,7 @@ export default function CoordinatorDashboard() {
 
             {viewLoading ? (
               <div className="flex items-center justify-center py-10">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#3B945E]" />
               </div>
             ) : (
               <div className="space-y-6">

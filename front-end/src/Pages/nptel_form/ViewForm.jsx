@@ -15,8 +15,11 @@ export default function ViewForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Select API based on user role
-        const api = user?.role === 'Faculty' ? facultyFormsAPI : studentFormsAPI;
+        // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API, Students use student-forms)
+        const userRole = user?.role?.toLowerCase();
+        const api = (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal')
+          ? facultyFormsAPI
+          : studentFormsAPI;
 
         // Note: facultyFormsAPI might return the form directly or wrapped. 
         // Student API returns { form: ... }, let's handle both.
@@ -79,7 +82,20 @@ export default function ViewForm() {
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
         <div className="mb-4">
           <button
-            onClick={() => navigate('/dashboard/requests')}
+            onClick={() => {
+              const userRole = user?.role?.toLowerCase();
+              if (userRole === 'coordinator') {
+                navigate('/dashboard/coordinator');
+              } else if (userRole === 'hod') {
+                navigate('/dashboard/hod/request-status');
+              } else if (userRole === 'principal') {
+                navigate('/dashboard/principal');
+              } else if (userRole === 'faculty') {
+                navigate('/dashboard/faculty/requests');
+              } else {
+                navigate('/dashboard/requests');
+              }
+            }}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -104,7 +120,9 @@ export default function ViewForm() {
               <div className="mt-1 text-gray-900">{formData.name}</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600">Student ID</label>
+              <label className="block text-sm font-medium text-gray-600">
+                {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID' : 'Student ID'}
+              </label>
               <div className="mt-1 text-gray-900">{formData.studentId}</div>
             </div>
             <div>
@@ -178,7 +196,7 @@ export default function ViewForm() {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors duration-150"
               >
                 <span className="text-sm">
-                  {index === 0 ? 'NPTEL Result' : 'Student ID Card'}
+                  {index === 0 ? 'NPTEL Result' : ((user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID Card' : 'Student ID Card')}
                 </span>
                 <ExternalLink className="h-4 w-4" />
               </a>
