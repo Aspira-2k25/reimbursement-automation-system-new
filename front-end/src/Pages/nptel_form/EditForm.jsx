@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
 import { useAuth } from '../../context/AuthContext'; // Import useAuth   
@@ -18,8 +19,11 @@ export default function EditForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Select API based on user role
-        const api = user?.role === 'Faculty' ? facultyFormsAPI : studentFormsAPI;
+        // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API, Students use student-forms)
+        const userRole = user?.role?.toLowerCase();
+        const api = (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal')
+          ? facultyFormsAPI
+          : studentFormsAPI;
 
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures
@@ -28,7 +32,7 @@ export default function EditForm() {
         setErrors({});
       } catch (err) {
         console.error('Error fetching form:', err);
-        alert(err.error || 'Failed to fetch form details');
+        toast.error(err.error || 'Failed to fetch form details');
         navigateBack();
       } finally {
         setLoading(false);
@@ -162,20 +166,28 @@ export default function EditForm() {
           formDataToSend.documents = documents;
         } catch (error) {
           console.error('Error uploading files:', error);
-          alert('Failed to upload files. Please try again.');
+          toast.error('Failed to upload files. Please try again.');
           return;
         }
       }
 
-      // Select API based on user role
-      const api = user?.role === 'Faculty' ? facultyFormsAPI : studentFormsAPI;
+      // Select API based on user role (Faculty and Coordinator use forms API)
+      const userRole = user?.role?.toLowerCase();
+      const api = (userRole === 'faculty' || userRole === 'coordinator') ? facultyFormsAPI : studentFormsAPI;
       await api.updateById(id, formDataToSend);
 
-      alert('Form updated successfully!');
-      navigate('/dashboard/requests');
+      toast.success('Form updated successfully!');
+      // Navigate based on user role
+      if (userRole === 'coordinator') {
+        navigate('/dashboard/coordinator');
+      } else if (userRole === 'faculty') {
+        navigate('/dashboard/faculty/requests');
+      } else {
+        navigate('/dashboard/requests');
+      }
     } catch (err) {
       console.error('Error updating form:', err);
-      alert(err.error || 'Failed to update form. Please try again.');
+      toast.error(err.error || 'Failed to update form. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -227,7 +239,9 @@ export default function EditForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Student ID *</label>
+              <label className="block text-sm font-medium text-gray-700">
+                {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID *' : 'Student ID *'}
+              </label>
               <input
                 type="text"
                 name="studentId"
@@ -269,7 +283,7 @@ export default function EditForm() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Student ID Card
+                  {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID Card' : 'Student ID Card'}
                 </label>
                 <input
                   type="file"
