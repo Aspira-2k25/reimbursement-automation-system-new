@@ -25,8 +25,17 @@ app.use(express.urlencoded({ extended: true }));
 
 // Optional: serve static uploaded files (if you store locally in 'public' or 'uploads')
 // Adjust if you store in cloud (S3/Cloudinary) instead
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/public', express.static(path.join(__dirname, 'public')));
+// In serverless, these directories might not exist, so we check first
+const fs = require('fs');
+const uploadsPath = path.join(__dirname, 'uploads');
+const publicPath = path.join(__dirname, 'public');
+
+if (fs.existsSync(uploadsPath)) {
+  app.use('/uploads', express.static(uploadsPath));
+}
+if (fs.existsSync(publicPath)) {
+  app.use('/public', express.static(publicPath));
+}
 
 // ----------------- Health / Basic routes -----------------
 // Health check root
@@ -131,12 +140,19 @@ app.use((err, req, res, next) => {
 
 // ----------------- Server bootstrap -----------------
 // In serverless / test environments we export the app and let the platform
-// handle the HTTP server. We still want to establish a Mongo connection once
-// on cold start, but we must not crash the process on failure.
-connectMongoDB().catch((err) => {
-  console.error('❌ Failed to connect MongoDB on startup', err);
-  // Let the Express error handler respond with 500 instead of exiting.
-});
+// handle the HTTP server. 
+// IMPORTANT: In serverless, we should NOT connect to databases on module load
+// because: 1) It slows down cold starts, 2) Connections might fail and crash the function
+// Instead, connect lazily when routes are actually called (lazy initialization)
+// Only connect immediately if running as a traditional server (local dev)
+if (require.main === module) {
+  connectMongoDB().catch((err) => {
+    console.error('❌ Failed to connect MongoDB on startup', err);
+    // In local dev, we can exit if DB connection fails
+    process.exit(1);
+  });
+}
+// In serverless, MongoDB will connect on first route that needs it
 
 // When running this file directly (local dev), start the HTTP server
 async function startServer() {
