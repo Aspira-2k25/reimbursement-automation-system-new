@@ -150,7 +150,8 @@ export default function EditForm() {
 
         // Upload new files first if provided
         try {
-          const uploadResponse = await fetch(`http://localhost:5000/api/student-forms/${id}/documents`, {
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+          const uploadResponse = await fetch(`${API_BASE_URL}/student-forms/${id}/documents`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
