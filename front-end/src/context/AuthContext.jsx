@@ -34,6 +34,11 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (username, password) => {
     try {
+      // Debug: Log API URL in development
+      if (import.meta.env.DEV) {
+        console.log('🔍 Login API URL:', `${API_BASE_URL}/auth/login`);
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -42,11 +47,13 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
-
+      // Check if response is ok before parsing JSON
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(errorData.error || `Login failed: ${response.status} ${response.statusText}`);
       }
+
+      const data = await response.json();
 
       // Store token and user data
       localStorage.setItem('token', data.token);
@@ -57,6 +64,15 @@ export const AuthProvider = ({ children }) => {
 
       return data;
     } catch (error) {
+      // Enhanced error handling
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        console.error('❌ Network Error:', {
+          apiUrl: `${API_BASE_URL}/auth/login`,
+          error: 'Cannot reach backend server. Check VITE_API_BASE_URL environment variable.',
+          hint: 'Make sure VITE_API_BASE_URL is set in Vercel environment variables'
+        });
+        throw new Error('Cannot connect to server. Please check your internet connection and try again.');
+      }
       throw error;
     }
   };
@@ -69,24 +85,43 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  // Google login function (client-side only placeholder)
-  // In production, send the credential to your backend to verify with Google
-  // and return an app-specific JWT and user object with role
+  // Google login function
   const loginWithGoogle = async (credential) => {
-    const response = await fetch(`${API_BASE_URL}/auth/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.error || 'Google login failed');
+    try {
+      // Debug: Log API URL in development
+      if (import.meta.env.DEV) {
+        console.log('🔍 Google Login API URL:', `${API_BASE_URL}/auth/google`);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(errorData?.error || `Google login failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setToken(data.token);
+      setUser(data.user);
+      return data;
+    } catch (error) {
+      // Enhanced error handling
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        console.error('❌ Network Error:', {
+          apiUrl: `${API_BASE_URL}/auth/google`,
+          error: 'Cannot reach backend server. Check VITE_API_BASE_URL environment variable.',
+          hint: 'Make sure VITE_API_BASE_URL is set in Vercel environment variables'
+        });
+        throw new Error('Cannot connect to server. Please check your internet connection and try again.');
+      }
+      throw error;
     }
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setToken(data.token);
-    setUser(data.user);
-    return data;
   };
 
   // Check if user is authenticated
