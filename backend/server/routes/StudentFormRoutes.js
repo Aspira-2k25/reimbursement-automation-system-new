@@ -4,6 +4,7 @@ const router = express.Router();
 const StudentForm = require("../models/StudentForm");
 const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
+const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 
 
@@ -29,12 +30,13 @@ router.post(
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
 
       // Upload received files to Cloudinary (if present)
+      // Use memory buffer (serverless) or file path (local dev)
       let nptelResultUpload = null;
       let idCardUpload = null;
 
-      if (req.files?.nptelResult?.[0]?.path) {
-        nptelResultUpload = await cloudinary.uploader.upload(
-          req.files.nptelResult[0].path,
+      if (req.files?.nptelResult?.[0]) {
+        nptelResultUpload = await uploadFile(
+          req.files.nptelResult[0],
           {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
@@ -44,9 +46,9 @@ router.post(
         );
       }
 
-      if (req.files?.idCard?.[0]?.path) {
-        idCardUpload = await cloudinary.uploader.upload(
-          req.files.idCard[0].path,
+      if (req.files?.idCard?.[0]) {
+        idCardUpload = await uploadFile(
+          req.files.idCard[0],
           {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",

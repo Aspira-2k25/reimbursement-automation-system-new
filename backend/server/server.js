@@ -1,5 +1,10 @@
 // server.js
-require('dotenv').config();
+// Only load dotenv in local development (not in Vercel/serverless)
+// Vercel automatically injects environment variables into process.env
+// Check multiple conditions to ensure we're not in Vercel
+if (!process.env.VERCEL && !process.env.VERCEL_ENV && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ quiet: true }); // Suppress dotenv logs
+}
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -47,7 +52,16 @@ app.get('/', (req, res) => {
     env: {
       hasDatabaseUrl: !!process.env.DATABASE_URL,
       hasMongoUri: !!process.env.MONGO_URI,
-      nodeEnv: process.env.NODE_ENV || 'not set'
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      nodeEnv: process.env.NODE_ENV || 'not set',
+      isVercel: !!process.env.VERCEL,
+      // Don't expose actual values, just check if they exist
+      envVarCount: Object.keys(process.env).filter(key => 
+        key.includes('DATABASE') || 
+        key.includes('MONGO') || 
+        key.includes('JWT') || 
+        key.includes('CLOUDINARY')
+      ).length
     }
   });
 });

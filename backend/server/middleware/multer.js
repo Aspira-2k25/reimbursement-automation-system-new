@@ -1,14 +1,15 @@
 const multer = require('multer');
 
-const storage =multer.diskStorage(
-    {
-        filename: function (req , file , cb) {
-            cb(null, file.originalname)
-        }
-    }
-);
+// Use memory storage for serverless environments (Vercel, AWS Lambda, etc.)
+// Disk storage doesn't work because filesystem is read-only
+const storage = multer.memoryStorage();
 
-const upload = multer({storage: storage});
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 module.exports = upload;
 
