@@ -124,8 +124,9 @@ const StudentNptelForm = () => {
 
       formDataToSend.append("reimbursementType", "NPTEL");
       const token = localStorage.getItem("token");
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await fetch("http://localhost:5000/api/student-forms/submit", {
+      const res = await fetch(`${API_BASE_URL}/student-forms/submit`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,
