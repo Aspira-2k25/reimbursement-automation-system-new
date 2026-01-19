@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const cloudinary = require('../utils/cloudinary');
-const upload = multer({ dest: 'uploads/' });
+const { uploadFile } = require('../utils/cloudinary');
+// Use memory storage for serverless - disk storage doesn't work in read-only filesystem
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // POST /api/uploads/documents
 router.post('/documents', upload.array('files'), async (req, res) => {
@@ -11,8 +16,9 @@ router.post('/documents', upload.array('files'), async (req, res) => {
       return res.status(400).json({ error: 'No files provided' });
     }
 
+    // Upload from memory buffer using helper function
     const uploadPromises = req.files.map(file =>
-      cloudinary.uploader.upload(file.path, {
+      uploadFile(file, {
         folder: 'reimbursement-Forms',
         resource_type: 'auto',
         use_filename: true,
