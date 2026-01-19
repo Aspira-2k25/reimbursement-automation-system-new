@@ -254,4 +254,8 @@ const dbUtils = {
   }
 };
 
+// Add aliases for backward compatibility (after dbUtils is defined)
+dbUtils.getAllUsers = dbUtils.getAllStaff;
+dbUtils.getUserForLogin = dbUtils.getStaffForLogin;
+
 module.exports = dbUtils;
