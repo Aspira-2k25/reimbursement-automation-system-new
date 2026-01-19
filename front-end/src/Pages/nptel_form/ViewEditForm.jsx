@@ -14,7 +14,8 @@ const ViewEditForm = ({ mode = 'view' }) => {
     const fetchForm = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/student-forms/${id}`, {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE_URL}/student-forms/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -76,7 +77,8 @@ const ViewEditForm = ({ mode = 'view' }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/student-forms/${id}`, {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE_URL}/student-forms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
