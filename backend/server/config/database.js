@@ -38,14 +38,19 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('❌ Unexpected error on idle client', err);
-  process.exit(-1);
+  // In serverless environments, DO NOT call process.exit()
+  // The function will handle errors gracefully through Express error handlers
+  // process.exit() kills the entire serverless function instance
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  pool.end();
-  console.log('Database pool has ended');
-  process.exit(0);
-});
+// Graceful shutdown (only relevant for long-running servers, not serverless)
+// In serverless, Vercel manages the lifecycle, so we don't need SIGINT handlers
+if (process.env.NODE_ENV !== 'production' || require.main === module) {
+  process.on('SIGINT', () => {
+    pool.end();
+    console.log('Database pool has ended');
+    process.exit(0);
+  });
+}
 
 module.exports = pool;
