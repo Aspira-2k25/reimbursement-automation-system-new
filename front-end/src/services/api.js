@@ -35,6 +35,17 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
+    // Better error handling for network errors
+    if (!error.response) {
+      console.error('Network Error:', {
+        message: error.message,
+        apiUrl: error.config?.url,
+        baseURL: error.config?.baseURL,
+        hint: 'Check if backend is running and VITE_API_BASE_URL is correct'
+      });
+    }
+    
     return Promise.reject(error);
   }
 );
