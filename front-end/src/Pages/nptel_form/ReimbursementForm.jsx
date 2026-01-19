@@ -152,8 +152,9 @@ const ReimbursementForm = () => {
 
       //get jwt tocken from login
       const token = localStorage.getItem("token");
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await fetch("http://localhost:5000/api/forms/submit", {
+      const res = await fetch(`${API_BASE_URL}/forms/submit`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,  // add tocken for authorization
