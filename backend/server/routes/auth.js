@@ -16,6 +16,9 @@ router.put('/profile', verifyToken, authController.updateProfile);
 router.get('/staff', verifyToken, authController.getAllStaff);
 router.get('/staff/department/:department', verifyToken, authController.getStaffByDepartment);
 
+// Create user endpoint (can be protected with admin role check if needed)
+router.post('/create-user', validateRegister, authController.createUser);
+
 
 // Test route for checking authentication
 router.get('/test-auth', verifyToken, (req, res) => {
