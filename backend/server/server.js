@@ -40,7 +40,16 @@ if (fs.existsSync(publicPath)) {
 // ----------------- Health / Basic routes -----------------
 // Health check root
 app.get('/', (req, res) => {
-  res.json({ ok: true, service: 'backend', time: new Date().toISOString() });
+  res.json({ 
+    ok: true, 
+    service: 'backend', 
+    time: new Date().toISOString(),
+    env: {
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      hasMongoUri: !!process.env.MONGO_URI,
+      nodeEnv: process.env.NODE_ENV || 'not set'
+    }
+  });
 });
 
 // Test Postgres connection
