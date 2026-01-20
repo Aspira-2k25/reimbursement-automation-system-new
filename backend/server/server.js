@@ -27,23 +27,40 @@ const app = express();
 // CORS configuration - allow frontend domain from environment variable
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
+    // Allow requests with no origin (like mobile apps, curl, or Postman)
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = process.env.FRONTEND_URL 
-      ? [process.env.FRONTEND_URL]
-      : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'];
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      // In development, be more permissive
-      if (process.env.NODE_ENV !== 'production') {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+
+    // Build list of allowed origins
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:5174',
+      'http://localhost:5000'
+    ];
+
+    // Add FRONTEND_URL if set
+    if (process.env.FRONTEND_URL) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
     }
+
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow all Vercel preview/production deployments (*.vercel.app)
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+
+    // Block other origins in production
+    console.warn(`CORS blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -71,9 +88,9 @@ if (fs.existsSync(publicPath)) {
 // ----------------- Health / Basic routes -----------------
 // Health check root
 app.get('/', (req, res) => {
-  res.json({ 
-    ok: true, 
-    service: 'backend', 
+  res.json({
+    ok: true,
+    service: 'backend',
     time: new Date().toISOString(),
     env: {
       hasDatabaseUrl: !!process.env.DATABASE_URL,
@@ -82,10 +99,10 @@ app.get('/', (req, res) => {
       nodeEnv: process.env.NODE_ENV || 'not set',
       isVercel: !!process.env.VERCEL,
       // Don't expose actual values, just check if they exist
-      envVarCount: Object.keys(process.env).filter(key => 
-        key.includes('DATABASE') || 
-        key.includes('MONGO') || 
-        key.includes('JWT') || 
+      envVarCount: Object.keys(process.env).filter(key =>
+        key.includes('DATABASE') ||
+        key.includes('MONGO') ||
+        key.includes('JWT') ||
         key.includes('CLOUDINARY')
       ).length
     }
