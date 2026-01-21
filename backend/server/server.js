@@ -202,7 +202,8 @@ app.use((err, req, res, next) => {
   // Default error response (more info in development)
   res.status(500).json({
     error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    message: err.message, // Temporarily show error message in production for debugging
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
