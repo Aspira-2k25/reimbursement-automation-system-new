@@ -5,13 +5,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Database connection configuration:
-// - Vercel deployment: Uses DB_POSTGRES_URL (automatically set by Prisma Postgres)
-// - Local development: Set DB_POSTGRES_URL in .env or use DATABASE_URL fallback
+// Database connection configuration for Prisma Postgres:
+// - url: Uses Prisma Accelerate connection (prisma+postgres://) for runtime queries
+// - directUrl: Uses direct postgres:// connection for migrations only
 datasource db {
   provider  = "postgresql"
-  url       = env("DB_POSTGRES_URL")
-  directUrl = env("DATABASE_URL") // Fallback for local dev migrations
+  url       = env("DB_PRISMA_DATABASE_URL")
+  directUrl = env("DB_POSTGRES_URL")
 }
 
 // Staff Table (Faculty, HOD, Coordinator, Principal)
