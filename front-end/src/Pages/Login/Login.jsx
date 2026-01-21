@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock,} from 'lucide-react';
-import { GoogleLogin} from '@react-oauth/google';
+import { User, Mail, Lock, } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useNavigate, useLocation } from 'react-router-dom'
 
@@ -31,7 +31,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
     try {
-      const { user } = await login(formData.name, formData.password);
+      const { user } = await login(formData.name, formData.email, formData.password);
       const role = (user?.role || '').toLowerCase();
       if (role === 'coordinator') {
         navigate('/dashboard/coordinator', { replace: true });
@@ -57,9 +57,9 @@ export default function LoginPage() {
   }
 
   return (
-        <div className="min-h-screen flex">
-          {/* Left Side - Welcome Section */}
-          <motion.div className="w-1/2 relative overflow-hidden flex items-center justify-center" style={{background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)'}} {...fadeInUp}>
+    <div className="min-h-screen flex">
+      {/* Left Side - Welcome Section */}
+      <motion.div className="w-1/2 relative overflow-hidden flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
         {/* Decorative geometric shapes */}
         <div className="absolute inset-0">
           {/* Diamond shapes */}
@@ -92,13 +92,13 @@ export default function LoginPage() {
         </motion.div>
       </motion.div>
 
-          {/* Right Side - Form Section */}
-          <motion.div className="w-1/2 flex items-center justify-center p-8" style={{background: '#F2F2F2'}} {...fadeInUp}>
+      {/* Right Side - Form Section */}
+      <motion.div className="w-1/2 flex items-center justify-center p-8" style={{ background: '#F2F2F2' }} {...fadeInUp}>
         <div className="w-full max-w-md">
           <motion.div className="bg-white rounded-2xl shadow-xl p-8" {...fadeInUp}>
             {/* Header */}
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{color: '#182628'}}>
+              <h2 className="text-3xl font-bold mb-2" style={{ color: '#182628' }}>
                 Login In
               </h2>
             </div>
@@ -112,9 +112,8 @@ export default function LoginPage() {
               )}
               {/* Name Input */}
               <div className="relative">
-                    <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                      focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
-                    }`} />
+                <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
+                  }`} />
                 <input
                   type="text"
                   placeholder="Username"
@@ -122,15 +121,14 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   onFocus={() => setFocusedField('name')}
                   onBlur={() => setFocusedField('')}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
                 />
               </div>
 
               {/* Email Input */}
               <div className="relative">
-                    <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                      focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
-                    }`} />
+                <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
+                  }`} />
                 <input
                   type="email"
                   placeholder="Email"
@@ -138,15 +136,14 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField('')}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
                 />
               </div>
 
               {/* Password Input */}
               <div className="relative">
-                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                      focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
-                    }`} />
+                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
+                  }`} />
                 <input
                   type="password"
                   placeholder="Password"
@@ -154,7 +151,7 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField('')}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
                 />
               </div>
 
@@ -196,17 +193,17 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                    className="w-full text-white font-semibold py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                    style={{
-                      background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)',
-                      boxShadow: '0 4px 15px rgba(59, 148, 94, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #182628 0%, #3B945E 50%, #57BA98 100%)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)';
-                    }}
+                className="w-full text-white font-semibold py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                style={{
+                  background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)',
+                  boxShadow: '0 4px 15px rgba(59, 148, 94, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'linear-gradient(135deg, #182628 0%, #3B945E 50%, #57BA98 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)';
+                }}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
