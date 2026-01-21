@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Login function
-  const login = async (username, password) => {
+  const login = async (username, email, password) => {
     try {
       // Debug: Log API URL in development
       if (import.meta.env.DEV) {
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, email, password }),
       });
 
       // Check if response is ok before parsing JSON
