@@ -5,44 +5,15 @@ const prisma = require('../config/prisma');
 
 const authController = {
   // Login function
-  login: async (req, res) => {
+  // Login function
+  login: async (req, res, next) => {
     try {
-      const { username, password } = req.body;
-
-      // Basic validation
-      if (!username || !password) {
-        return res.status(400).json({
-          error: 'Username and password are required'
-        });
-      }
-
-      // Get staff from database by username
-      const user = await dbUtils.getStaffForLogin(username);
-
-      console.log('Login attempt for username:', username);
-      console.log('User found:', user ? 'Yes' : 'No');
+      // User is already authenticated and attached by validationMiddleware
+      const user = req.user;
 
       if (!user) {
-        return res.status(401).json({
-          error: 'Invalid credentials'
-        });
-      }
-
-      // Check if user is active
-      if (!user.is_active) {
-        return res.status(401).json({
-          error: 'Account is deactivated'
-        });
-      }
-
-      // Compare provided password with stored hash
-      // Check if password is hashed (starts with $2a$ or $2b$) or plain text (for migration)
-      const isPasswordValid = user.password.startsWith('$2a$') || user.password.startsWith('$2b$')
-        ? await bcrypt.compare(password, user.password)
-        : password === user.password; // Fallback for old plain text passwords
-
-      if (!isPasswordValid) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        // Should not happen if middleware works correctly
+        return res.status(500).json({ error: 'Authentication failed internally' });
       }
 
       // Update last login time
@@ -71,7 +42,10 @@ const authController = {
 
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   },
 
