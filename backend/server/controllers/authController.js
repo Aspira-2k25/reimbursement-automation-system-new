@@ -206,7 +206,7 @@ const authController = {
 
     } catch (error) {
       console.error('Register error:', error);
-      
+
       // Handle Prisma unique constraint errors
       if (error.code === 'P2002') {
         const field = error.meta?.target?.[0] || 'field';
@@ -215,7 +215,7 @@ const authController = {
         });
       }
 
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Internal server error',
         message: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
@@ -393,7 +393,7 @@ authController.createUser = async (req, res) => {
 
   } catch (error) {
     console.error('Create user error:', error);
-    
+
     // Handle Prisma unique constraint errors
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0] || 'field';
@@ -402,9 +402,10 @@ authController.createUser = async (req, res) => {
       });
     }
 
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: error.message, // Debugging
+      stack: error.stack // Debugging
     });
   }
 };

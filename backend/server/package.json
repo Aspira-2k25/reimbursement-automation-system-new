@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "build": "prisma generate",
     "postinstall": "prisma generate"
   },
   "keywords": [],
