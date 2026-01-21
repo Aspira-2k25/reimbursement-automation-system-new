@@ -14,17 +14,21 @@ const { Pool } = require('pg');
 // Get the connection string from available environment variables
 const getDatabaseUrl = () => {
   // Priority order for pg Pool (needs postgres:// protocol, NOT prisma+postgres://):
-  // 1. DATABASE_URL - standard Prisma/local dev
-  // 2. DB_POSTGRES_URL - Prisma Postgres direct connection (Vercel)
-  // 3. POSTGRES_URL - Vercel Postgres default
-  // 4. POSTGRES_PRISMA_URL - Vercel Postgres pooled
-  // 5. POSTGRES_URL_NON_POOLING - Vercel Postgres non-pooled
-  return process.env.DATABASE_URL
-    || process.env.DB_POSTGRES_URL
-    || process.env.POSTGRES_URL
-    || process.env.POSTGRES_PRISMA_URL
-    || process.env.POSTGRES_URL_NON_POOLING
-    || null;
+  const candidates = [
+    process.env.POSTGRES_URL,
+    process.env.DB_POSTGRES_URL,
+    process.env.POSTGRES_URL_NON_POOLING,
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_PRISMA_URL
+  ];
+
+  // Find the first valid Postgres connection string (starts with postgres:// or postgresql://)
+  // We MUST skip 'prisma+postgres://' as it is not supported by the 'pg' library
+  const validUrl = candidates.find(url =>
+    url && (url.startsWith('postgres://') || url.startsWith('postgresql://'))
+  );
+
+  return validUrl || null;
 };
 
 let poolConfig;
