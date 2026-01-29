@@ -6,6 +6,7 @@ const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
+const { generateApplicationId } = require("../utils/applicationIdGenerator");
 
 
 // POST /api/student-forms/submit
@@ -75,9 +76,20 @@ router.post(
         amount: req.body.amount ? parseFloat(req.body.amount) : undefined
       };
 
+      // Generate meaningful application ID
+      // Format: S-NPT-2026-IT-001 (Student NPTEL 2026 IT Dept Sequence 1)
+      const applicationId = await generateApplicationId({
+        applicantType: 'Student',
+        reimbursementType: req.body.reimbursementType || 'NPTEL',
+        academicYear: req.body.academicYear,
+        department: req.body.department
+      }, StudentForm);
+
+      console.log('Generated Application ID:', applicationId);
 
       const newStudentForm = new StudentForm({
         ...req.body,
+        applicationId, // Use generated ID
         userId,
         status: "Pending", // Ensure status is Pending when student submits
         documents: [
@@ -91,6 +103,7 @@ router.post(
       });
 
       console.log('Attempting to save form:', newStudentForm);
+      console.log('Form Application ID:', newStudentForm.applicationId);
 
       await newStudentForm.save();
       res.status(201).json({ message: "Student form submitted successfully!", form: newStudentForm });
@@ -202,6 +215,58 @@ router.get(
     } catch (err) {
       console.error("Error fetching rejected forms:", err);
       res.status(500).json({ error: "Failed to fetch rejected forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/for-principal - Get requests approved by HOD (status: Under Principal)
+router.get(
+  "/for-principal",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Only principals can access this endpoint
+      const userRole = req.user.role?.toLowerCase();
+      if (userRole !== 'principal') {
+        return res.status(403).json({ error: "Forbidden: Only principals can access this endpoint" });
+      }
+
+      // Fetch forms with status "Under Principal" (awaiting principal approval)
+      const forms = await StudentForm.find({
+        status: "Under Principal"
+      }).sort({ updatedAt: -1 });
+
+      console.log('Student forms for Principal found:', forms.length);
+      return res.json({ forms });
+    } catch (err) {
+      console.error("Error fetching principal forms:", err);
+      res.status(500).json({ error: "Failed to fetch principal forms", details: err.message });
+    }
+  }
+);
+
+// GET /api/student-forms/for-accounts - Get approved requests for Accounts department
+router.get(
+  "/for-accounts",
+  authMiddleware.verifyToken,
+  async (req, res) => {
+    try {
+      // Only accounts role can access this endpoint
+      const userRole = req.user.role?.toLowerCase();
+      if (userRole !== 'accounts') {
+        return res.status(403).json({ error: "Forbidden: Only accounts department can access this endpoint" });
+      }
+
+      // Fetch forms with status "Approved" or "Disbursed" (for accounts processing)
+      const forms = await StudentForm.find({
+        status: { $in: ["Approved", "Disbursed"] }
+      }).sort({ updatedAt: -1 });
+
+      console.log('Student forms for Accounts found:', forms.length);
+      return res.json({ forms });
+    } catch (err) {
+      console.error("Error fetching accounts forms:", err);
+      res.status(500).json({ error: "Failed to fetch accounts forms", details: err.message });
     }
   }
 );
@@ -352,7 +417,7 @@ router.put(
       const userId = req.user.userId || req.user.email || req.user.id;
       const isOwner = form.userId === userId;
       const userRole = req.user.role?.toLowerCase();
-      const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
@@ -381,22 +446,45 @@ router.put(
           if (req.body.status && !['Under HOD', 'Rejected'].includes(req.body.status)) {
             return res.status(400).json({ error: 'Coordinators can only approve (Under HOD) or reject requests' });
           }
+        } else {
+          return res.status(403).json({ error: 'Coordinator can only approve/reject requests with status "Pending"' });
         }
       } else if (userRole === 'hod') {
         // HODs can approve/reject requests with status "Under HOD"
         if (form.status === 'Under HOD') {
           allowedUpdates = ['status', 'remarks'];
-          // Validate status change - HODs can set to "Under Principal", "Approved", or "Rejected"
-          if (req.body.status && !['Under Principal', 'Approved', 'Rejected'].includes(req.body.status)) {
-            return res.status(400).json({ error: 'Invalid status transition for HOD' });
+          // Validate status change - HODs can ONLY set to "Under Principal" or "Rejected" (cannot approve directly)
+          if (req.body.status && !['Under Principal', 'Rejected'].includes(req.body.status)) {
+            return res.status(400).json({ error: 'HOD must forward to Principal for final approval or reject. Cannot approve directly.' });
           }
         } else {
-          // HOD cannot modify requests that are not "Under HOD" (already approved/rejected)
           return res.status(403).json({ error: 'HOD can only approve/reject requests with status "Under HOD"' });
         }
       } else if (userRole === 'principal') {
-        // Principals can update status and review fields
-        allowedUpdates = ['remarks', 'status', 'reviewedBy', 'reviewedAt'];
+        // Principals can only approve/reject requests with status "Under Principal"
+        if (form.status === 'Under Principal') {
+          allowedUpdates = ['remarks', 'status', 'reviewedBy', 'reviewedAt'];
+          // Validate status change - Principal can set to "Approved" or "Rejected"
+          if (req.body.status && !['Approved', 'Rejected'].includes(req.body.status)) {
+            return res.status(400).json({ error: 'Principal can only approve or reject requests' });
+          }
+        } else {
+          return res.status(403).json({ error: 'Principal can only approve/reject requests with status "Under Principal"' });
+        }
+      } else if (userRole === 'accounts') {
+        // Accounts can mark approved requests as disbursed
+        if (form.status === 'Approved') {
+          allowedUpdates = ['status', 'accountsComments'];
+          // Validate status change - Accounts can only set to "Disbursed"
+          if (req.body.status && req.body.status !== 'Disbursed') {
+            return res.status(400).json({ error: 'Accounts can only mark approved requests as Disbursed' });
+          }
+        } else if (form.status === 'Disbursed') {
+          // Already disbursed, no further updates allowed
+          return res.status(400).json({ error: 'This request has already been disbursed' });
+        } else {
+          return res.status(403).json({ error: 'Accounts can only process requests with status "Approved"' });
+        }
       }
 
       const updates = {};
@@ -434,7 +522,11 @@ router.delete(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      const form = await StudentForm.findById(req.params.id);
+      // Try to find by MongoDB _id first, then by applicationId
+      let form = await StudentForm.findById(req.params.id);
+      if (!form) {
+        form = await StudentForm.findOne({ applicationId: req.params.id });
+      }
       if (!form) return res.status(404).json({ error: "Form not found" });
 
       const userId = req.user.userId || req.user.email || req.user.id;
@@ -452,7 +544,7 @@ router.delete(
         }
       }
 
-      await StudentForm.findByIdAndDelete(req.params.id);
+      await StudentForm.findByIdAndDelete(form._id);
       return res.json({ message: "Form deleted successfully" });
     } catch (err) {
       console.error("Error deleting form:", err);
