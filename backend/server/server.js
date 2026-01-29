@@ -5,13 +5,26 @@
 if (!process.env.VERCEL && !process.env.VERCEL_ENV && process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ quiet: true }); // Suppress dotenv logs
 }
+
+// Validate critical environment variables
+const requiredEnvVars = ['JWT_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingEnvVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  }
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 // Database/connectors
 const connectMongoDB = require('./config/mongo');
 const dbUtils = require('./utils/database');
+const logger = require('./utils/logger');
 
 // Routes / controllers / middleware
 const formRoutes = require('./routes/formRoutes');
@@ -22,6 +35,31 @@ const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user
 const upload = require('./middleware/multer');             // multer middleware (if needed)
 
 const app = express();
+
+// ----------------- Security Middleware -----------------
+// Rate limiting for API endpoints
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to API routes (not to health checks)
+app.use('/api/', limiter);
+
+// Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login attempts per windowMs
+  message: 'Too many login attempts, please try again after 15 minutes.',
+  skipSuccessfulRequests: true, // Don't count successful requests
+});
+
+// Apply auth limiter to login/register endpoints
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // ----------------- Middleware -----------------
 // CORS configuration - allow frontend domain from environment variable
@@ -54,12 +92,15 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // In development, allow all origins
+    // In development, still validate against localhost patterns
     if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
+      // Allow localhost with any port in development only
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
     }
 
-    // Block other origins in production
+    // Block other origins
     console.warn(`CORS blocked origin: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
