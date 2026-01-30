@@ -33,10 +33,15 @@ const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
 const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user upload controller
 const upload = require('./middleware/multer');             // multer middleware (if needed)
+const authMiddleware = require('./middleware/auth');       // auth middleware for protected routes
+const securityHeaders = require('./middleware/securityHeaders'); // HTTP security headers
 
 const app = express();
 
 // ----------------- Security Middleware -----------------
+// Apply HTTP security headers to all requests
+app.use(securityHeaders);
+
 // Rate limiting for API endpoints
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -169,8 +174,8 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
-// Get all users (Postgres)
-app.get('/api/users', async (req, res) => {
+// Get all users (Postgres) - Protected route
+app.get('/api/users', authMiddleware.verifyToken, async (req, res) => {
   try {
     const users = await dbUtils.getAllUsers();
     res.json({ users });
