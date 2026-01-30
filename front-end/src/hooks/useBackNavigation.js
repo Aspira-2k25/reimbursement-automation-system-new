@@ -28,6 +28,9 @@ export const useBackNavigation = () => {
       case 'principal':
         navigate('/dashboard/principal');
         break;
+      case 'accounts':
+        navigate('/dashboard/accounts');
+        break;
       default:
         navigate('/dashboard');
     }

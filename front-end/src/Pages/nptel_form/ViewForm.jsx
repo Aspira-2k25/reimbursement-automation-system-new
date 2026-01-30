@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'; // Import useAuth
 export default function ViewForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth(); // Get authenticated user
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(null);
@@ -15,11 +16,21 @@ export default function ViewForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API, Students use student-forms)
+        // Detect form type from URL path first (for Accounts role viewing different form types)
+        const isStudentForm = location.pathname.includes('/student-form/');
+
+        // Select API based on URL path or user role
+        // URL path takes precedence (allows Accounts to view both types)
         const userRole = user?.role?.toLowerCase();
-        const api = (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal')
-          ? facultyFormsAPI
-          : studentFormsAPI;
+        let api;
+
+        if (isStudentForm) {
+          api = studentFormsAPI;
+        } else if (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal' || userRole === 'accounts') {
+          api = facultyFormsAPI;
+        } else {
+          api = studentFormsAPI;
+        }
 
         // Note: facultyFormsAPI might return the form directly or wrapped. 
         // Student API returns { form: ... }, let's handle both.
@@ -39,7 +50,7 @@ export default function ViewForm() {
     if (user) { // Only fetch if user is loaded
       fetchForm();
     }
-  }, [id, user]);
+  }, [id, user, location.pathname]);
 
   if (loading) {
     return (
@@ -92,6 +103,8 @@ export default function ViewForm() {
                 navigate('/dashboard/principal');
               } else if (userRole === 'faculty') {
                 navigate('/dashboard/faculty/requests');
+              } else if (userRole === 'accounts') {
+                navigate('/dashboard/accounts');
               } else {
                 navigate('/dashboard/requests');
               }
