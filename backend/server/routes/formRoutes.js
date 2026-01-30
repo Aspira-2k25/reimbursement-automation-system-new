@@ -5,6 +5,7 @@ const authMiddleware = require("../middleware/auth");
 const upload = require("../middleware/multer");  // <-- multer setup
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
+const { generateApplicationId } = require("../utils/applicationIdGenerator");
 
 // POST /api/forms/submit
 router.post(
@@ -43,7 +44,7 @@ router.post(
         nptelResultUpload = await uploadFile(
           req.files.nptelResult[0],
           {
-            folder: "reimbursement-Forms/Student_Form",
+            folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
@@ -55,7 +56,7 @@ router.post(
         idCardUpload = await uploadFile(
           req.files.idCard[0],
           {
-            folder: "reimbursement-Forms/Student_Form",
+            folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
@@ -66,7 +67,7 @@ router.post(
       // Determine initial status based on applicant type
       // HOD applications go directly to Principal (skip HOD review)
       let initialStatus = "Under HOD"; // Default for Faculty/Coordinator
-      const applicantType = req.body.applicantType;
+      const applicantType = req.body.applicantType || 'Faculty';
 
       console.log('=== FORM SUBMISSION DEBUG ===');
       console.log('Applicant Type:', applicantType);
@@ -80,8 +81,20 @@ router.post(
       }
       console.log('Final status being set:', initialStatus);
 
+      // Generate meaningful application ID
+      // Format: F-NPT-2026-IT-001 (Faculty NPTEL 2026 IT Dept Sequence 1)
+      const applicationId = await generateApplicationId({
+        applicantType: applicantType,
+        reimbursementType: req.body.reimbursementType || 'NPTEL',
+        academicYear: req.body.academicYear,
+        department: req.body.department || req.user.department
+      }, Form);
+
+      console.log('Generated Application ID:', applicationId);
+
       const newForm = new Form({
         ...req.body,
+        applicationId, // Use generated ID
         userId, // attach it to the form
         status: initialStatus, // Set based on applicant type (this should override model default)
         documents: [
@@ -97,6 +110,7 @@ router.post(
       await newForm.save();
       console.log('Form saved with status:', newForm.status);
       console.log('Form saved with applicantType:', newForm.applicantType);
+      console.log('Form saved with applicationId:', newForm.applicationId);
       console.log('============================');
       res.status(201).json({ message: "Form saved successfully!", form: newForm });
     } catch (err) {
@@ -211,6 +225,50 @@ router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/forms/for-principal - Get faculty forms awaiting principal approval
+router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
+  try {
+    // Only principals can access this endpoint
+    const userRole = req.user.role?.toLowerCase();
+    if (userRole !== 'principal') {
+      return res.status(403).json({ error: "Forbidden: Only principals can access this endpoint" });
+    }
+
+    // Fetch forms with status "Under Principal" (awaiting principal approval)
+    const forms = await Form.find({
+      status: "Under Principal"
+    }).sort({ updatedAt: -1 });
+
+    console.log('Faculty forms for Principal found:', forms.length);
+    return res.json({ forms });
+  } catch (err) {
+    console.error("Error fetching principal forms:", err);
+    res.status(500).json({ error: "Failed to fetch principal forms" });
+  }
+});
+
+// GET /api/forms/for-accounts - Get approved faculty forms for Accounts department
+router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
+  try {
+    // Only accounts role can access this endpoint
+    const userRole = req.user.role?.toLowerCase();
+    if (userRole !== 'accounts') {
+      return res.status(403).json({ error: "Forbidden: Only accounts department can access this endpoint" });
+    }
+
+    // Fetch forms with status "Approved" or "Disbursed" (for accounts processing)
+    const forms = await Form.find({
+      status: { $in: ["Approved", "Disbursed"] }
+    }).sort({ updatedAt: -1 });
+
+    console.log('Faculty forms for Accounts found:', forms.length);
+    return res.json({ forms });
+  } catch (err) {
+    console.error("Error fetching accounts forms:", err);
+    res.status(500).json({ error: "Failed to fetch accounts forms" });
+  }
+});
+
 // GET /api/forms/:id - Get a specific form by ID
 router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
@@ -227,9 +285,9 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     const formUserId = form.userId;
     const userRole = req.user.role?.toLowerCase();
 
-    // Allow access if: owner OR HOD/Principal (they can view all forms)
+    // Allow access if: owner OR HOD/Principal/Accounts (they can view all forms)
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['hod', 'principal'].includes(userRole);
+    const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
 
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
@@ -263,9 +321,9 @@ router.put(
       const formUserId = form.userId;
       const userRole = req.user.role?.toLowerCase();
 
-      // Allow update if: owner OR HOD/Principal (they can update status)
+      // Allow update if: owner OR HOD/Principal/Accounts (they can update status)
       const isOwner = String(formUserId) === String(tokenUserId);
-      const isAuthorizedRole = ['hod', 'principal'].includes(userRole);
+      const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAuthorizedRole) {
         return res.status(403).json({ error: "Not authorized to edit this form" });
@@ -284,7 +342,7 @@ router.put(
         nptelResultUpload = await uploadFile(
           req.files.nptelResult[0],
           {
-            folder: "reimbursement-Forms/Student_Form",
+            folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
@@ -300,7 +358,7 @@ router.put(
         idCardUpload = await uploadFile(
           req.files.idCard[0],
           {
-            folder: "reimbursement-Forms/Student_Form",
+            folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
@@ -308,21 +366,97 @@ router.put(
         );
       }
 
+      // Determine allowed updates based on user role and form status
+      // Faculty/Coordinator/HOD (owners) can only edit their own pending/under-review forms
+      // HOD can approve/reject "Under HOD" forms
+      // Principal can approve/reject "Under Principal" forms
+      let allowedUpdates = [];
+      let statusValidation = null;
+
+      if (isOwner) {
+        // Owners can update form details only if status allows it
+        if (['Under HOD', 'Under Principal'].includes(form.status)) {
+          // Form is under review - owner can only update remarks
+          allowedUpdates = ['remark'];
+        } else if (form.status === 'Pending') {
+          // Should not happen for faculty forms (they start at Under HOD), but handle it
+          allowedUpdates = ['name', 'email', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'remark'];
+        }
+        // Owners cannot change status of their own forms
+      }
+
+      if (userRole === 'hod') {
+        // HOD can approve/reject "Under HOD" forms (not their own)
+        if (form.status === 'Under HOD' && !isOwner) {
+          allowedUpdates = ['status', 'remark'];
+          statusValidation = ['Under Principal', 'Rejected'];
+        } else if (form.status === 'Under HOD' && isOwner) {
+          // HOD's own form is Under HOD - they can't approve their own form
+          // This shouldn't happen since HOD forms go directly to Principal
+          return res.status(403).json({ error: 'Cannot modify your own form while under review' });
+        }
+      }
+
+      if (userRole === 'principal') {
+        // Principal can approve/reject "Under Principal" forms
+        if (form.status === 'Under Principal') {
+          allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
+          statusValidation = ['Approved', 'Rejected'];
+        } else {
+          return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
+        }
+      }
+
+      if (userRole === 'accounts') {
+        // Accounts can mark approved forms as disbursed
+        if (form.status === 'Approved') {
+          allowedUpdates = ['status', 'accountsComments'];
+          statusValidation = ['Disbursed'];
+        } else if (form.status === 'Disbursed') {
+          return res.status(400).json({ error: 'This form has already been disbursed' });
+        } else {
+          return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+        }
+      }
+
+      // Validate status change if attempting to change status
+      if (req.body.status && statusValidation) {
+        if (!statusValidation.includes(req.body.status)) {
+          return res.status(400).json({
+            error: `Invalid status transition. Allowed: ${statusValidation.join(', ')}`
+          });
+        }
+      }
+
+      // Build update object with only allowed fields
+      const updates = {};
+      allowedUpdates.forEach(field => {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      });
+
+      // Handle document updates for owners
+      if (isOwner && form.status === 'Pending') {
+        if (nptelResultUpload) {
+          updates.documents = updates.documents || [...(form.documents || [])];
+          updates.documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
+        }
+        if (idCardUpload) {
+          updates.documents = updates.documents || [...(form.documents || [])];
+          updates.documents[1] = { url: idCardUpload.secure_url, publicId: idCardUpload.public_id };
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update or insufficient permissions' });
+      }
+
       // Update form fields
-      const updatedForm = await Form.findOneAndUpdate(
-        { applicationId: req.params.id },
-        {
-          ...req.body,
-          documents: [
-            nptelResultUpload
-              ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
-              : form.documents[0],
-            idCardUpload
-              ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
-              : form.documents[1]
-          ].filter(Boolean),
-        },
-        { new: true }
+      const updatedForm = await Form.findByIdAndUpdate(
+        form._id,
+        { $set: updates },
+        { new: true, runValidators: true }
       );
 
       res.json({ message: "Form updated successfully!", form: updatedForm });
@@ -336,7 +470,11 @@ router.put(
 // DELETE /api/forms/:id - Delete a form
 router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
-    const form = await Form.findOne({ applicationId: req.params.id });
+    // Try to find by applicationId first, then by MongoDB _id
+    let form = await Form.findOne({ applicationId: req.params.id });
+    if (!form) {
+      form = await Form.findById(req.params.id);
+    }
     if (!form) {
       return res.status(404).json({ error: "Form not found" });
     }
@@ -358,7 +496,7 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
       }
     }
 
-    await Form.deleteOne({ applicationId: req.params.id });
+    await Form.findByIdAndDelete(form._id);
     res.json({ message: "Form deleted successfully" });
   } catch (err) {
     console.error("Error deleting form:", err);

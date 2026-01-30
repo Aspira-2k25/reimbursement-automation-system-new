@@ -130,6 +130,22 @@ export const facultyFormsAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+  listForPrincipal: async () => {
+    try {
+      const res = await api.get('/forms/for-principal');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForAccounts: async () => {
+    try {
+      const res = await api.get('/forms/for-accounts');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
   listApproved: async () => {
     try {
       const res = await api.get('/forms/approved');
@@ -193,6 +209,22 @@ export const studentFormsAPI = {
   listForHOD: async () => {
     try {
       const res = await api.get('/student-forms/for-hod');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForPrincipal: async () => {
+    try {
+      const res = await api.get('/student-forms/for-principal');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForAccounts: async () => {
+    try {
+      const res = await api.get('/student-forms/for-accounts');
       return res.data;
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };

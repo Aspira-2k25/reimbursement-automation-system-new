@@ -57,9 +57,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Side - Welcome Section */}
-      <motion.div className="w-1/2 relative overflow-hidden flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
+      <motion.div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
         {/* Decorative geometric shapes */}
         <div className="absolute inset-0">
           {/* Diamond shapes */}
@@ -82,37 +82,37 @@ export default function LoginPage() {
         </div>
 
         {/* Content */}
-        <motion.div className="flex flex-col justify-center items-center p-16 relative z-10 text-center" {...fadeInUp}>
-          <h1 className="text-5xl font-bold text-white mb-8 leading-tight">
+        <motion.div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center" {...fadeInUp}>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 leading-tight">
             Welcome Back!
           </h1>
-          <p className="text-xl text-white/90 leading-relaxed max-w-md">
+          <p className="text-base sm:text-lg lg:text-xl text-white/90 leading-relaxed max-w-md px-4">
             To keep connected with us please login with your personal info
           </p>
         </motion.div>
       </motion.div>
 
       {/* Right Side - Form Section */}
-      <motion.div className="w-1/2 flex items-center justify-center p-8" style={{ background: '#F2F2F2' }} {...fadeInUp}>
-        <div className="w-full max-w-md">
-          <motion.div className="bg-white rounded-2xl shadow-xl p-8" {...fadeInUp}>
+      <motion.div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }} {...fadeInUp}>
+        <div className="w-full max-w-md px-4 sm:px-0">
+          <motion.div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8" {...fadeInUp}>
             {/* Header */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: '#182628' }}>
+            <div className="text-center mb-6 sm:mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>
                 Login In
               </h2>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                <div className="text-xs sm:text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
                   {error}
                 </div>
               )}
               {/* Name Input */}
               <div className="relative">
-                <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
+                <User className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
                 <input
                   type="text"
@@ -121,13 +121,13 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   onFocus={() => setFocusedField('name')}
                   onBlur={() => setFocusedField('')}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
               </div>
 
               {/* Email Input */}
               <div className="relative">
-                <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
+                <Mail className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
                 <input
                   type="email"
@@ -136,13 +136,13 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField('')}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
               </div>
 
               {/* Password Input */}
               <div className="relative">
-                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
+                <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
                 <input
                   type="password"
@@ -151,7 +151,7 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField('')}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
               </div>
 
@@ -193,7 +193,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full text-white font-semibold py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-full transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
                 style={{
                   background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)',
                   boxShadow: '0 4px 15px rgba(59, 148, 94, 0.3)'
@@ -207,7 +207,7 @@ export default function LoginPage() {
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2"></div>
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2"></div>
                     Loging in...
                   </div>
                 ) : (
