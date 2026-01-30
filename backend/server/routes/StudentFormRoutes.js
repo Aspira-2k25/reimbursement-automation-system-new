@@ -377,9 +377,9 @@ router.get(
 
       // Allow access if:
       // 1. User is the owner of the form
-      // 2. User is a coordinator, HOD, or principal (they need to view requests)
+      // 2. User is a coordinator, HOD, principal, or accounts (they need to view requests)
       const isOwner = form.userId === userId;
-      const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
