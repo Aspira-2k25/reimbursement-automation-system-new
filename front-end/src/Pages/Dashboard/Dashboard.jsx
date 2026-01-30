@@ -28,6 +28,8 @@ import HODDashboard from "./Hod/HODDashboard"
 
 import PrincipalDashboard from "./Principal/PrincipalDashboard"
 
+import AccountsDashboard from "./Accounts/AccountsDashboard"
+
 export default function Dashboard() {
   const location = useLocation()
   const { user } = useAuth()
@@ -153,6 +155,15 @@ export default function Dashboard() {
     )
   }
 
+  if (location.pathname.startsWith("/dashboard/accounts")) {
+    return (
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #F59E0B 15%, white) 0%, white 40%)'}}>
+        <AccountsDashboard />
+        <Toaster {...toastConfig} />
+      </div>
+    )
+  }
+
   const getRoutes = (Navbar, Dashboard, RequestStatus, ProfileSettings, Provider = null, NotificationProvider = null) => {
     const content = (
         <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
@@ -220,6 +231,18 @@ export default function Dashboard() {
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
             <PrincipalDashboard />
+            <Toaster {...toastConfig} />
+          </div>
+        )
+
+      case "Accounts":
+        // Return Accounts dashboard with sidebar-based navigation
+        // Note: AccountsDashboard handles its own internal navigation with collapsible sidebar
+        // Components: AccountsDashboard (includes sidebar, header, and page routing)
+        // Primary function: Mark approved requests as disbursed, print forms, filter by department/type/date
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-amber-50/30 to-orange-50/20">
+            <AccountsDashboard />
             <Toaster {...toastConfig} />
           </div>
         )
