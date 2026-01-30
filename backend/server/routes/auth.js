@@ -8,6 +8,7 @@ const { validateLogin, validateRegister } = require('../middleware/validation');
 router.post('/login', validateLogin, authController.login);
 router.post('/register', validateRegister, authController.register);
 router.post('/google', authController.googleLogin);
+router.post('/logout', verifyToken, authController.logout);
 
 
 // Protected routes (authentication required)

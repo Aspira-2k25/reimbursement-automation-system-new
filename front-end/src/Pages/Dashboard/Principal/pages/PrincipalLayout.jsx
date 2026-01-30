@@ -271,51 +271,83 @@ const PrincipalLayout = ({ children }) => {
     setTypeFilter,
 
     // Helper methods
-    updateRequestStatus: useCallback((requestId, newStatus, comments = '') => {
-      setAllRequests(prev => {
-        const updatedRequests = prev.map(req =>
-          req.id === requestId
-            ? {
-                ...req,
-                status: newStatus,
-                lastUpdated: new Date().toISOString().split('T')[0],
-                principalComments: comments
-              }
-            : req
+    updateRequestStatus: useCallback(async (requestId, newStatus, comments = '') => {
+      try {
+        // Find the request to determine which API to use
+        const request = allRequests.find(req => 
+          req.id === requestId || 
+          req._id === requestId || 
+          req.applicationId === requestId
         )
 
-        // Find the updated request for notifications and activity log
-        const updatedRequest = updatedRequests.find(req => req.id === requestId)
-        if (updatedRequest) {
-          // Add notification for status change
-          const newNotification = {
-            id: Date.now(),
-            type: 'status_change',
-            title: `Request ${newStatus}`,
-            message: `${updatedRequest.applicantName}'s request has been ${newStatus.toLowerCase()}`,
-            time: 'Just now',
-            unread: true,
-            timestamp: new Date().toISOString()
-          }
-          setNotifications(prev => [newNotification, ...prev])
-
-          // Add to activity log
-          const newActivity = {
-            id: Date.now(),
-            action: `Request ${newStatus}`,
-            user: userProfile.fullName,
-            target: updatedRequest.applicantName,
-            details: `Request ${requestId} ${newStatus.toLowerCase()}${comments ? ` - ${comments}` : ''}`,
-            timestamp: new Date().toISOString(),
-            type: newStatus.toLowerCase(),
-            department: updatedRequest.department
-          }
-          setActivityLog(prev => [newActivity, ...prev])
+        if (!request) {
+          toast.error('Request not found')
+          return false
         }
 
-        return updatedRequests
-      })
-    }, [userProfile]),
+        // Validate status - Principal can only update "Under Principal" requests
+        if (request.status !== 'Under Principal') {
+          toast.error(`Cannot update request. Current status is "${request.status}". Only requests with status "Under Principal" can be approved/rejected by Principal.`)
+          return false
+        }
+
+        // Get the correct form ID
+        const formId = request._id || request.applicationId || request.id
+
+        // Prepare update data
+        const updateData = { 
+          status: newStatus,
+          reviewedBy: userProfile.fullName,
+          reviewedAt: new Date().toISOString()
+        }
+        if (comments) {
+          updateData.remarks = comments
+        }
+
+        // Call the correct API based on applicant type
+        if (request.applicantType === 'Student') {
+          await studentFormsAPI.updateById(formId, updateData)
+        } else {
+          await facultyFormsAPI.updateById(formId, updateData)
+        }
+
+        // Refresh requests from server
+        await fetchRequests()
+
+        // Add notification for status change
+        const newNotification = {
+          id: Date.now(),
+          type: 'status_change',
+          title: `Request ${newStatus}`,
+          message: `${request.applicantName}'s request has been ${newStatus.toLowerCase()}`,
+          time: 'Just now',
+          unread: true,
+          timestamp: new Date().toISOString()
+        }
+        setNotifications(prev => [newNotification, ...prev])
+
+        // Add to activity log
+        const newActivity = {
+          id: Date.now(),
+          action: `Request ${newStatus}`,
+          user: userProfile.fullName,
+          target: request.applicantName,
+          details: `Request ${requestId} ${newStatus.toLowerCase()}${comments ? ` - ${comments}` : ''}`,
+          timestamp: new Date().toISOString(),
+          type: newStatus.toLowerCase(),
+          department: request.department
+        }
+        setActivityLog(prev => [newActivity, ...prev])
+
+        toast.success(`Request ${newStatus.toLowerCase()} successfully`)
+        return true
+      } catch (error) {
+        console.error('Error updating request status:', error)
+        const errorMessage = error?.response?.data?.error || error?.error || error?.message || 'Failed to update request status'
+        toast.error(errorMessage)
+        return false
+      }
+    }, [allRequests, fetchRequests, userProfile]),
 
     addComment: useCallback((requestId, comment) => {
       setAllRequests(prev =>
