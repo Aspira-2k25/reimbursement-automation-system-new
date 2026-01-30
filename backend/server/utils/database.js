@@ -13,9 +13,9 @@ const dbUtils = {
   testConnection: async () => {
     try {
       if (!pool) {
-        return { 
-          success: false, 
-          error: 'PostgreSQL pool not initialized. Check DATABASE_URL environment variable.' 
+        return {
+          success: false,
+          error: 'PostgreSQL pool not initialized. Check DATABASE_URL environment variable.'
         };
       }
       const dbPool = ensurePool();
@@ -98,7 +98,7 @@ const dbUtils = {
     }
   },
 
-  // Get all staff (for testing)
+  // Get all staff (excludes password for security)
   getAllStaff: async () => {
     try {
       const query = `
@@ -109,7 +109,6 @@ const dbUtils = {
           department,
           role,
           email,
-          password,
           created_at,
           last_login,
           is_active

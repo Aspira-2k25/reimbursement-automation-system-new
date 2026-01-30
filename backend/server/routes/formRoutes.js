@@ -285,9 +285,9 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     const formUserId = form.userId;
     const userRole = req.user.role?.toLowerCase();
 
-    // Allow access if: owner OR HOD/Principal (they can view all forms)
+    // Allow access if: owner OR HOD/Principal/Accounts (they can view all forms)
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['hod', 'principal'].includes(userRole);
+    const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
 
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
@@ -422,8 +422,8 @@ router.put(
       // Validate status change if attempting to change status
       if (req.body.status && statusValidation) {
         if (!statusValidation.includes(req.body.status)) {
-          return res.status(400).json({ 
-            error: `Invalid status transition. Allowed: ${statusValidation.join(', ')}` 
+          return res.status(400).json({
+            error: `Invalid status transition. Allowed: ${statusValidation.join(', ')}`
           });
         }
       }
