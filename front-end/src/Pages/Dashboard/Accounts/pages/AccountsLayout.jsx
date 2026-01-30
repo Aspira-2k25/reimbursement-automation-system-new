@@ -1,5 +1,6 @@
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialAccountsData } from '../data/mockData'
@@ -22,8 +23,17 @@ export const useAccountsContext = () => {
 
 const AccountsLayout = () => {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Get initial tab from URL hash
+  const getTabFromHash = () => {
+    const hash = location.hash.replace('#', '')
+    return hash || 'home'
+  }
+
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [activeTab, setActiveTab] = useState('home')
+  const [activeTab, setActiveTab] = useState(getTabFromHash())
   const [userProfile, setUserProfile] = useState(initialAccountsData.userProfile)
   const [allRequests, setAllRequests] = useState(initialAccountsData.allRequests)
   const [departments] = useState(initialAccountsData.departments)
@@ -34,6 +44,22 @@ const AccountsLayout = () => {
   const [departmentFilter, setDepartmentFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' })
+
+  // Sync activeTab with URL hash for browser navigation support
+  useEffect(() => {
+    const hash = location.hash.replace('#', '')
+    if (hash && hash !== activeTab) {
+      setActiveTab(hash)
+    } else if (!hash && activeTab !== 'home') {
+      setActiveTab('home')
+    }
+  }, [location.hash])
+
+  // Custom setActiveTab that also updates URL
+  const handleSetActiveTab = useCallback((tab) => {
+    setActiveTab(tab)
+    navigate(tab === 'home' ? '/dashboard/accounts' : `/dashboard/accounts#${tab}`, { replace: false })
+  }, [navigate])
 
   // Handle responsive behavior - auto-collapse on mobile
   useEffect(() => {
@@ -224,7 +250,7 @@ const AccountsLayout = () => {
     try {
       // Find the request to determine if it's student or faculty
       const request = allRequests.find(r => r.id === requestId || r.applicationId === requestId || r._id === requestId)
-      
+
       if (!request) {
         toast.error('Request not found')
         return
@@ -347,7 +373,7 @@ const AccountsLayout = () => {
     loading,
     setLoading,
     activeTab,
-    setActiveTab,
+    setActiveTab: handleSetActiveTab,
     isCollapsed,
     setIsCollapsed,
     notifications,
@@ -366,19 +392,19 @@ const AccountsLayout = () => {
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
         <Sidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleSetActiveTab}
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
           userProfile={userProfile}
         />
-        
+
         <div className="flex-1 flex flex-col min-w-0">
           <Header userProfile={userProfile} currentPage={
             activeTab === 'home' ? 'Accounts Dashboard' :
-            activeTab === 'profile' ? 'Profile Settings' :
-            'Dashboard'
+              activeTab === 'profile' ? 'Profile Settings' :
+                'Dashboard'
           } />
-          
+
           <main className="flex-1 p-4 sm:p-6 overflow-auto">
             <AnimatePresence mode="wait">
               <motion.div
