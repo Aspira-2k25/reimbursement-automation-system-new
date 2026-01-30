@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   Home,
   Settings,
@@ -148,7 +148,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               whileTap={{ scale: 0.98 }}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-500'}`} />
-              
+
               <AnimatePresence>
                 {!isCollapsed && (
                   <motion.span

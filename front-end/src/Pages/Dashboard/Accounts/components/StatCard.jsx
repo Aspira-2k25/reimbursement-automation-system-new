@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 
 const StatCard = ({ title, value, subtitle, icon: Icon, color = 'amber', onClick }) => {
   // Color configurations for amber theme
@@ -55,7 +56,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'amber', onClick
             <p className={`text-xs mt-1 ${colors.subtitleColor}`}>{subtitle}</p>
           )}
         </div>
-        
+
         {Icon && (
           <div className={`p-2.5 rounded-lg ${colors.iconBg}`}>
             <Icon className={`w-5 h-5 ${colors.iconColor}`} />
@@ -64,7 +65,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'amber', onClick
       </div>
 
       {/* Decorative element */}
-      <div 
+      <div
         className={`absolute bottom-0 left-0 right-0 h-1 rounded-b-xl bg-gradient-to-r from-amber-400 to-orange-400 opacity-50`}
       />
     </motion.div>

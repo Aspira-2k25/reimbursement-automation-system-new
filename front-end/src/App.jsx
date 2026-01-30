@@ -24,12 +24,14 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
           <Route path="/form" element={<ReimbursementForm />} />
           <Route path="/nptel-form/view/:id" element={<ViewForm />} />
           <Route path="/nptel-form/edit/:id" element={<EditForm />} />
+          <Route path="/student-form/view/:id" element={<ViewForm />} />
           <Route path="/student-nptel-form" element={<StudentNptelForm />} />
-          <Route path="/faculty-nptel-form" element={<ReimbursementForm/>} />
+          <Route path="/faculty-nptel-form" element={<ReimbursementForm />} />
+          {/* Catch-all route MUST be last */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
