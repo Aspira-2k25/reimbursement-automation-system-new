@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState, useRef } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   Wallet,
   Clock,
@@ -69,7 +69,7 @@ const HomeDashboard = () => {
       toast.info('This request has already been disbursed')
       return
     }
-    
+
     setIsLoading(true)
     try {
       await updateRequestStatus(request.id, 'Disbursed', 'Marked as disbursed by Accounts')
@@ -237,7 +237,7 @@ const HomeDashboard = () => {
       'Disbursed': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' }
     }
     const config = statusConfig[status] || { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' }
-    
+
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text} border ${config.border}`}>
         {status}
@@ -494,8 +494,8 @@ const HomeDashboard = () => {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        request.applicantType === 'Student' 
-                          ? 'bg-blue-100 text-blue-700' 
+                        request.applicantType === 'Student'
+                          ? 'bg-blue-100 text-blue-700'
                           : request.applicantType === 'Faculty'
                           ? 'bg-purple-100 text-purple-700'
                           : 'bg-gray-100 text-gray-700'
