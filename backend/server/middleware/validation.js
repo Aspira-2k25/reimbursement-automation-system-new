@@ -66,9 +66,13 @@ const validationMiddleware = {
       }
 
       // Compare provided password with stored hash
-      const isPasswordValid = user.password.startsWith('$2a$') || user.password.startsWith('$2b$')
-        ? await bcrypt.compare(password, user.password)
-        : password === user.password;
+      // Security: Only accept bcrypt hashed passwords
+      if (!user.password || (!user.password.startsWith('$2a$') && !user.password.startsWith('$2b$'))) {
+        console.error('Invalid password format in database for user:', user.username);
+        return res.status(401).json(invalidCredentialsError);
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
         return res.status(401).json(invalidCredentialsError);

@@ -378,8 +378,7 @@ authController.createUser = async (req, res) => {
 
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message, // Debugging
-      stack: error.stack // Debugging
+      message: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred'
     });
   }
 };
