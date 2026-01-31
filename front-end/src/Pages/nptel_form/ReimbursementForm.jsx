@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const ReimbursementForm = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     id: '',
@@ -132,6 +135,15 @@ const ReimbursementForm = () => {
         formDataToSend.append(key, formData[key]);
       });
 
+      // Set applicantType based on user role
+      const userRole = user?.role || 'Faculty';
+      formDataToSend.append('applicantType', userRole); // Will be HOD, Coordinator, or Faculty
+
+      // Add department from user profile
+      if (user?.department) {
+        formDataToSend.append('department', user.department);
+      }
+
       //append files
       const nptelFile = document.getElementById("nptelResult").files[0];
       const idCardFile = document.getElementById("idCard").files[0];
@@ -140,8 +152,9 @@ const ReimbursementForm = () => {
 
       //get jwt tocken from login
       const token = localStorage.getItem("token");
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await fetch("http://localhost:5000/api/forms/submit", {
+      const res = await fetch(`${API_BASE_URL}/forms/submit`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,  // add tocken for authorization
@@ -151,16 +164,25 @@ const ReimbursementForm = () => {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Form submitted successfully!!");
+        toast.success("Form submitted successfully!");
         console.log(data);
-        // Navigate to request status page after successful submission
-        navigate('/dashboard/faculty/requests');
+        // Navigate based on user role after successful submission
+        const userRole = user?.role?.toLowerCase();
+        if (userRole === 'coordinator') {
+          navigate('/dashboard/coordinator');
+        } else if (userRole === 'hod') {
+          navigate('/dashboard/hod/request-status');
+        } else if (userRole === 'principal') {
+          navigate('/dashboard/principal');
+        } else {
+          navigate('/dashboard/faculty/requests');
+        }
       } else {
-        alert("Error: " + data.error);
+        toast.error("Error: " + data.error);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+      toast.error("Form submission failed. Try Again");
     }
   };
 

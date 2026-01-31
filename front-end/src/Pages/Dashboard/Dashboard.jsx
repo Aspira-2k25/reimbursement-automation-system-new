@@ -9,12 +9,14 @@ import StudentDashboard from "./Student/StudentDashboard"
 import StudentRequestStatus from "./Student/RequestStatus"
 import StudentProfileSettings from "./Student/ProfileSettings"
 import { ProfileProvider } from "./Student/ProfileContext"
+import { NotificationProvider as StudentNotificationProvider } from "./Student/NotificationContext"
 
 import FacultyNavbar from "./Faculty/components/Navbar"
 import FacultyDashboard from "./Faculty/FacultyDashboard"
 import FacultyRequestStatus from "./Faculty/RequestStatus"
 import FacultyProfileSettings from "./Faculty/ProfileSettings"
 import { ProfileProvider as FacultyProfileProvider } from "./Faculty/ProfileContext"
+import { NotificationProvider as FacultyNotificationProvider } from "./Faculty/NotificationContext"
 
 import CoordinatorNavbar from "./Coordinator/components/Navbar" // Navigation bar for faculty users
 import CoordinatorDashboard from "./Coordinator/CoordinatorDashboard" // Manage Students Request page for faculty
@@ -25,6 +27,8 @@ import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profil
 import HODDashboard from "./Hod/HODDashboard" 
 
 import PrincipalDashboard from "./Principal/PrincipalDashboard"
+
+import AccountsDashboard from "./Accounts/AccountsDashboard"
 
 export default function Dashboard() {
   const location = useLocation()
@@ -116,16 +120,18 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <FacultyProfileProvider>
-          <FacultyNavbar />
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="faculty" element={<PageWrapper><FacultyDashboard /></PageWrapper>} />
-              <Route path="faculty/requests" element={<PageWrapper type="slide"><FacultyRequestStatus /></PageWrapper>} />
-              <Route path="faculty/profile" element={<PageWrapper type="scale"><FacultyProfileSettings /></PageWrapper>} />
-              <Route path="*" element={<Navigate to="faculty" replace />} />
-            </Routes>
-          </AnimatePresence>
-          <Toaster {...toastConfig} />
+          <FacultyNotificationProvider>
+            <FacultyNavbar />
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route path="faculty" element={<PageWrapper><FacultyDashboard /></PageWrapper>} />
+                <Route path="faculty/requests" element={<PageWrapper type="slide"><FacultyRequestStatus /></PageWrapper>} />
+                <Route path="faculty/profile" element={<PageWrapper type="scale"><FacultyProfileSettings /></PageWrapper>} />
+                <Route path="*" element={<Navigate to="faculty" replace />} />
+              </Routes>
+            </AnimatePresence>
+            <Toaster {...toastConfig} />
+          </FacultyNotificationProvider>
         </FacultyProfileProvider>
       </div>
     )
@@ -149,7 +155,16 @@ export default function Dashboard() {
     )
   }
 
-  const getRoutes = (Navbar, Dashboard, RequestStatus, ProfileSettings, Provider = null) => {
+  if (location.pathname.startsWith("/dashboard/accounts")) {
+    return (
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #F59E0B 15%, white) 0%, white 40%)'}}>
+        <AccountsDashboard />
+        <Toaster {...toastConfig} />
+      </div>
+    )
+  }
+
+  const getRoutes = (Navbar, Dashboard, RequestStatus, ProfileSettings, Provider = null, NotificationProvider = null) => {
     const content = (
         <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
         <Navbar />
@@ -167,12 +182,19 @@ export default function Dashboard() {
       </div>
     )
 
-    return Provider ? <Provider>{content}</Provider> : content
+    let wrappedContent = content
+    if (NotificationProvider) {
+      wrappedContent = <NotificationProvider>{wrappedContent}</NotificationProvider>
+    }
+    if (Provider) {
+      wrappedContent = <Provider>{wrappedContent}</Provider>
+    }
+    return wrappedContent
   }
 
   switch (userRole) {
     case "Student":
-      return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider)
+      return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider, StudentNotificationProvider)
 
     case "Faculty":
       return getRoutes(FacultyNavbar, FacultyDashboard, FacultyRequestStatus, FacultyProfileSettings, FacultyProfileProvider)
@@ -209,6 +231,18 @@ export default function Dashboard() {
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
             <PrincipalDashboard />
+            <Toaster {...toastConfig} />
+          </div>
+        )
+
+      case "Accounts":
+        // Return Accounts dashboard with sidebar-based navigation
+        // Note: AccountsDashboard handles its own internal navigation with collapsible sidebar
+        // Components: AccountsDashboard (includes sidebar, header, and page routing)
+        // Primary function: Mark approved requests as disbursed, print forms, filter by department/type/date
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-amber-50/30 to-orange-50/20">
+            <AccountsDashboard />
             <Toaster {...toastConfig} />
           </div>
         )

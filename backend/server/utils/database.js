@@ -1,10 +1,25 @@
 const pool = require('../config/database');
 
+// Helper to check if pool is initialized
+function ensurePool() {
+  if (!pool) {
+    throw new Error('PostgreSQL pool not initialized. Check DATABASE_URL environment variable in Vercel settings.');
+  }
+  return pool;
+}
+
 const dbUtils = {
   // Test database connection
   testConnection: async () => {
     try {
-      const result = await pool.query(
+      if (!pool) {
+        return {
+          success: false,
+          error: 'PostgreSQL pool not initialized. Check DATABASE_URL environment variable.'
+        };
+      }
+      const dbPool = ensurePool();
+      const result = await dbPool.query(
         'SELECT NOW()'
       );
       return { success: true, timestamp: result.rows[0].now };
@@ -16,6 +31,7 @@ const dbUtils = {
   // Get staff by username
   getStaffByUsername: async (username) => {
     try {
+      const dbPool = ensurePool();
       const query = `
         SELECT
           id,
@@ -31,7 +47,7 @@ const dbUtils = {
         FROM staff
         WHERE username = $1
       `;
-      const result = await pool.query(query, [username]);
+      const result = await dbPool.query(query, [username]);
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error getting user:', error);
@@ -57,7 +73,8 @@ const dbUtils = {
         FROM staff
         WHERE email = $1
       `;
-      const result = await pool.query(query, [email]);
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [email]);
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error getting user by email:', error);
@@ -73,14 +90,15 @@ const dbUtils = {
         SET last_login = CURRENT_TIMESTAMP
         WHERE id = $1
       `;
-      await pool.query(query, [userId]);
+      const dbPool = ensurePool();
+      await dbPool.query(query, [userId]);
     } catch (error) {
       console.error('Error updating last login:', error);
       throw error;
     }
   },
 
-  // Get all staff (for testing)
+  // Get all staff (excludes password for security)
   getAllStaff: async () => {
     try {
       const query = `
@@ -91,7 +109,6 @@ const dbUtils = {
           department,
           role,
           email,
-          password,
           created_at,
           last_login,
           is_active
@@ -116,12 +133,14 @@ const dbUtils = {
           name,
           department,
           role,
+          email,
           password,
           is_active
         FROM staff
         WHERE username = $1
       `;
-      const result = await pool.query(query, [username]);
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [username]);
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error getting user for login:', error);
@@ -145,7 +164,8 @@ const dbUtils = {
         FROM staff
         WHERE id = $1 AND is_active = true
       `;
-      const result = await pool.query(query, [userId]);
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [userId]);
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error getting user profile:', error);
@@ -181,7 +201,8 @@ const dbUtils = {
         last_login
       `;
 
-      const result = await pool.query(query, [userId, ...values]);
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [userId, ...values]);
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error updating user profile:', error);
@@ -203,7 +224,8 @@ const dbUtils = {
         WHERE department = $1
         AND is_active = true
       `;
-      const result = await pool.query(query, [department]);
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [department]);
       return result.rows;
     } catch (error) {
       console.error('Error getting users by department:', error);
@@ -244,7 +266,8 @@ const dbUtils = {
         WHERE name ILIKE $1
         AND is_active = true
       `;
-      const result = await pool.query(query, [`%${searchTerm}%`]);
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [`%${searchTerm}%`]);
       return result.rows;
     } catch (error) {
       console.error('Error searching users:', error);
@@ -252,5 +275,9 @@ const dbUtils = {
     }
   }
 };
+
+// Add aliases for backward compatibility (after dbUtils is defined)
+dbUtils.getAllUsers = dbUtils.getAllStaff;
+dbUtils.getUserForLogin = dbUtils.getStaffForLogin;
 
 module.exports = dbUtils;

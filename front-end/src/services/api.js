@@ -35,6 +35,17 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
+    // Better error handling for network errors
+    if (!error.response) {
+      console.error('Network Error:', {
+        message: error.message,
+        apiUrl: error.config?.url,
+        baseURL: error.config?.baseURL,
+        hint: 'Check if backend is running and VITE_API_BASE_URL is correct'
+      });
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -111,6 +122,46 @@ export const facultyFormsAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+  listForHOD: async () => {
+    try {
+      const res = await api.get('/forms/for-hod');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForPrincipal: async () => {
+    try {
+      const res = await api.get('/forms/for-principal');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForAccounts: async () => {
+    try {
+      const res = await api.get('/forms/for-accounts');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listApproved: async () => {
+    try {
+      const res = await api.get('/forms/approved');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listRejected: async () => {
+    try {
+      const res = await api.get('/forms/rejected');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
   getById: async (id) => {
     try {
       const res = await api.get(`/forms/${id}`);
@@ -158,6 +209,22 @@ export const studentFormsAPI = {
   listForHOD: async () => {
     try {
       const res = await api.get('/student-forms/for-hod');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForPrincipal: async () => {
+    try {
+      const res = await api.get('/student-forms/for-principal');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  listForAccounts: async () => {
+    try {
+      const res = await api.get('/student-forms/for-accounts');
       return res.data;
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };
