@@ -44,7 +44,7 @@ const authController = {
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role },
+        { userId: user.id, username: user.username, role: user.role, email: user.email },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
@@ -92,8 +92,8 @@ const authController = {
       // Validate email domain - only allow apsit.edu.in domain
       const allowedDomain = 'apsit.edu.in';
       if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
-        return res.status(403).json({ 
-          error: `Only ${allowedDomain} email addresses are allowed. Please sign in with your institutional email.` 
+        return res.status(403).json({
+          error: `Only ${allowedDomain} email addresses are allowed. Please sign in with your institutional email.`
         });
       }
 
