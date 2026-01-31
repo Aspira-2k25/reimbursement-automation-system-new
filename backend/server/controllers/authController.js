@@ -1,42 +1,19 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const dbUtils = require('../utils/database');
+const prisma = require('../config/prisma');
 
 const authController = {
   // Login function
-  login: async (req, res) => {
+  // Login function
+  login: async (req, res, next) => {
     try {
-      const { username, password } = req.body;
-
-      // Basic validation
-      if (!username || !password) {
-        return res.status(400).json({
-          error: 'Username and password are required'
-        });
-      }
-
-      // Get staff from database by username
-      const user = await dbUtils.getStaffForLogin(username);
-
-      console.log('Login attempt for username:', username);
-      console.log('User found:', user ? 'Yes' : 'No');
+      // User is already authenticated and attached by validationMiddleware
+      const user = req.user;
 
       if (!user) {
-        return res.status(401).json({
-          error: 'Invalid credentials'
-        });
-      }
-
-      // Check if user is active
-      if (!user.is_active) {
-        return res.status(401).json({
-          error: 'Account is deactivated'
-        });
-      }
-
-      // Compare provided password with stored value (plain text)
-      if (password !== user.password) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        // Should not happen if middleware works correctly
+        return res.status(500).json({ error: 'Authentication failed internally' });
       }
 
       // Update last login time
@@ -65,7 +42,10 @@ const authController = {
 
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   },
 
@@ -92,8 +72,8 @@ const authController = {
       // Validate email domain - only allow apsit.edu.in domain
       const allowedDomain = 'apsit.edu.in';
       if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
-        return res.status(403).json({ 
-          error: `Only ${allowedDomain} email addresses are allowed. Please sign in with your institutional email.` 
+        return res.status(403).json({
+          error: `Please sign in with your institutional email.`
         });
       }
 
@@ -116,10 +96,10 @@ const authController = {
     }
   },
 
-  // Register function
+  // Register function - Create new user via API (Postman)
   register: async (req, res) => {
     try {
-      const { username, name, department, role, email, password } = req.body;
+      const { username, name, department, role, email, password, employee_id } = req.body;
 
       // Basic validation
       if (!username || !name || !password) {
@@ -128,40 +108,62 @@ const authController = {
         });
       }
 
-      // Check if user already exists
-      const existingUser = await dbUtils.getStaffByUsername(username);
-      if (existingUser) {
+      // Validate email format if provided
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({
+          error: 'Invalid email format'
+        });
+      }
+
+      // Check if user already exists by username
+      const existingUserByUsername = await prisma.staff.findUnique({
+        where: { username: username }
+      });
+      if (existingUserByUsername) {
         return res.status(409).json({
           error: 'User with this username already exists'
         });
       }
 
-      // Store password as provided (plain text)
+      // Check if email already exists (if provided)
+      if (email) {
+        const existingUserByEmail = await prisma.staff.findUnique({
+          where: { email: email }
+        });
+        if (existingUserByEmail) {
+          return res.status(409).json({
+            error: 'User with this email already exists'
+          });
+        }
+      }
 
-      // Insert new user
-      const query = `
-        INSERT INTO staff (
-          username,
-          name,
-          department,
-          role,
-          email,
-          password
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, username, name, department, role, email
-      `;
+      // Hash password before storing
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      const pool = require('../config/database');
-      const result = await pool.query(query, [
-        username,
-        name,
-        department || null,
-        role || 'student',
-        email || null,
-        password
-      ]);
-
-      const newUser = result.rows[0];
+      // Create new user using Prisma
+      const newUser = await prisma.staff.create({
+        data: {
+          username: username.trim(),
+          name: name.trim(),
+          password: hashedPassword, // Store hashed password, not plain text
+          email: email ? email.trim() : null,
+          department: department || null,
+          role: role || 'Faculty',
+          employee_id: employee_id || null,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          department: true,
+          role: true,
+          email: true,
+          employee_id: true,
+          is_active: true,
+          created_at: true,
+        }
+      });
 
       // Generate JWT token
       const token = jwt.sign(
@@ -171,14 +173,26 @@ const authController = {
       );
 
       res.status(201).json({
-        message: 'Registration successful',
+        message: 'User created successfully',
         token,
         user: newUser
       });
 
     } catch (error) {
       console.error('Register error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+
+      // Handle Prisma unique constraint errors
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0] || 'field';
+        return res.status(409).json({
+          error: `User with this ${field} already exists`
+        });
+      }
+
+      res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   },
 
@@ -273,6 +287,99 @@ authController.getStaffByDepartment = async (req, res) => {
   } catch (error) {
     console.error('getStaffByDepartment error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Create user endpoint (for admin/user creation via Postman)
+// Similar to register but doesn't auto-login the user
+authController.createUser = async (req, res) => {
+  try {
+    const { username, name, department, role, email, password, employee_id } = req.body;
+
+    // Basic validation
+    if (!username || !name || !password) {
+      return res.status(400).json({
+        error: 'Username, name, and password are required'
+      });
+    }
+
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        error: 'Invalid email format'
+      });
+    }
+
+    // Check if user already exists by username
+    const existingUserByUsername = await prisma.staff.findUnique({
+      where: { username: username }
+    });
+    if (existingUserByUsername) {
+      return res.status(409).json({
+        error: 'User with this username already exists'
+      });
+    }
+
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingUserByEmail = await prisma.staff.findUnique({
+        where: { email: email }
+      });
+      if (existingUserByEmail) {
+        return res.status(409).json({
+          error: 'User with this email already exists'
+        });
+      }
+    }
+
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user using Prisma
+    const newUser = await prisma.staff.create({
+      data: {
+        username: username.trim(),
+        name: name.trim(),
+        password: hashedPassword,
+        email: email ? email.trim() : null,
+        department: department || null,
+        role: role || 'Faculty',
+        employee_id: employee_id || null,
+        is_active: true,
+      },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        department: true,
+        role: true,
+        email: true,
+        employee_id: true,
+        is_active: true,
+        created_at: true,
+      }
+    });
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: newUser
+    });
+
+  } catch (error) {
+    console.error('Create user error:', error);
+
+    // Handle Prisma unique constraint errors
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'field';
+      return res.status(409).json({
+        error: `User with this ${field} already exists`
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred'
+    });
   }
 };
 
