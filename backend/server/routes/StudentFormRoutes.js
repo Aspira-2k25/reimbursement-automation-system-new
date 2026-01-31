@@ -5,6 +5,8 @@ const StudentForm = require("../models/StudentForm");
 const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
+const notificationService = require('../utils/notificationServise');
+const dbUtils = require('../utils/database');
 
 
 // POST /api/student-forms/submit
@@ -91,6 +93,22 @@ router.post(
       console.log('Attempting to save form:', newStudentForm);
 
       await newStudentForm.save();
+
+      // submission notification
+      await notificationService.createNotification({
+        userId: userId,
+        applicationId: newStudentForm.applicationId,
+        type: 'submission',
+        title: 'Application Submitted',
+        message: `Your reimbursement application ${newStudentForm.applicationId} has been submitted successfully.`,
+        phase: 'Student',
+        status: 'Pending',
+        userEmail: req.user.email || req.body.email,
+        userName: req.body.name,
+        studentId: req.body.studentId,
+        amount: req.body.amount,
+      }, true); // Send email notification
+
       res.status(201).json({ message: "Student form submitted successfully!", form: newStudentForm });
     } catch (err) {
       console.error("Error saving student form:", err);
@@ -145,7 +163,7 @@ router.get(
 
       // Fetch forms with status "Pending" (awaiting coordinator approval)
       const forms = await StudentForm.find({ status: "Pending" }).sort({ createdAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching pending forms:", err);
@@ -167,10 +185,10 @@ router.get(
       }
 
       // Fetch forms with status "Under HOD", "Under Principal", or "Approved"
-      const forms = await StudentForm.find({ 
+      const forms = await StudentForm.find({
         status: { $in: ["Under HOD", "Under Principal", "Approved"] }
       }).sort({ updatedAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching approved forms:", err);
@@ -192,10 +210,10 @@ router.get(
       }
 
       // Fetch forms with status "Rejected"
-      const forms = await StudentForm.find({ 
+      const forms = await StudentForm.find({
         status: "Rejected"
       }).sort({ updatedAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching rejected forms:", err);
@@ -218,7 +236,7 @@ router.get(
 
       // Fetch forms with status "Under HOD" (approved by coordinator, awaiting HOD approval)
       const forms = await StudentForm.find({ status: "Under HOD" }).sort({ updatedAt: -1 });
-      
+
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching HOD forms:", err);
@@ -269,30 +287,30 @@ router.get(
     try {
       // Try to find by MongoDB _id first, then by applicationId
       let form = await StudentForm.findById(req.params.id);
-      
+
       // If not found by _id, try applicationId
       if (!form) {
         form = await StudentForm.findOne({ applicationId: req.params.id });
       }
-      
+
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
       }
-      
+
       // Check access permissions
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
-      
+
       // Allow access if:
       // 1. User is the owner of the form
       // 2. User is a coordinator, HOD, or principal (they need to view requests)
       const isOwner = form.userId === userId;
       const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
-      
+
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      
+
       return res.json({ form });
     } catch (err) {
       console.error("Error fetching form by id:", err);
@@ -309,16 +327,16 @@ router.put(
     try {
       // Try to find by MongoDB _id first, then by applicationId
       let form = await StudentForm.findById(req.params.id);
-      
+
       // If not found by _id, try applicationId
       if (!form) {
         form = await StudentForm.findOne({ applicationId: req.params.id });
       }
-      
+
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
       }
-      
+
       // Use the MongoDB _id for the update
       const formId = form._id;
 
@@ -326,26 +344,26 @@ router.put(
       const isOwner = form.userId === userId;
       const userRole = req.user.role?.toLowerCase();
       const isAdmin = ['coordinator', 'hod', 'principal'].includes(userRole);
-      
+
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
       // Determine allowed fields based on user role and form status
       let allowedUpdates = [];
-      
+
       if (isOwner && form.status === 'Pending') {
         // Students can update their own pending forms (all editable fields)
         allowedUpdates = [
-          'name', 'studentId', 'division', 'email', 'academicYear', 
-          'amount', 'accountName', 'ifscCode', 'accountNumber', 
+          'name', 'studentId', 'division', 'email', 'academicYear',
+          'amount', 'accountName', 'ifscCode', 'accountNumber',
           'remarks', 'documents'
         ];
       } else if (isOwner) {
         // Students can only update remarks for non-pending forms
         allowedUpdates = ['remarks'];
       }
-      
+
       if (userRole === 'coordinator') {
         // Coordinators can approve/reject pending requests and update status to "Under HOD" or "Rejected"
         if (form.status === 'Pending') {
@@ -392,6 +410,62 @@ router.put(
         { $set: updates },
         { new: true, runValidators: true }
       );
+
+      // Check if status changed and trigger notifications
+      if (updates.status && updates.status !== form.status) {
+        const newStatus = updates.status;
+
+        // Determine phase based on who made the change
+        let phase = '';
+        if (userRole === 'coordinator') {
+          phase = 'Coordinator';
+        } else if (userRole === 'hod') {
+          phase = 'HOD';
+        } else if (userRole === 'principal') {
+          phase = 'Principal';
+        }
+
+        // Determine notification type
+        let notificationType = 'status_change';
+        if (newStatus === 'Rejected') {
+          notificationType = 'rejection';
+        } else if (['Under HOD', 'Under Principal', 'Approved'].includes(newStatus)) {
+          notificationType = 'approval';
+        }
+
+        // Get user email from login token or fallback to form email
+        let userEmail = form.email; // Fallback to form email
+        let userName = form.name;
+
+        try {
+          // Priority: 1. Postgres Profile Email, 2. Form Email
+          if (form.userId && !isNaN(form.userId)) {
+            const staffUser = await dbUtils.getStaffProfile(form.userId);
+            if (staffUser && staffUser.email) {
+              userEmail = staffUser.email;
+              userName = staffUser.name || userName;
+            }
+          }
+        } catch (dbError) {
+          console.error('Error fetching user details:', dbError);
+        }
+
+        // Create notification
+        await notificationService.createNotification({
+          userId: form.userId,
+          applicationId: form.applicationId,
+          type: notificationType,
+          title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+          message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+          phase: phase,
+          status: newStatus,
+          userEmail: userEmail,
+          userName: userName,
+          studentId: form.studentId,
+          amount: form.amount,
+          remarks: updates.remarks || form.remarks,
+        }, true); // Send email notification
+      }
 
       return res.json({ form: updatedForm });
     } catch (err) {
