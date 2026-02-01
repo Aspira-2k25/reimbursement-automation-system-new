@@ -7,7 +7,7 @@ import InfoTipBox from "./components/InfoTipBox"
 import { useProfile } from "./ProfileContext"
 import { useNavigate } from "react-router-dom"
 
-// Dummy data for faculty reimbursement options
+// Available reimbursement options for faculty
 const facultyReimbursementOptions = [
   {
     id: "nptel",
@@ -43,7 +43,7 @@ export default function FacultyDashboard() {
   const navigate = useNavigate();
   const { profile } = useProfile()
 
-  // State for reimbursement options - using dummy data for demonstration
+  // Available reimbursement options for faculty
   const [reimbursementOptions] = React.useState(facultyReimbursementOptions)
 
   /**

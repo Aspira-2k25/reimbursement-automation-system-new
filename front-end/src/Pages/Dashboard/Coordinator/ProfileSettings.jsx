@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 
-// Dummy user data
+// Default user profile fallback (overwritten by actual user data)
 const initialUserData = {
-  fullName: "Dr. Sarah Johnson",
-  department: "Computer Science",
-  designation: "Associate Professor",
+  fullName: "Coordinator",
+  department: "",
+  designation: "Class Coordinator",
   role: "Coordinator",
 }
 
