@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react'
-import { 
-  Search, 
-  Download, 
-  Mail, 
-  Phone, 
+import {
+  Search,
+  Download,
+  Mail,
+  Phone,
   Calendar,
   GraduationCap,
   User,
@@ -22,21 +22,21 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
   const [typeFilter, setTypeFilter] = useState('All')
   const [currentPage, setCurrentPage] = useState(1)
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' })
-  
+
   const itemsPerPage = 10
 
   // Filter and search logic
   const filteredMembers = useMemo(() => {
     return members.filter(member => {
-      const matchesSearch = 
+      const matchesSearch =
         member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         member.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (member.specialization && member.specialization.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (member.year && member.year.toLowerCase().includes(searchQuery.toLowerCase()))
-      
+
       const matchesType = typeFilter === 'All' || member.type === typeFilter
-      
+
       return matchesSearch && matchesType
     })
   }, [members, searchQuery, typeFilter])
@@ -46,22 +46,22 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
     const sorted = [...filteredMembers].sort((a, b) => {
       const aValue = a[sortConfig.key]
       const bValue = b[sortConfig.key]
-      
+
       if (sortConfig.key === 'totalReimbursements') {
         return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
       }
-      
+
       if (sortConfig.key === 'joinDate' || sortConfig.key === 'lastReimbursement') {
         const aDate = new Date(aValue)
         const bDate = new Date(bValue)
         return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate
       }
-      
-      return sortConfig.direction === 'asc' 
+
+      return sortConfig.direction === 'asc'
         ? (aValue || '').localeCompare(bValue || '')
         : (bValue || '').localeCompare(aValue || '')
     })
-    
+
     return sorted
   }, [filteredMembers, sortConfig])
 
@@ -185,7 +185,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th 
+              <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('name')}
               >
@@ -197,7 +197,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Type
               </th>
-              <th 
+              <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('designation')}
               >
@@ -212,7 +212,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contact
               </th>
-              <th 
+              <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('joinDate')}
               >
@@ -221,7 +221,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                 )}
               </th>
-              <th 
+              <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('totalReimbursements')}
               >
@@ -237,9 +237,8 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               <tr key={member.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white ${
-                      member.type === 'Student' ? 'bg-blue-600' : 'bg-green-600'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white ${member.type === 'Student' ? 'bg-green-600' : 'bg-green-600'
+                      }`}>
                       {member.type === 'Student' ? (
                         <GraduationCap className="w-5 h-5" />
                       ) : (
@@ -253,11 +252,10 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    member.type === 'Student' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-green-100 text-green-800'
-                  }`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.type === 'Student'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-green-100 text-green-800'
+                    }`}>
                     {member.type}
                   </span>
                 </td>
@@ -310,7 +308,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
             <div className="text-sm text-gray-500">
               Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedMembers.length)} of {sortedMembers.length} results
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -319,21 +317,20 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              
+
               {[...Array(totalPages)].map((_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => handlePageChange(i + 1)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === i + 1
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-200 hover:bg-gray-50'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === i + 1
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-200 hover:bg-gray-50'
+                    }`}
                 >
                   {i + 1}
                 </button>
               ))}
-              
+
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}

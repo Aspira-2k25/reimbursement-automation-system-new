@@ -1,6 +1,7 @@
 import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "react-hot-toast"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
 
@@ -205,7 +206,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 onClick={async () => {
                   try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch(`http://localhost:5000/api/forms/${deleteItem.id}`, {
+                    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+                    const response = await fetch(`${API_BASE_URL}/forms/${deleteItem.id}`, {
                       method: 'DELETE',
                       headers: {
                         'Authorization': `Bearer ${token}`
@@ -217,11 +219,11 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       setDeleteItem(null);
                     } else {
                       const data = await response.json();
-                      alert(data.error || 'Failed to delete form');
+                      toast.error(data.error || 'Failed to delete form');
                     }
                   } catch (error) {
                     console.error('Error deleting form:', error);
-                    alert('Failed to delete form. Please try again.');
+                    toast.error('Failed to delete form. Please try again.');
                   }
                 }}
               >

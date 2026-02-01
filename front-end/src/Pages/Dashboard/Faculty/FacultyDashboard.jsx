@@ -51,10 +51,10 @@ export default function FacultyDashboard() {
    * @param {Object} option - The selected reimbursement option
    */
   const handleApply = (option) => {
-      if (option.id === "nptel"){
-        navigate("/faculty-nptel-form");
+    if (option.id === "nptel") {
+      navigate("/faculty-nptel-form");
 
-      }else {
+    } else {
       toast.success(`Application started for ${option.title}`)
       // TODO: Implement actual application logic
     }
@@ -64,15 +64,15 @@ export default function FacultyDashboard() {
 
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 page-content">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10 page-content">
       {/* Reminder banner for important notifications */}
       <ReminderBanner />
 
       <section className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         {/* Welcome section with greeting and main title */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse"></div>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#65CCB8]/20 text-[#3B945E] text-xs sm:text-sm font-medium mb-3 sm:mb-4">
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#3B945E] animate-pulse"></div>
             WELCOME, {profile.name}
           </div>
 
