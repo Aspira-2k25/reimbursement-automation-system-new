@@ -10,12 +10,15 @@ import {
   Search,
   IndianRupee,
   Eye,
+  Edit,
   Download,
   Printer,
   Check,
   X,
   Calendar,
-  Filter
+  Filter,
+  XCircle,
+  AlertCircle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -46,17 +49,30 @@ const HomeDashboard = () => {
   } = useAccountsContext()
 
   const [printModal, setPrintModal] = useState({ show: false, request: null })
+  const [rejectModal, setRejectModal] = useState({ show: false, request: null })
+  const [rejectRemarks, setRejectRemarks] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedRequests, setSelectedRequests] = useState(new Set())
   const printRef = useRef(null)
 
   // Handler functions
   const handleViewRequest = useCallback((request) => {
-    // Open form in view mode
+    // Open form in view mode - use _id for API fetch
+    const formId = request._id || request.id
     if (request.applicantType === 'Student') {
-      navigate(`/student-form/view/${request.id}`)
+      navigate(`/student-form/view/${formId}`)
     } else {
-      navigate(`/nptel-form/view/${request.id}`)
+      navigate(`/nptel-form/view/${formId}`)
+    }
+  }, [navigate])
+
+  const handleEditRequest = useCallback((request) => {
+    // Open form in edit mode for bank details verification
+    const formId = request._id || request.id
+    if (request.applicantType === 'Student') {
+      navigate(`/student-form/edit/${formId}`)
+    } else {
+      navigate(`/nptel-form/edit/${formId}`)
     }
   }, [navigate])
 
@@ -64,21 +80,51 @@ const HomeDashboard = () => {
     setPrintModal({ show: true, request })
   }, [])
 
-  const handleMarkDisbursed = useCallback(async (request) => {
-    if (request.status === 'Disbursed') {
-      toast.info('This request has already been disbursed')
+  const handleRejectRequest = useCallback((request) => {
+    setRejectModal({ show: true, request })
+    setRejectRemarks('')
+  }, [])
+
+  const closeRejectModal = useCallback(() => {
+    setRejectModal({ show: false, request: null })
+    setRejectRemarks('')
+  }, [])
+
+  const confirmReject = useCallback(async () => {
+    if (!rejectRemarks.trim()) {
+      toast.error('Please provide a reason for rejection')
+      return
+    }
+
+    if (!rejectModal.request) return
+
+    setIsLoading(true)
+    try {
+      await updateRequestStatus(rejectModal.request._id, 'Rejected', rejectRemarks)
+      toast.success(`Request ${rejectModal.request.applicationId || rejectModal.request.id} rejected`)
+      closeRejectModal()
+    } catch {
+      toast.error('Failed to reject request')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [rejectRemarks, rejectModal.request, updateRequestStatus, closeRejectModal])
+
+  const handleMarkReimbursed = useCallback(async (request) => {
+    if (request.status === 'Reimbursed') {
+      toast.info('This request has already been reimbursed')
       return
     }
 
     setIsLoading(true)
     try {
-      await updateRequestStatus(request.id, 'Disbursed', 'Marked as disbursed by Accounts')
+      await updateRequestStatus(request._id, 'Reimbursed', 'Marked as reimbursed by Accounts')
     } finally {
       setIsLoading(false)
     }
   }, [updateRequestStatus])
 
-  const handleBulkMarkDisbursed = useCallback(async () => {
+  const handleBulkMarkReimbursed = useCallback(async () => {
     if (selectedRequests.size === 0) {
       toast.error('Please select at least one request')
       return
@@ -90,17 +136,17 @@ const HomeDashboard = () => {
     )
 
     if (approvedRequests.length === 0) {
-      toast.error('No approved requests selected for disbursement')
+      toast.error('No approved requests selected for reimbursement')
       return
     }
 
     setIsLoading(true)
     try {
       for (const request of approvedRequests) {
-        await updateRequestStatus(request.id, 'Disbursed', 'Bulk disbursement by Accounts')
+        await updateRequestStatus(request._id, 'Reimbursed', 'Bulk reimbursement by Accounts')
       }
       setSelectedRequests(new Set())
-      toast.success(`${approvedRequests.length} requests marked as disbursed`)
+      toast.success(`${approvedRequests.length} requests marked as reimbursed`)
     } catch {
       toast.error('Failed to process some requests')
     } finally {
@@ -137,14 +183,14 @@ const HomeDashboard = () => {
         setTypeFilter('All')
         setSearchQuery('')
         break
-      case 'Pending Disbursement':
+      case 'Pending Reimbursement':
         setStatusFilter('Approved')
         setDepartmentFilter('All')
         setTypeFilter('All')
         setSearchQuery('')
         break
-      case 'Disbursed':
-        setStatusFilter('Disbursed')
+      case 'Reimbursed':
+        setStatusFilter('Reimbursed')
         setDepartmentFilter('All')
         setTypeFilter('All')
         setSearchQuery('')
@@ -161,11 +207,11 @@ const HomeDashboard = () => {
   }, [getFilteredRequests])
 
   const handleExportToCSV = useCallback(() => {
-    const headers = ['ID', 'Applicant', 'Type', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
+    const headers = ['Application ID', 'Applicant', 'Type', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
     const csvContent = [
       headers.join(','),
       ...filteredRequests.map(request => [
-        request.id,
+        request.applicationId || request.id,
         `"${request.applicantName}"`,
         request.applicantType,
         request.department,
@@ -182,7 +228,7 @@ const HomeDashboard = () => {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `accounts-disbursements-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `accounts-reimbursements-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
     toast.success('Exported to CSV successfully!')
@@ -196,31 +242,31 @@ const HomeDashboard = () => {
         value: accountsStats.total.toString(),
         subtitle: `₹${accountsStats.totalAmount.toLocaleString()} total value`,
         icon: FileText,
-        color: 'amber',
+            color: 'teal',
         onClick: () => handleStatCardClick('Total Requests')
       },
       {
-        title: "Pending Disbursement",
+        title: "Pending Reimbursement",
         value: accountsStats.pendingDisbursement.toString(),
         subtitle: `₹${accountsStats.pendingAmount.toLocaleString()} pending`,
         icon: Clock,
-        color: 'amber',
-        onClick: () => handleStatCardClick('Pending Disbursement')
+            color: 'teal',
+        onClick: () => handleStatCardClick('Pending Reimbursement')
       },
       {
-        title: "Disbursed",
-        value: accountsStats.disbursed.toString(),
-        subtitle: `₹${accountsStats.disbursedAmount.toLocaleString()} completed`,
+        title: "Reimbursed",
+        value: accountsStats.reimbursed.toString(),
+        subtitle: `₹${accountsStats.reimbursedAmount.toLocaleString()} completed`,
         icon: CheckCircle,
-        color: 'amber',
-        onClick: () => handleStatCardClick('Disbursed')
+            color: 'teal',
+        onClick: () => handleStatCardClick('Reimbursed')
       },
       {
-        title: "Disbursement Rate",
+        title: "Reimbursement Rate",
         value: `${accountsStats.disbursementRate}%`,
         subtitle: "Completion rate",
         icon: TrendingUp,
-        color: 'amber',
+            color: 'teal',
         onClick: () => {}
       }
     ]
@@ -233,8 +279,9 @@ const HomeDashboard = () => {
   // Get status badge color
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'Approved': { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' },
-      'Disbursed': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' }
+      'Approved': { bg: 'bg-[#65CCB8]/30', text: 'text-[#3B945E]', border: 'border-[#65CCB8]/50' },
+      'Reimbursed': { bg: 'bg-[#57BA98]/30', text: 'text-[#3B945E]', border: 'border-[#57BA98]/50' },
+      'Rejected': { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' }
     }
     const config = statusConfig[status] || { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' }
 
@@ -249,31 +296,31 @@ const HomeDashboard = () => {
     <div className="space-y-6">
       {/* Welcome Section */}
       <motion.div
-        className="bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
+        className="bg-gradient-to-r from-[#57BA98] to-[#3B945E] rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">
               Welcome, {userProfile?.fullName || 'Accounts Officer'} 👋
             </h1>
-            <p className="text-amber-100 mb-4 text-sm sm:text-base">
-              {userProfile?.designation || 'Accounts Officer'} • Disbursement Dashboard
+            <p className="text-white/80 mb-4 text-sm sm:text-base">
+              {userProfile?.designation || 'Accounts Officer'} • Reimbursement Dashboard
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-amber-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-white/90">
               <div className="flex items-center gap-2">
                 <Wallet className="w-4 h-4" />
                 <span>{accountsStats.pendingDisbursement} Pending</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
-                <span>{accountsStats.disbursed} Disbursed</span>
+                <span>{accountsStats.reimbursed} Reimbursed</span>
               </div>
               <div className="flex items-center gap-2">
                 <IndianRupee className="w-4 h-4" />
-                <span>₹{accountsStats.disbursedAmount.toLocaleString()} Completed</span>
+                <span>₹{accountsStats.reimbursedAmount.toLocaleString()} Completed</span>
               </div>
             </div>
           </div>
@@ -307,7 +354,7 @@ const HomeDashboard = () => {
       <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Disbursement Queue</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Reimbursement Queue</h3>
             <p className="text-sm text-gray-500 mt-1">
               {filteredRequests.length} of {allRequests.length} requests
             </p>
@@ -317,19 +364,19 @@ const HomeDashboard = () => {
             {/* Bulk Actions */}
             {selectedRequests.size > 0 && (
               <button
-                onClick={handleBulkMarkDisbursed}
+                onClick={handleBulkMarkReimbursed}
                 disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors text-sm disabled:opacity-50"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Mark {selectedRequests.size} as Disbursed
+                Mark {selectedRequests.size} as Reimbursed
               </button>
             )}
 
             {/* Export Button */}
             <button
               onClick={handleExportToCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
               Export CSV
@@ -347,7 +394,7 @@ const HomeDashboard = () => {
               placeholder="Search by ID, name, department..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] focus:border-[#57BA98] text-sm"
             />
           </div>
 
@@ -355,18 +402,18 @@ const HomeDashboard = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
           >
             <option value="All">All Status</option>
-            <option value="Approved">Pending Disbursement</option>
-            <option value="Disbursed">Disbursed</option>
+            <option value="Approved">Pending Reimbursement</option>
+            <option value="Reimbursed">Reimbursed</option>
           </select>
 
           {/* Department Filter */}
           <select
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
           >
             <option value="All">All Departments</option>
             {departments.map(dept => (
@@ -378,7 +425,7 @@ const HomeDashboard = () => {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
           >
             <option value="All">All Types</option>
             <option value="Student">Student</option>
@@ -394,7 +441,8 @@ const HomeDashboard = () => {
               type="date"
               value={dateFilter.from}
               onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+              max={dateFilter.to || new Date().toISOString().split('T')[0]}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
               placeholder="From"
             />
           </div>
@@ -404,7 +452,9 @@ const HomeDashboard = () => {
             type="date"
             value={dateFilter.to}
             onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
-            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            min={dateFilter.from || ''}
+            max={new Date().toISOString().split('T')[0]}
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
             placeholder="To"
           />
 
@@ -436,7 +486,7 @@ const HomeDashboard = () => {
                     type="checkbox"
                     checked={selectedRequests.size === filteredRequests.length && filteredRequests.length > 0}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    className="rounded border-gray-300 text-[#3B945E] focus:ring-[#57BA98]"
                   />
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
@@ -453,7 +503,7 @@ const HomeDashboard = () => {
               {loading ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-600" />
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#57BA98]" />
                     <p className="mt-2 text-sm text-gray-500">Loading requests...</p>
                   </td>
                 </tr>
@@ -471,7 +521,7 @@ const HomeDashboard = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
                     className={`hover:bg-slate-50 transition-colors ${
-                      request.status === 'Disbursed' ? 'bg-amber-50/30' : ''
+                      request.status === 'Reimbursed' ? 'bg-[#65CCB8]/20' : ''
                     }`}
                   >
                     <td className="px-4 py-3">
@@ -479,12 +529,12 @@ const HomeDashboard = () => {
                         type="checkbox"
                         checked={selectedRequests.has(request.id)}
                         onChange={(e) => handleSelectRequest(request.id, e.target.checked)}
-                        className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-                        disabled={request.status === 'Disbursed'}
+                        className="rounded border-gray-300 text-[#3B945E] focus:ring-[#57BA98]"
+                        disabled={request.status === 'Reimbursed'}
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-amber-600">{request.id || request.applicationId}</span>
+                      <span className="text-sm font-medium text-[#3B945E]">{request.applicationId || request.id}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div>
@@ -513,31 +563,53 @@ const HomeDashboard = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleViewRequest(request)}
-                          className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-500 hover:text-[#3B945E] hover:bg-[#65CCB8]/20 rounded-lg transition-colors"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => handleEditRequest(request)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit Form"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handlePrintRequest(request)}
-                          className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-500 hover:text-[#3B945E] hover:bg-[#65CCB8]/20 rounded-lg transition-colors"
                           title="Print Form"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
                         {request.status === 'Approved' && (
-                          <button
-                            onClick={() => handleMarkDisbursed(request)}
-                            disabled={isLoading}
-                            className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Mark as Disbursed"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleMarkReimbursed(request)}
+                              disabled={isLoading}
+                              className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Mark as Reimbursed"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRejectRequest(request)}
+                              disabled={isLoading}
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Reject with Remarks"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
-                        {request.status === 'Disbursed' && (
-                          <span className="p-1.5 text-green-600" title="Disbursed">
+                        {request.status === 'Reimbursed' && (
+                          <span className="p-1.5 text-green-600" title="Reimbursed">
                             <CheckCircle className="w-4 h-4" />
+                          </span>
+                        )}
+                        {request.status === 'Rejected' && (
+                          <span className="p-1.5 text-red-600" title="Rejected">
+                            <XCircle className="w-4 h-4" />
                           </span>
                         )}
                       </div>
@@ -574,7 +646,7 @@ const HomeDashboard = () => {
                     onClick={() => {
                       window.print()
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors text-sm"
                   >
                     <Printer className="w-4 h-4" />
                     Print
@@ -589,6 +661,87 @@ const HomeDashboard = () => {
               </div>
               <div ref={printRef} className="p-6">
                 <PrintableForm request={printModal.request} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reject Modal */}
+      <AnimatePresence>
+        {rejectModal.show && rejectModal.request && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeRejectModal}
+          >
+            <motion.div
+              className="bg-white rounded-xl max-w-md w-full"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Reject Request</h3>
+                    <p className="text-sm text-gray-500">
+                      {rejectModal.request.applicationId || rejectModal.request.id}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">
+                    <strong>Applicant:</strong> {rejectModal.request.applicantName}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Amount:</strong> {rejectModal.request.amount}
+                  </p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reason for Rejection <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={rejectRemarks}
+                    onChange={(e) => setRejectRemarks(e.target.value)}
+                    placeholder="Please provide detailed reason for rejection (e.g., incorrect bank details, missing documents, etc.)"
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This reason will be visible to the applicant.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={closeRejectModal}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmReject}
+                    disabled={isLoading || !rejectRemarks.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <XCircle className="w-4 h-4" />
+                    )}
+                    Reject Request
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

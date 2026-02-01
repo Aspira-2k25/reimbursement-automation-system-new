@@ -43,6 +43,12 @@ body {
   border-color: var(--color-dark-green);
 }
 
+.badge-reimbursed {
+  @apply text-white border;
+  background-color: #14b8a6; /* teal-500 */
+  border-color: #0d9488; /* teal-600 */
+}
+
 .badge-pending {
   @apply text-white border;
   background-color: var(--color-medium-teal);

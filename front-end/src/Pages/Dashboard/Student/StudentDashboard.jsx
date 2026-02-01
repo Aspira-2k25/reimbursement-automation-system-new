@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom"
 
 
 
-// Dummy data for student reimbursement options
+// Available reimbursement options for students
 const studentReimbursementOptions = [
   {
     id: "nptel",
@@ -46,7 +46,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { profile } = useProfile();
 
-  // State for reimbursement options - using dummy data for demonstration
+  // Available reimbursement options for students
   const [reimbursementOptions] = React.useState(studentReimbursementOptions)
 
   /**

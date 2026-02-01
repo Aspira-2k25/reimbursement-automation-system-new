@@ -20,7 +20,10 @@ const StudentFormSchema = new mongoose.Schema({
     accountNumber: { type: String },
     remarks: { type: String },
     reimbursementType: { type: String, default: "NPTEL" },
-    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Disbursed", "Rejected"] },
+    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Rejected"] },
+    // Track which role rejected the application (for workflow visibility)
+    rejectedBy: { type: String, enum: ["Coordinator", "HOD", "Principal", "Accounts", null], default: null },
+    rejectionRemarks: { type: String }, // Reason for rejection
     documents: [
         {
             // Support both local file fields and Cloudinary fields
