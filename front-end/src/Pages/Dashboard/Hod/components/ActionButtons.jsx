@@ -33,15 +33,28 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
    */
   const handleApprove = async (e) => {
     e.stopPropagation()
+    e.preventDefault()
+    
+    console.log('Approve button clicked:', {
+      requestId: request.id,
+      _id: request._id,
+      applicationId: request.applicationId,
+      status: request.status,
+      applicantType: request.applicantType
+    })
+    
     setActionLoading(true)
     try {
       if (onApprove) {
+        console.log('Calling onApprove handler with request:', request)
         await onApprove(request)
       } else {
-        toast.success(`Request ${request.id} approved`)
+        console.warn('No onApprove handler provided')
+        toast.error('Approve handler not configured')
       }
     } catch (error) {
-      toast.error('Failed to approve request')
+      console.error('Error in handleApprove:', error)
+      toast.error(error?.message || 'Failed to approve request')
     } finally {
       setActionLoading(false)
     }
@@ -60,10 +73,25 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
   }
 
   // Determine which actions to show based on status
-  // For HOD: Can only approve/reject requests with status "Under HOD" (pending their approval)
-  // Once approved (status becomes "Under Principal"), HOD cannot reject it anymore
-  const canApprove = request.status === 'Under HOD'
-  const canReject = request.status === 'Under HOD' // HOD can only reject requests pending their approval
+  // CRITICAL: Backend requires exactly "Under HOD" status for HOD to approve/reject
+  // Student forms backend (line 385) requires exactly "Under HOD"
+  // Faculty forms backend is more lenient but we should follow the same rule
+  const status = String(request.status || '').trim()
+  
+  // Only show approve/reject buttons for "Under HOD" status (strict backend requirement)
+  const canApprove = status === 'Under HOD'
+  const canReject = status === 'Under HOD'
+  
+  // Debug logging
+  console.log('ActionButtons - Request status check:', {
+    id: request.id,
+    _id: request._id,
+    applicationId: request.applicationId,
+    status: status,
+    applicantType: request.applicantType,
+    canApprove,
+    canReject
+  })
 
   if (variant === 'compact') {
     return (
