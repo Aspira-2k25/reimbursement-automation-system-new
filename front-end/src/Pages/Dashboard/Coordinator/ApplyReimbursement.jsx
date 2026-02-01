@@ -347,7 +347,7 @@ export default function ApplyReimbursement() {
             <SummaryCard
               title="Total Approved"
               value={loading ? "..." : summary.approved}
-              subtitle={`₹${summary.disbursed.toLocaleString()} disbursed`}
+              subtitle={`₹${summary.disbursed.toLocaleString()} reimbursed`}
               icon={CheckCircle}
               color="green"
             />

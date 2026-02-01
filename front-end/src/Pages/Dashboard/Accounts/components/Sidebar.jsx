@@ -6,14 +6,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Wallet,
-  User
+  User,
+  CheckCircle
 } from 'lucide-react'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
   const [hoveredItem, setHoveredItem] = useState(null)
 
   const menuItems = [
-    { id: 'home', label: 'Disbursement Dashboard', icon: Home },
+    { id: 'home', label: 'Reimbursement Dashboard', icon: Home },
+    { id: 'reimbursed', label: 'Reimbursed List', icon: CheckCircle },
     { id: 'profile', label: 'Profile Settings', icon: Settings }
   ]
 
@@ -52,12 +54,12 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="w-10 h-10 bg-gradient-to-r from-amber-600 via-orange-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-inner">
+                <div className="w-10 h-10 bg-gradient-to-r from-[#57BA98] via-[#3B945E] to-[#2F6F52] rounded-xl flex items-center justify-center shadow-inner">
                   <Wallet className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-base font-semibold text-slate-900 tracking-tight">Accounts Portal</span>
-                  <span className="text-xs text-slate-500">Disbursement System</span>
+                  <span className="text-xs text-slate-500">Reimbursement System</span>
                 </div>
               </motion.div>
             )}
@@ -65,7 +67,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
 
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#57BA98]"
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4 text-gray-600" />
@@ -88,7 +90,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
             </motion.div>
@@ -101,7 +103,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AC'}
                 </span>
@@ -114,7 +116,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                   <div className="text-xs text-gray-500 truncate">{userProfile.designation}</div>
                 )}
                 {userProfile?.department && (
-                  <div className="text-xs text-amber-600 truncate">{userProfile.department}</div>
+                  <div className="text-xs text-[#3B945E] truncate">{userProfile.department}</div>
                 )}
               </div>
             </motion.div>
@@ -138,7 +140,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
                 ${isActive
-                  ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200'
+                  ? 'bg-gradient-to-r from-[#E8F7F2] to-[#D7F1E7] text-[#3B945E] border border-[#B7E4D5]'
                   : isHovered
                     ? 'bg-gray-50 text-gray-700'
                     : 'text-gray-600 hover:bg-gray-50'
@@ -147,7 +149,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-500'}`} />
+              <Icon className={`w-5 h-5 ${isActive ? 'text-[#3B945E]' : 'text-gray-500'}`} />
 
               <AnimatePresence>
                 {!isCollapsed && (
