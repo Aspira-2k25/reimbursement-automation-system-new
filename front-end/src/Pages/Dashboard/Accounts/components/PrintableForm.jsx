@@ -65,7 +65,7 @@ const PrintableForm = ({ request }) => {
         <div className="flex justify-between items-center border-b border-gray-300 pb-2 mb-4">
           <div>
             <span className="font-semibold">Application ID: </span>
-            <span className="font-mono">{request.id || request.applicationId || 'N/A'}</span>
+            <span className="font-mono">{request.applicationId || request.id || 'N/A'}</span>
           </div>
           <div>
             <span className="font-semibold">Date: </span>
@@ -77,8 +77,8 @@ const PrintableForm = ({ request }) => {
           <div>
             <span className="font-semibold">Status: </span>
             <span className={`font-medium ${
-              request.status === 'Approved' ? 'text-green-700' :
-              request.status === 'Disbursed' ? 'text-amber-700' :
+              request.status === 'Approved' ? 'text-[#57BA98]' :
+              request.status === 'Reimbursed' ? 'text-[#3B945E]' :
               'text-gray-700'
             }`}>{request.status}</span>
           </div>

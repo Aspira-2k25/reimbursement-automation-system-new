@@ -183,7 +183,7 @@ const AllDepartmentOverview = () => {
         <StatCard
           title="Approved"
           value={overallStats.approved.toString()}
-          subtitle={`₹${overallStats.totalDisbursed.toLocaleString()} disbursed`}
+          subtitle={`₹${overallStats.totalDisbursed.toLocaleString()} reimbursed`}
           icon={CheckCircle}
           color="green"
         />
@@ -258,7 +258,7 @@ const AllDepartmentOverview = () => {
 
               <div className="mt-3 pt-3 border-t text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Disbursed:</span>
+                  <span className="text-gray-500">Reimbursed:</span>
                   <span className="font-semibold text-green-600">₹{dept.totalDisbursed.toLocaleString()}</span>
                 </div>
               </div>

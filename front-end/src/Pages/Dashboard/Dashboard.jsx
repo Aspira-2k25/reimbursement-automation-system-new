@@ -203,7 +203,7 @@ export default function Dashboard() {
         // Return coordinator dashboard with coordinator-specific components
         // Note: CoordinatorDashboard handles its own internal navigation, so we don't use getRoutes
         // Components: CoordinatorDashboard (includes internal navbar and routing)
-        // Data Source: dummydata.js -> coordinatorData section
+        // Data Source: API calls to backend
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/20">
             <CoordinatorDashboard />
@@ -215,7 +215,7 @@ export default function Dashboard() {
         // Return HOD dashboard with sidebar-based navigation
         // Note: HODDashboard handles its own internal navigation with collapsible sidebar
         // Components: HODDashboard (includes sidebar, header, and page routing)
-        // Data Source: mockData.js -> initialHodData section
+        // Data Source: API calls to backend
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
             <HODDashboard />
@@ -227,7 +227,7 @@ export default function Dashboard() {
         // Return Principal dashboard with sidebar-based navigation
         // Note: PrincipalDashboard handles its own internal navigation with collapsible sidebar
         // Components: PrincipalDashboard (includes sidebar, header, and page routing)
-        // Data Source: mockPrincipalData.js -> initialPrincipalData section
+        // Data Source: API calls to backend
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
             <PrincipalDashboard />
@@ -239,7 +239,7 @@ export default function Dashboard() {
         // Return Accounts dashboard with sidebar-based navigation
         // Note: AccountsDashboard handles its own internal navigation with collapsible sidebar
         // Components: AccountsDashboard (includes sidebar, header, and page routing)
-        // Primary function: Mark approved requests as disbursed, print forms, filter by department/type/date
+        // Primary function: Mark approved requests as reimbursed, print forms, filter by department/type/date
         return (
           <div className="min-h-screen bg-gradient-to-br from-amber-50/30 to-orange-50/20">
             <AccountsDashboard />

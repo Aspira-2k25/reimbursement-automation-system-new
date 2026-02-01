@@ -194,21 +194,38 @@ router.get(
   }
 );
 
-// GET /api/student-forms/rejected - Get rejected requests for coordinators
+// GET /api/student-forms/rejected - Get rejected requests based on role-specific visibility
+// WORKFLOW: Rejected applications only visible up to the level that rejected them
 router.get(
   "/rejected",
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Only coordinators, HODs, and principals can access this endpoint
       const userRole = req.user.role?.toLowerCase();
-      if (!['coordinator', 'hod', 'principal'].includes(userRole)) {
-        return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
+      if (!['coordinator', 'hod', 'principal', 'accounts'].includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden: Access denied" });
       }
 
-      // Fetch forms with status "Rejected"
+      // Build visibility query based on role
+      // Coordinator sees: rejectedBy Coordinator
+      // HOD sees: rejectedBy Coordinator OR HOD
+      // Principal sees: rejectedBy Coordinator, HOD, OR Principal
+      // Accounts sees: rejectedBy Accounts only (their own rejections)
+      let rejectedByFilter = [];
+      
+      if (userRole === 'coordinator') {
+        rejectedByFilter = ['Coordinator'];
+      } else if (userRole === 'hod') {
+        rejectedByFilter = ['Coordinator', 'HOD'];
+      } else if (userRole === 'principal') {
+        rejectedByFilter = ['Coordinator', 'HOD', 'Principal'];
+      } else if (userRole === 'accounts') {
+        rejectedByFilter = ['Accounts'];
+      }
+
       const forms = await StudentForm.find({
-        status: "Rejected"
+        status: "Rejected",
+        rejectedBy: { $in: rejectedByFilter }
       }).sort({ updatedAt: -1 });
 
       return res.json({ forms });
@@ -246,6 +263,7 @@ router.get(
 );
 
 // GET /api/student-forms/for-accounts - Get approved requests for Accounts department
+// WORKFLOW: Accounts only sees applications approved by Principal, plus their own processed ones
 router.get(
   "/for-accounts",
   authMiddleware.verifyToken,
@@ -257,9 +275,16 @@ router.get(
         return res.status(403).json({ error: "Forbidden: Only accounts department can access this endpoint" });
       }
 
-      // Fetch forms with status "Approved" or "Disbursed" (for accounts processing)
+      // Fetch forms:
+      // - "Approved" (awaiting reimbursement)
+      // - "Reimbursed" (successfully processed by Accounts)
+      // - "Rejected" by Accounts only (not rejections from other levels)
       const forms = await StudentForm.find({
-        status: { $in: ["Approved", "Disbursed"] }
+        $or: [
+          { status: "Approved" },
+          { status: "Reimbursed" },
+          { status: "Rejected", rejectedBy: "Accounts" }
+        ]
       }).sort({ updatedAt: -1 });
 
       console.log('Student forms for Accounts found:', forms.length);
@@ -472,16 +497,19 @@ router.put(
           return res.status(403).json({ error: 'Principal can only approve/reject requests with status "Under Principal"' });
         }
       } else if (userRole === 'accounts') {
-        // Accounts can mark approved requests as disbursed
+        // Accounts can mark approved requests as reimbursed or rejected
         if (form.status === 'Approved') {
-          allowedUpdates = ['status', 'accountsComments'];
-          // Validate status change - Accounts can only set to "Disbursed"
-          if (req.body.status && req.body.status !== 'Disbursed') {
-            return res.status(400).json({ error: 'Accounts can only mark approved requests as Disbursed' });
+          allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
+          // Validate status change - Accounts can set to "Reimbursed" or "Rejected"
+          if (req.body.status && !['Reimbursed', 'Rejected'].includes(req.body.status)) {
+            return res.status(400).json({ error: 'Accounts can only mark approved requests as Reimbursed or Rejected' });
           }
+        } else if (form.status === 'Reimbursed') {
+          // Already reimbursed, no further updates allowed
+          return res.status(400).json({ error: 'This request has already been reimbursed' });
         } else if (form.status === 'Disbursed') {
-          // Already disbursed, no further updates allowed
-          return res.status(400).json({ error: 'This request has already been disbursed' });
+          // Already disbursed (legacy), no further updates allowed
+          return res.status(400).json({ error: 'This request has already been processed' });
         } else {
           return res.status(403).json({ error: 'Accounts can only process requests with status "Approved"' });
         }
@@ -493,6 +521,25 @@ router.put(
           updates[field] = req.body[field];
         }
       });
+
+      // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
+      if (req.body.status === 'Rejected') {
+        const roleMap = {
+          'coordinator': 'Coordinator',
+          'hod': 'HOD',
+          'principal': 'Principal',
+          'accounts': 'Accounts'
+        };
+        updates.rejectedBy = roleMap[userRole] || userRole;
+        // Store rejection remarks if provided
+        if (req.body.rejectionRemarks || req.body.remarks || req.body.accountsRemarks) {
+          updates.rejectionRemarks = req.body.rejectionRemarks || req.body.remarks || req.body.accountsRemarks;
+        }
+      } else if (req.body.status && req.body.status !== 'Rejected') {
+        // Clear rejection fields when approving/forwarding
+        updates.rejectedBy = null;
+        updates.rejectionRemarks = null;
+      }
 
       // Check if there are any updates to apply
       if (Object.keys(updates).length === 0) {
