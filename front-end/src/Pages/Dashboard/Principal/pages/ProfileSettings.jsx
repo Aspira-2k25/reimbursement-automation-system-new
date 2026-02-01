@@ -314,7 +314,7 @@ const ProfileSettings = () => {
                 <span className="text-white text-2xl font-medium">
                   {formData.fullName
                     ? formData.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
-                    : 'JK'
+                    : 'P'
                   }
                 </span>
               </div>

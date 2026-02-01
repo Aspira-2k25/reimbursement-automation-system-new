@@ -107,7 +107,7 @@ const ReportsAndAnalytics = () => {
       {
         title: "Approved",
         value: stats.approved.toString(),
-        subtitle: `₹${stats.approvedAmount.toLocaleString()} disbursed`,
+        subtitle: `₹${stats.approvedAmount.toLocaleString()} reimbursed`,
         icon: TrendingUp,
         color: 'green',
         trend: approvedTrend > 0 ? { direction: 'up', value: `+${approvedTrend}%` } : null
