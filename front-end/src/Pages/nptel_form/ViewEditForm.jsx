@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const ViewEditForm = ({ mode = 'view' }) => {
   const { id } = useParams();
@@ -13,7 +14,8 @@ const ViewEditForm = ({ mode = 'view' }) => {
     const fetchForm = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/student-forms/${id}`, {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE_URL}/student-forms/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -24,14 +26,14 @@ const ViewEditForm = ({ mode = 'view' }) => {
           setFormData(data.form);
         } else {
           const error = await response.json();
-          alert(error.error || 'Failed to fetch form');
+          toast.error(error.error || 'Failed to fetch form');
           if (response.status === 401) {
             navigate('/login');
           }
         }
       } catch (error) {
         console.error('Error fetching form:', error);
-        alert('Failed to fetch form. Please try again.');
+        toast.error('Failed to fetch form. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -41,7 +43,7 @@ const ViewEditForm = ({ mode = 'view' }) => {
   }, [id, navigate]);
 
   const handleBack = () => {
-    navigate('/dashboard/student/request-status');
+    navigate('/dashboard/requests');
   };
 
   const handleChange = (e) => {
@@ -75,7 +77,8 @@ const ViewEditForm = ({ mode = 'view' }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/student-forms/${id}`, {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE_URL}/student-forms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -85,15 +88,15 @@ const ViewEditForm = ({ mode = 'view' }) => {
       });
 
       if (response.ok) {
-        alert('Form updated successfully!');
-        navigate('/dashboard/student/request-status');
+        toast.success('Form updated successfully!');
+        navigate('/dashboard/requests');
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to update form');
+        toast.error(error.error || 'Failed to update form');
       }
     } catch (error) {
       console.error('Error updating form:', error);
-      alert('Failed to update form. Please try again.');
+      toast.error('Failed to update form. Please try again.');
     }
   };
 
@@ -142,11 +145,10 @@ const ViewEditForm = ({ mode = 'view' }) => {
                 value={formData.name}
                 onChange={handleChange}
                 disabled={mode !== 'edit'}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  mode === 'edit'
+                className={`w-full px-3 py-2 border rounded-md ${mode === 'edit'
                     ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
                     : 'bg-gray-50 border-gray-200'
-                }`}
+                  }`}
               />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
@@ -159,11 +161,10 @@ const ViewEditForm = ({ mode = 'view' }) => {
                 value={formData.studentId}
                 onChange={handleChange}
                 disabled={mode !== 'edit'}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  mode === 'edit'
+                className={`w-full px-3 py-2 border rounded-md ${mode === 'edit'
                     ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
                     : 'bg-gray-50 border-gray-200'
-                }`}
+                  }`}
               />
             </div>
 

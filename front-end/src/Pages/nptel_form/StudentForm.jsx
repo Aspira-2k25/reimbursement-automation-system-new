@@ -1,12 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+
+// Department options
+const DEPARTMENTS = [
+  "Computer Engineering",
+  "Information Technology",
+  "CSE AI and ML",
+  "CSE Data Science",
+  "Civil Engineering",
+  "Mechanical Engineering"
+];
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
+    department: '',
     division: '',
     email: '',
     amount: '',
@@ -34,6 +48,10 @@ const StudentNptelForm = () => {
 
     if (!formData.division.trim()) {
       newErrors.division = 'Division is required';
+    }
+
+    if (!formData.department) {
+      newErrors.department = 'Department is required';
     }
 
     if (!formData.email.trim()) {
@@ -123,8 +141,9 @@ const StudentNptelForm = () => {
 
       formDataToSend.append("reimbursementType", "NPTEL");
       const token = localStorage.getItem("token");
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await fetch("http://localhost:5000/api/student-forms/submit", {
+      const res = await fetch(`${API_BASE_URL}/student-forms/submit`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,
@@ -134,16 +153,16 @@ const StudentNptelForm = () => {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Form submitted successfully!!");
+        toast.success("Form submitted successfully!");
         console.log(data);
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
       } else {
-        alert("Error: " + data.error);
+        toast.error("Error: " + data.error);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+      toast.error("Form submission failed. Try Again");
     }
   };
 
@@ -233,6 +252,29 @@ const StudentNptelForm = () => {
                     }`}
                 />
                 {errors.division && <p className="text-red-500 text-xs mt-1">{errors.division}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Department *
+                </label>
+                <select
+                  id="department"
+                  name="department"
+                  value={formData.department}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                >
+                  <option value="">Select Department</option>
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
               <div>
