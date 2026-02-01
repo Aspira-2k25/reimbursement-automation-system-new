@@ -14,10 +14,11 @@ import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
 
+// Default user profile fallback (overwritten by actual user data from auth)
 const initialUserProfile = {
-  fullName: "Dr. Sarah Johnson",
-  department: "Computer Science",
-  designation: "Associate Professor",
+  fullName: "Coordinator",
+  department: "",
+  designation: "Class Coordinator",
   role: "Coordinator",
 }
 
@@ -204,7 +205,7 @@ export default function CoordinatorDashboard() {
         value: approvedRequests.length.toString(),
         icon: CheckCircle,
         color: "green",
-        subtitle: `₹${totalDisbursed.toLocaleString()} disbursed`,
+        subtitle: `₹${totalDisbursed.toLocaleString()} reimbursed`,
       },
       {
         title: "Rejected Requests",
@@ -281,10 +282,11 @@ export default function CoordinatorDashboard() {
       try {
         const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
 
-        // Update status to "Rejected" with remarks
+        // Update status to "Rejected" with remarks and rejectionRemarks for workflow tracking
         await studentFormsAPI.updateById(formId, {
           status: "Rejected",
-          remarks: rejectReason
+          remarks: rejectReason,
+          rejectionRemarks: rejectReason // Required for backend workflow visibility
         })
 
         // Refresh the requests to get updated data from server
