@@ -3,8 +3,6 @@ import "../Dashboard.css"
 import { Clock, CheckCircle, XCircle, FileText } from "lucide-react"
 import RequestsTable from "./components/RequestsTable.jsx"
 import { useNotificationContext } from "./NotificationContext"
-
-// Dummy data removed, using dynamic API
 import { facultyFormsAPI } from "../../../services/api"
 
 /**
@@ -79,10 +77,11 @@ export default function RequestStatus() {
             const oldRequest = previousRequests.find(r => r.id === newRequest.id)
             if (oldRequest && oldRequest.status !== newRequest.status) {
               const statusMessages = {
-                'Approved': 'Your request has been approved',
-                'Rejected': 'Your request has been rejected',
-                'Under HOD': 'Your request is now under HOD review',
-                'Under Principal': 'Your request is now under Principal review'
+                'Approved': 'Your request has been approved and sent to Accounts for reimbursement',
+                'Rejected': 'Your request has been rejected. Please check the remarks for details',
+                'Reimbursed': 'Your reimbursement has been successfully reimbursed! Funds have been transferred to your account',
+                'Under HOD': 'Your request has been forwarded to HOD for review',
+                'Under Principal': 'Your request has been forwarded to Principal for approval'
               }
               addNotification({
                 type: 'status_change',
