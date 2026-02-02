@@ -19,13 +19,15 @@ function StatusBadge({ status }) {
   const cls =
     normalized === "approved"
       ? "badge badge-approved"
-      : normalized === "rejected"
-        ? "badge badge-rejected"
-        : normalized === "under hod"
-          ? "badge badge-under-hod"
-          : pendingStatuses.has(normalized)
-            ? "badge badge-pending"
-            : "badge badge-pending"
+      : normalized === "reimbursed"
+        ? "badge badge-reimbursed"
+        : normalized === "rejected"
+          ? "badge badge-rejected"
+          : normalized === "under hod"
+            ? "badge badge-under-hod"
+            : pendingStatuses.has(normalized)
+              ? "badge badge-pending"
+              : "badge badge-pending"
 
   return <span className={cls}>{status}</span>
 }
@@ -85,7 +87,14 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <td className="px-4 py-3 font-medium text-slate-900">{r.id || r._id || 'N/A'}</td>
                 <td className="px-4 py-3">{r.category || r.reimbursementType || 'NPTEL'}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={r.status || 'Pending'} />
+                  <div className="flex flex-col gap-1">
+                    <StatusBadge status={r.status || 'Pending'} />
+                    {r.status === 'Rejected' && r.accountsRemarks && (
+                      <span className="text-xs text-red-600 italic truncate max-w-[150px]" title={r.accountsRemarks}>
+                        {r.accountsRemarks}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">₹{(r.amount || 0).toLocaleString("en-IN")}</td>
                 <td className="px-4 py-3">{formatDate(r.submittedDate || r.createdAt)}</td>
@@ -230,6 +239,13 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                   <div className="text-slate-500">Description</div>
                   <div className="font-medium">{viewItem.description}</div>
                 </div>
+                {/* Show rejection remarks if rejected by Accounts */}
+                {viewItem.status === 'Rejected' && viewItem.accountsRemarks && (
+                  <div className="md:col-span-2 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-600 font-medium text-sm">Rejection Reason</div>
+                    <div className="text-red-700 mt-1">{viewItem.accountsRemarks}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

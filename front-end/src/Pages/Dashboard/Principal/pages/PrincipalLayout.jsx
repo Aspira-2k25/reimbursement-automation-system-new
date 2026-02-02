@@ -302,6 +302,10 @@ const PrincipalLayout = ({ children }) => {
         }
         if (comments) {
           updateData.remarks = comments
+          // Add rejectionRemarks for workflow tracking when rejecting
+          if (newStatus === 'Rejected') {
+            updateData.rejectionRemarks = comments
+          }
         }
 
         // Call the correct API based on applicant type

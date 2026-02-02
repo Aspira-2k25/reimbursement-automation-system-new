@@ -117,7 +117,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
           <div className="relative" ref={notificationRef}>
             <button
               onClick={handleNotificationClick}
-              className="relative p-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="relative p-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#57BA98]"
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -154,13 +154,13 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                         <div
                           key={notification.id}
                           className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                            notification.unread ? 'bg-amber-50/50' : ''
+                            notification.unread ? 'bg-[#65CCB8]/20' : ''
                           }`}
                           onClick={() => markNotificationAsRead(notification.id)}
                         >
                           <div className="flex items-start gap-3">
                             <div className={`w-2 h-2 rounded-full mt-2 ${
-                              notification.unread ? 'bg-amber-500' : 'bg-transparent'
+                              notification.unread ? 'bg-[#3B945E]' : 'bg-transparent'
                             }`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900 font-medium truncate">
@@ -183,7 +183,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                     <div className="p-3 border-t border-gray-200">
                       <button
                         onClick={markAllNotificationsAsRead}
-                        className="w-full flex items-center justify-center gap-2 text-sm text-amber-600 hover:text-amber-700 font-medium"
+                        className="w-full flex items-center justify-center gap-2 text-sm text-[#3B945E] hover:text-[#57BA98] font-medium"
                       >
                         <CheckCheck className="w-4 h-4" />
                         Mark all as read
@@ -199,9 +199,9 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
           <div className="relative" ref={profileRef}>
             <button
               onClick={handleProfileClick}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#57BA98]"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AC'}
                 </span>

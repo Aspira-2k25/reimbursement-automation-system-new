@@ -10,6 +10,8 @@ function StatusBadge({ status }) {
     switch (status) {
       case "Approved":
         return "badge badge-approved"
+      case "Reimbursed":
+        return "badge badge-reimbursed"
       case "Pending":
       case "Under HOD":
       case "Under Principal":
@@ -66,7 +68,14 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
               <td className="px-4 py-3">{r.category}</td>
               <td className="px-4 py-3">
-                <StatusBadge status={r.status} />
+                <div className="flex flex-col gap-1">
+                  <StatusBadge status={r.status} />
+                  {r.status === 'Rejected' && r.accountsRemarks && (
+                    <span className="text-xs text-red-600 italic truncate max-w-[150px]" title={r.accountsRemarks}>
+                      {r.accountsRemarks}
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-4 py-3">₹{r.amount.toLocaleString("en-IN")}</td>
               <td className="px-4 py-3">{new Date(r.submittedDate).toLocaleDateString()}</td>
@@ -172,6 +181,13 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <div className="text-slate-500">Description</div>
                 <div className="font-medium">{viewItem.description}</div>
               </div>
+              {/* Show rejection remarks if rejected by Accounts */}
+              {viewItem.status === 'Rejected' && viewItem.accountsRemarks && (
+                <div className="md:col-span-2 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="text-red-600 font-medium text-sm">Rejection Reason</div>
+                  <div className="text-red-700 mt-1">{viewItem.accountsRemarks}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
