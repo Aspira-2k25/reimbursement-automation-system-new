@@ -54,7 +54,7 @@ const AccountsLayout = () => {
     } else if (!hash && activeTab !== 'home') {
       setActiveTab('home')
     }
-  }, [location.hash])
+  }, [location.hash, activeTab])
 
   // Custom setActiveTab that also updates URL
   const handleSetActiveTab = useCallback((tab) => {
@@ -162,7 +162,9 @@ const AccountsLayout = () => {
       bankName: f.bankName || '',
       accountNumber: f.accountNumber || '',
       ifscCode: f.ifscCode || '',
-      accountHolderName: f.accountHolderName || f.name || ''
+      accountHolderName: f.accountHolderName || f.name || '',
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
     }
   }, [])
 
@@ -400,7 +402,7 @@ const AccountsLayout = () => {
     userProfile, allRequests, departments, accountsStats, updateRequestStatus,
     getFilteredRequests, searchQuery, statusFilter, departmentFilter, typeFilter,
     dateFilter, loading, activeTab, isCollapsed, notifications,
-    markNotificationAsRead, markAllNotificationsAsRead, fetchRequests
+    markNotificationAsRead, markAllNotificationsAsRead, fetchRequests, handleSetActiveTab
   ])
 
   return (

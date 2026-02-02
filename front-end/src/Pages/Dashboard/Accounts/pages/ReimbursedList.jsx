@@ -107,13 +107,15 @@ const ReimbursedList = () => {
   }, [])
 
   const handleExportToCSV = useCallback(() => {
-    const headers = ['Application ID', 'Applicant', 'Type', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
+    const headers = ['Application ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
     const csvContent = [
       headers.join(','),
       ...filteredRequests.map(request => [
         request.applicationId || request.id,
         `"${request.applicantName}"`,
         request.applicantType,
+        `"${request.courseName || 'N/A'}"`,
+        request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A',
         request.department,
         request.amountNum || 0,
         request.status,
@@ -334,6 +336,8 @@ const ReimbursedList = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Applicant</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
@@ -344,14 +348,14 @@ const ReimbursedList = () => {
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center">
+                  <td colSpan={10} className="px-4 py-8 text-center">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#57BA98]" />
                     <p className="mt-2 text-sm text-gray-500">Loading requests...</p>
                   </td>
                 </tr>
               ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                     No reimbursed requests found matching your criteria
                   </td>
                 </tr>
@@ -384,6 +388,8 @@ const ReimbursedList = () => {
                         {request.applicantType}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{request.courseName || 'N/A'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{request.department}</td>
                     <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-gray-900">{request.amount}</span>

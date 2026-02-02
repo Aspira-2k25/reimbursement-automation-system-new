@@ -44,7 +44,11 @@ const HomeDashboard = () => {
 
   // Handler functions
   const handleViewRequest = useCallback((request) => {
-    navigate(`/nptel-form/view/${request.id}`)
+    if (request.applicantType === 'Student') {
+      navigate(`/student-form/view/${request.id}`)
+    } else {
+      navigate(`/nptel-form/view/${request.id}`)
+    }
   }, [navigate])
 
   const handleApproveRequest = useCallback(async (request) => {
@@ -398,6 +402,8 @@ const HomeDashboard = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Applicant</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
@@ -425,6 +431,12 @@ const HomeDashboard = () => {
                   </td>
                   <td className="py-3 px-4">
                     <span className="text-sm text-slate-700">{request.applicantType}</span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-slate-700">{request.courseName || 'N/A'}</span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-slate-700">{request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A'}</span>
                   </td>
                   <td className="py-3 px-4">
                     <span className="text-sm text-slate-700">{request.category}</span>

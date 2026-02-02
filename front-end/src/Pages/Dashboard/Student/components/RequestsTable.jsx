@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
@@ -61,6 +61,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -77,7 +79,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 const date = new Date(dateValue);
                 if (isNaN(date.getTime())) return 'N/A';
                 return date.toLocaleDateString();
-              } catch (e) {
+              } catch {
                 return 'N/A';
               }
             };
@@ -86,6 +88,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               <tr key={r.id || r._id} className="hover:bg-slate-50/60">
                 <td className="px-4 py-3 font-medium text-slate-900">{r.id || r._id || 'N/A'}</td>
                 <td className="px-4 py-3">{r.category || r.reimbursementType || 'NPTEL'}</td>
+                <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
+                <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">
                     <StatusBadge status={r.status || 'Pending'} />

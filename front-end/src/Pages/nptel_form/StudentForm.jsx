@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
 
 // Department options
 const DEPARTMENTS = [
@@ -16,7 +15,6 @@ const DEPARTMENTS = [
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
@@ -28,10 +26,12 @@ const StudentNptelForm = () => {
     ifscCode: '',
     accountNumber: '',
     academicYear: '',
-    remarks: ''
+    courseName: '',
+    marks: ''
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -95,6 +95,22 @@ const StudentNptelForm = () => {
       newErrors.accountNumber = 'Please enter a valid account number (9-18 digits)';
     }
 
+    if (!formData.courseName.trim()) {
+      newErrors.courseName = 'NPTEL Course Name is required';
+    } else if (formData.courseName.trim().length < 3) {
+      newErrors.courseName = 'Course name must be at least 3 characters long';
+    }
+
+    // Marks validation
+    if (!formData.marks) {
+      newErrors.marks = 'Marks is required';
+    } else {
+      const marksNum = parseFloat(formData.marks);
+      if (isNaN(marksNum) || marksNum < 0 || marksNum > 100) {
+        newErrors.marks = 'Marks must be between 0 and 100';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -126,7 +142,14 @@ const StudentNptelForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
     if (!validateForm()) return;
+
+    // Disable button immediately
+    setIsSubmitting(true);
 
     try {
       const formDataToSend = new FormData();
@@ -153,16 +176,20 @@ const StudentNptelForm = () => {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success("Form submitted successfully!");
+        toast.success("Application submitted successfully! Your request is now under review.");
         console.log(data);
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
       } else {
         toast.error("Error: " + data.error);
+        // Re-enable button on error so user can retry
+        setIsSubmitting(false);
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      toast.error("Form submission failed. Try Again");
+      toast.error("Form submission failed. Please try again.");
+      // Re-enable button on error so user can retry
+      setIsSubmitting(false);
     }
   };
 
@@ -192,8 +219,8 @@ const StudentNptelForm = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">
+            <div className="bg-teal-50 p-4 rounded-md">
+              <p className="text-sm text-teal-800 font-medium">
                 This is for NPTEL reimbursement application. Please fill all required details accurately.
               </p>
             </div>
@@ -214,7 +241,7 @@ const StudentNptelForm = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -231,7 +258,7 @@ const StudentNptelForm = () => {
                   value={formData.studentId}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.studentId ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.studentId ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.studentId && <p className="text-red-500 text-xs mt-1">{errors.studentId}</p>}
@@ -248,7 +275,7 @@ const StudentNptelForm = () => {
                   value={formData.division}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.division ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.division ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.division && <p className="text-red-500 text-xs mt-1">{errors.division}</p>}
@@ -264,7 +291,7 @@ const StudentNptelForm = () => {
                   value={formData.department}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
                     }`}
                 >
                   <option value="">Select Department</option>
@@ -288,7 +315,7 @@ const StudentNptelForm = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
@@ -312,7 +339,7 @@ const StudentNptelForm = () => {
                   onChange={handleChange}
                   placeholder="e.g. 2023-2024"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
@@ -330,9 +357,9 @@ const StudentNptelForm = () => {
                   onChange={handleChange}
                   min="1"
                   max="1500"
-                  step="0.01"
+                  step="1"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amount ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.amount ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
@@ -352,7 +379,7 @@ const StudentNptelForm = () => {
                   value="NPTEL"
                   checked
                   readOnly
-                  className="h-4 w-4 text-blue-600"
+                  className="h-4 w-4 text-teal-600 accent-teal-600"
                 />
                 <label htmlFor="nptel" className="ml-2 text-sm text-gray-700 font-medium">
                   NPTEL
@@ -376,7 +403,7 @@ const StudentNptelForm = () => {
                   value={formData.accountName}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
@@ -393,7 +420,7 @@ const StudentNptelForm = () => {
                   value={formData.ifscCode}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.ifscCode ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.ifscCode ? 'border-red-500' : 'border-gray-300'
                     }`}
                   placeholder="e.g., SBIN0000123"
                 />
@@ -411,7 +438,7 @@ const StudentNptelForm = () => {
                   value={formData.accountNumber}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.accountNumber && <p className="text-red-500 text-xs mt-1">{errors.accountNumber}</p>}
@@ -420,18 +447,41 @@ const StudentNptelForm = () => {
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-2">
-              Remarks (Optional)
+            <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Course Name <span className="text-gray-900 font-bold">*</span>
             </label>
-            <textarea
-              id="remarks"
-              name="remarks"
-              rows="3"
-              value={formData.remarks}
+            <input
+              type="text"
+              id="courseName"
+              name="courseName"
+              value={formData.courseName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Additional remarks or notes..."
-            ></textarea>
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.courseName ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter NPTEL course name"
+            />
+            {errors.courseName && <p className="text-red-500 text-xs mt-1">{errors.courseName}</p>}
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <label htmlFor="marks" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span>
+            </label>
+            <input
+              type="number"
+              id="marks"
+              name="marks"
+              value={formData.marks}
+              onChange={handleChange}
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.marks ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your NPTEL course marks"
+            />
+            {errors.marks && <p className="text-red-500 text-xs mt-1">{errors.marks}</p>}
+            <p className="text-xs text-gray-500 mt-1">Enter marks between 0 and 100</p>
           </div>
 
           <div className="bg-yellow-50 p-4 rounded-md mt-6">
@@ -458,8 +508,8 @@ const StudentNptelForm = () => {
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
-                             file:bg-blue-50 file:text-blue-700
-                             hover:file:bg-blue-100"
+                             file:bg-teal-50 file:text-teal-700
+                             hover:file:bg-teal-100"
                 />
               </div>
 
@@ -476,8 +526,8 @@ const StudentNptelForm = () => {
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
-                             file:bg-blue-50 file:text-blue-700
-                             hover:file:bg-blue-100"
+                             file:bg-teal-50 file:text-teal-700
+                             hover:file:bg-teal-100"
                 />
               </div>
             </div>
@@ -486,9 +536,21 @@ const StudentNptelForm = () => {
           <div className="flex justify-center mt-8">
             <button
               type="submit"
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
+              disabled={isSubmitting}
+              className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
+                ${isSubmitting 
+                  ? 'bg-teal-400 cursor-not-allowed text-white' 
+                  : 'bg-teal-600 hover:bg-teal-700 text-white'
+                }`}
             >
-              Submit Student NPTEL Reimbursement Application
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Submitting Application...
+                </>
+              ) : (
+                'Submit Student NPTEL Reimbursement Application'
+              )}
             </button>
           </div>
         </form>
