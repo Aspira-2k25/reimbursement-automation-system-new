@@ -81,13 +81,16 @@ const RequestStatus = () => {
       const forms = data?.forms || data || []
       const mapped = Array.isArray(forms) ? forms.map(f => ({
         id: f.applicationId || f._id,
+        _id: f._id,
         category: f.reimbursementType || 'NPTEL',
         status: f.status || 'Under HOD',
         amount: parseFloat(f.amount) || 0,
         submittedDate: f.createdAt || new Date().toISOString(),
         updatedDate: f.updatedAt || new Date().toISOString(),
         description: f.remarks || f.name || 'NPTEL Reimbursement',
-        documents: f.documents || []
+        documents: f.documents || [],
+        courseName: f.courseName || 'N/A',
+        marks: f.marks ?? null,
       })) : []
 
       setRequests(mapped)
