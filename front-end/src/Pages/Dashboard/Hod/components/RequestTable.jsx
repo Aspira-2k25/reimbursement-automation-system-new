@@ -110,7 +110,7 @@ const RequestTable = ({
    * Export table data to CSV format
    */
   const exportToCSV = () => {
-    const headers = ['ID', 'Applicant', 'Type', 'Category', 'Amount', 'Status', 'Submitted Date']
+    const headers = ['ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Category', 'Amount', 'Status', 'Submitted Date']
 
     // Helper function to escape CSV fields (wrap in quotes if contains comma or quotes)
     const escapeCSV = (value) => {
@@ -146,6 +146,8 @@ const RequestTable = ({
         escapeCSV(request.id),
         escapeCSV(request.applicantName),
         escapeCSV(request.applicantType),
+        escapeCSV(request.courseName || 'N/A'),
+        escapeCSV(request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A'),
         escapeCSV(request.category),
         cleanAmount(request.amount),
         escapeCSV(request.status),
@@ -213,6 +215,12 @@ const RequestTable = ({
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Course Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Marks
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -290,6 +298,12 @@ const RequestTable = ({
                       }`}>
                       {request.applicantType}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{request.courseName || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{request.category}</div>
