@@ -168,7 +168,7 @@ const HomeDashboard = () => {
       {
         title: "Approved Requests",
         value: stats.approved.toString(),
-        subtitle: `₹${stats.approvedAmount.toLocaleString()} disbursed`,
+        subtitle: `₹${stats.approvedAmount.toLocaleString()} reimbursed`,
         icon: CheckCircle,
         color: 'green',
         onClick: () => handleStatCardClick('Approved Requests')
@@ -243,7 +243,7 @@ const HomeDashboard = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold mb-2">
-              Welcome back, {userProfile?.fullName || 'Dr. Jagan Kumar'} 👋
+              Welcome back, {userProfile?.fullName || 'HOD'} 👋
             </h1>
             <p className="text-green-100 mb-4 text-sm sm:text-base">
               Head of Department • {userProfile?.department || 'Civil Engineering'}
@@ -316,7 +316,7 @@ const HomeDashboard = () => {
               },
               {
                 value: `₹${stats.approvedAmount.toLocaleString()}`,
-                label: 'Total Disbursed',
+                label: 'Total Reimbursed',
                 color: 'purple'
               },
               {

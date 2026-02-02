@@ -139,7 +139,7 @@ const DepartmentRoster = () => {
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-indigo-100">
               <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                <span>Head: {userProfile?.fullName || 'Dr. Jagan Kumar'}</span>
+                <span>Head: {userProfile?.fullName || 'Head of Department'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
