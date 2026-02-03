@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const ViewEditForm = ({ mode = 'view' }) => {
@@ -9,6 +9,7 @@ const ViewEditForm = ({ mode = 'view' }) => {
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -73,7 +74,14 @@ const ViewEditForm = ({ mode = 'view' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
     if (mode !== 'edit' || !validateForm()) return;
+
+    // Disable button immediately
+    setIsSubmitting(true);
 
     try {
       const token = localStorage.getItem('token');
@@ -88,15 +96,19 @@ const ViewEditForm = ({ mode = 'view' }) => {
       });
 
       if (response.ok) {
-        toast.success('Form updated successfully!');
+        toast.success('Changes saved successfully!');
         navigate('/dashboard/requests');
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to update form');
+        // Re-enable button on error
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Error updating form:', error);
       toast.error('Failed to update form. Please try again.');
+      // Re-enable button on error
+      setIsSubmitting(false);
     }
   };
 
@@ -176,15 +188,28 @@ const ViewEditForm = ({ mode = 'view' }) => {
               <button
                 type="button"
                 onClick={handleBack}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                disabled={isSubmitting}
+                className={`px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-colors
+                  ${isSubmitting 
+                    ? 'bg-blue-400 cursor-not-allowed text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
               >
-                Save Changes
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </button>
             </div>
           )}

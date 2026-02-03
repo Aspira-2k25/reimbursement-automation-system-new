@@ -1,6 +1,7 @@
 // routes/studentFormRoutes.js
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const StudentForm = require("../models/StudentForm");
 const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
@@ -22,11 +23,7 @@ router.post(
   async (req, res) => {
     try {
       // Log the incoming request data
-      console.log('Form submission received:', {
-        body: req.body,
-        files: req.files,
-        user: req.user
-      });
+      console.log('Form submission received for user:', req.user?.email || req.user?.userId);
 
       const userId = req.user.userId || req.user.email;
 
@@ -72,11 +69,9 @@ router.post(
         });
       }
 
-      // Parse amount as number if present
-      const formData = {
-        ...req.body,
-        amount: req.body.amount ? parseFloat(req.body.amount) : undefined
-      };
+      // Parse numeric fields
+      const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
+      const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
       // Generate meaningful application ID
       // Format: S-NPT-2026-IT-001 (Student NPTEL 2026 IT Dept Sequence 1)
@@ -91,6 +86,8 @@ router.post(
 
       const newStudentForm = new StudentForm({
         ...req.body,
+        amount, // Use parsed numeric value
+        marks, // Use parsed numeric value
         applicationId, // Use generated ID
         userId,
         status: "Pending", // Ensure status is Pending when student submits
@@ -230,7 +227,7 @@ router.get(
       // Principal sees: rejectedBy Coordinator, HOD, OR Principal
       // Accounts sees: rejectedBy Accounts only (their own rejections)
       let rejectedByFilter = [];
-      
+
       if (userRole === 'coordinator') {
         rejectedByFilter = ['Coordinator'];
       } else if (userRole === 'hod') {
@@ -402,8 +399,11 @@ router.get(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first, then by applicationId
-      let form = await StudentForm.findById(req.params.id);
+      // Try to find by MongoDB _id first (if valid), then by applicationId
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
 
       // If not found by _id, try applicationId
       if (!form) {
@@ -442,8 +442,11 @@ router.put(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first, then by applicationId
-      let form = await StudentForm.findById(req.params.id);
+      // Try to find by MongoDB _id first (if valid), then by applicationId
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
 
       // If not found by _id, try applicationId
       if (!form) {
@@ -643,8 +646,12 @@ router.delete(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first, then by applicationId
-      let form = await StudentForm.findById(req.params.id);
+      // Try to find by MongoDB _id first (if valid), then by applicationId
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
+
       if (!form) {
         form = await StudentForm.findOne({ applicationId: req.params.id });
       }

@@ -131,7 +131,9 @@ const PrincipalLayout = ({ children }) => {
       documents: f.documents || [],
       reimbursementType: f.reimbursementType,
       hodComments: f.hodComments || '',
-      principalComments: f.principalComments || ''
+      principalComments: f.principalComments || '',
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
     }
   }, [])
 
