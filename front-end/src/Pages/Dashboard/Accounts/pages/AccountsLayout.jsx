@@ -9,6 +9,7 @@ import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import HomeDashboard from './HomeDashboard'
 import ProfileSettings from './ProfileSettings'
+import ReimbursedList from './ReimbursedList'
 
 // Context for sharing Accounts state across components
 const AccountsContext = createContext()
@@ -53,7 +54,7 @@ const AccountsLayout = () => {
     } else if (!hash && activeTab !== 'home') {
       setActiveTab('home')
     }
-  }, [location.hash])
+  }, [location.hash, activeTab])
 
   // Custom setActiveTab that also updates URL
   const handleSetActiveTab = useCallback((tab) => {
@@ -128,9 +129,9 @@ const AccountsLayout = () => {
     const amountNum = typeof f.amount === 'number' ? f.amount : parseFloat(f.amount) || 0
 
     return {
-      id: f.applicationId || f._id || `form-${f._id}`,
+      id: f._id,
       _id: f._id,
-      applicationId: f.applicationId,
+      applicationId: f.applicationId || f._id, // Prefer applicationId, fallback to _id
       userId: f.userId,
       applicantName: f.name || 'N/A',
       applicantId: f.studentId || f.facultyId || 'N/A',
@@ -161,16 +162,18 @@ const AccountsLayout = () => {
       bankName: f.bankName || '',
       accountNumber: f.accountNumber || '',
       ifscCode: f.ifscCode || '',
-      accountHolderName: f.accountHolderName || f.name || ''
+      accountHolderName: f.accountHolderName || f.name || '',
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
     }
   }, [])
 
-  // Fetch all requests for Accounts (Approved + Disbursed)
+  // Fetch all requests for Accounts (Approved + Reimbursed)
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true)
 
-      // Fetch forms for accounts (Approved and Disbursed status)
+      // Fetch forms for accounts (Approved and Reimbursed status)
       const [
         studentAccountsData,
         facultyAccountsData
@@ -201,7 +204,7 @@ const AccountsLayout = () => {
       console.log('Fetched Accounts requests - Total:', mappedRequests.length)
       console.log('By status:', {
         'Approved': mappedRequests.filter(r => r.status === 'Approved').length,
-        'Disbursed': mappedRequests.filter(r => r.status === 'Disbursed').length
+        'Reimbursed': mappedRequests.filter(r => r.status === 'Reimbursed').length
       })
 
       setAllRequests(mappedRequests)
@@ -223,11 +226,11 @@ const AccountsLayout = () => {
   const accountsStats = useMemo(() => {
     const total = allRequests.length
     const approved = allRequests.filter(r => r.status === 'Approved').length
-    const disbursed = allRequests.filter(r => r.status === 'Disbursed').length
-    const pendingDisbursement = approved // Approved but not yet disbursed
+    const reimbursed = allRequests.filter(r => r.status === 'Reimbursed').length
+    const pendingReimbursement = approved // Approved but not yet reimbursed
     const totalAmount = allRequests.reduce((sum, r) => sum + (r.amountNum || 0), 0)
-    const disbursedAmount = allRequests
-      .filter(r => r.status === 'Disbursed')
+    const reimbursedAmount = allRequests
+      .filter(r => r.status === 'Reimbursed')
       .reduce((sum, r) => sum + (r.amountNum || 0), 0)
     const pendingAmount = allRequests
       .filter(r => r.status === 'Approved')
@@ -236,16 +239,17 @@ const AccountsLayout = () => {
     return {
       total,
       approved,
-      disbursed,
-      pendingDisbursement,
+      reimbursed,
+      pendingDisbursement: pendingReimbursement,
       totalAmount,
-      disbursedAmount,
+      reimbursedAmount,
+      disbursedAmount: reimbursedAmount,
       pendingAmount,
-      disbursementRate: total > 0 ? Math.round((disbursed / total) * 100) : 0
+      disbursementRate: total > 0 ? Math.round((reimbursed / total) * 100) : 0
     }
   }, [allRequests])
 
-  // Update request status (mark as disbursed)
+  // Update request status (mark as reimbursed or rejected)
   const updateRequestStatus = useCallback(async (requestId, newStatus, comments = '') => {
     try {
       // Find the request to determine if it's student or faculty
@@ -263,21 +267,33 @@ const AccountsLayout = () => {
 
       console.log(`Accounts: Updating ${isStudent ? 'student' : 'faculty'} form ${formId} to ${newStatus}`)
 
-      // Call the API to update the status
-      await apiCall.updateById(formId, {
+      // Call the API to update the status with appropriate field
+      const updateData = {
         status: newStatus,
         accountsComments: comments
-      })
+      }
+      
+      // If rejecting, also set rejectionRemarks for workflow visibility
+      if (newStatus === 'Rejected') {
+        updateData.accountsRemarks = comments
+        updateData.rejectionRemarks = comments // Required for backend workflow tracking
+      }
+
+      await apiCall.updateById(formId, updateData)
 
       // Update local state
       setAllRequests(prev => prev.map(r => {
         if (r.id === requestId || r.applicationId === requestId || r._id === requestId) {
-          return { ...r, status: newStatus }
+          return { ...r, status: newStatus, accountsRemarks: newStatus === 'Rejected' ? comments : r.accountsRemarks }
         }
         return r
       }))
 
-      toast.success(`Request marked as ${newStatus}`)
+      if (newStatus === 'Rejected') {
+        toast.error(`Request rejected`)
+      } else {
+        toast.success(`Request marked as ${newStatus}`)
+      }
     } catch (error) {
       console.error('Error updating request status:', error)
       toast.error(error?.error || 'Failed to update request status')
@@ -343,6 +359,8 @@ const AccountsLayout = () => {
     switch (activeTab) {
       case 'home':
         return <HomeDashboard />
+      case 'reimbursed':
+        return <ReimbursedList />
       case 'profile':
         return <ProfileSettings />
       default:
@@ -384,12 +402,12 @@ const AccountsLayout = () => {
     userProfile, allRequests, departments, accountsStats, updateRequestStatus,
     getFilteredRequests, searchQuery, statusFilter, departmentFilter, typeFilter,
     dateFilter, loading, activeTab, isCollapsed, notifications,
-    markNotificationAsRead, markAllNotificationsAsRead, fetchRequests
+    markNotificationAsRead, markAllNotificationsAsRead, fetchRequests, handleSetActiveTab
   ])
 
   return (
     <AccountsContext.Provider value={contextValue}>
-      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10">
         <Sidebar
           activeTab={activeTab}
           setActiveTab={handleSetActiveTab}
@@ -400,7 +418,8 @@ const AccountsLayout = () => {
 
         <div className="flex-1 flex flex-col min-w-0">
           <Header userProfile={userProfile} currentPage={
-            activeTab === 'home' ? 'Accounts Dashboard' :
+            activeTab === 'home' ? 'Reimbursement Dashboard' :
+              activeTab === 'reimbursed' ? 'Reimbursed List' :
               activeTab === 'profile' ? 'Profile Settings' :
                 'Dashboard'
           } />

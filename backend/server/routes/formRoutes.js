@@ -21,8 +21,7 @@ router.post(
       let userId = req.user.userId; // <-- get the logged-in user's ID from JWT
 
       // Debug logging
-      console.log('User from JWT:', req.user);
-      console.log('Extracted userId:', userId);
+      console.log('User from JWT (ID):', userId);
 
       // Fallback: if userId is null, use email as userId (for old JWT tokens)
       if (!userId && req.user.email) {
@@ -92,8 +91,14 @@ router.post(
 
       console.log('Generated Application ID:', applicationId);
 
+      // Parse numeric fields
+      const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
+      const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
+
       const newForm = new Form({
         ...req.body,
+        amount, // Use parsed numeric value
+        marks, // Use parsed numeric value
         applicationId, // Use generated ID
         userId, // attach it to the form
         status: initialStatus, // Set based on applicant type (this should override model default)
@@ -209,15 +214,38 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
   }
 });
 
-// GET /api/forms/rejected - Get rejected faculty forms
+// GET /api/forms/rejected - Get rejected faculty forms based on workflow visibility
+// WORKFLOW: Rejected applications only visible up to the level that rejected them
 router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
   try {
     const userRole = req.user.role?.toLowerCase();
-    if (!['hod', 'principal', 'coordinator', 'faculty'].includes(userRole)) {
+    if (!['hod', 'principal', 'coordinator', 'faculty', 'accounts'].includes(userRole)) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const forms = await Form.find({ status: "Rejected" }).sort({ updatedAt: -1 });
+    // Build visibility query based on role
+    // Faculty workflow: Faculty → HOD → Principal → Accounts
+    // HOD sees: rejectedBy HOD
+    // Principal sees: rejectedBy HOD OR Principal
+    // Accounts sees: rejectedBy Accounts only
+    let rejectedByFilter = [];
+
+    if (userRole === 'faculty' || userRole === 'coordinator') {
+      // Faculty/Coordinator can see all rejections (their own forms)
+      rejectedByFilter = ['HOD', 'Principal', 'Accounts'];
+    } else if (userRole === 'hod') {
+      rejectedByFilter = ['HOD'];
+    } else if (userRole === 'principal') {
+      rejectedByFilter = ['HOD', 'Principal'];
+    } else if (userRole === 'accounts') {
+      rejectedByFilter = ['Accounts'];
+    }
+
+    const forms = await Form.find({
+      status: "Rejected",
+      rejectedBy: { $in: rejectedByFilter }
+    }).sort({ updatedAt: -1 });
+
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching rejected forms:", err);
@@ -248,6 +276,7 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
 });
 
 // GET /api/forms/for-accounts - Get approved faculty forms for Accounts department
+// WORKFLOW: Accounts only sees applications approved by Principal, plus their own processed ones
 router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
   try {
     // Only accounts role can access this endpoint
@@ -256,9 +285,16 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Forbidden: Only accounts department can access this endpoint" });
     }
 
-    // Fetch forms with status "Approved" or "Disbursed" (for accounts processing)
+    // Fetch forms:
+    // - "Approved" (awaiting reimbursement)
+    // - "Reimbursed" (successfully processed by Accounts)
+    // - "Rejected" by Accounts only (not rejections from other levels)
     const forms = await Form.find({
-      status: { $in: ["Approved", "Disbursed"] }
+      $or: [
+        { status: "Approved" },
+        { status: "Reimbursed" },
+        { status: "Rejected", rejectedBy: "Accounts" }
+      ]
     }).sort({ updatedAt: -1 });
 
     console.log('Faculty forms for Accounts found:', forms.length);
@@ -272,10 +308,15 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
 // GET /api/forms/:id - Get a specific form by ID
 router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
+    const mongoose = require('mongoose');
+
     // Try to find by applicationId first, then by MongoDB _id
     let form = await Form.findOne({ applicationId: req.params.id });
     if (!form) {
-      form = await Form.findById(req.params.id);
+      // Only try findById if it's a valid ObjectId format
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await Form.findById(req.params.id);
+      }
     }
     if (!form) {
       return res.status(404).json({ error: "Form not found" });
@@ -294,6 +335,7 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     }
     res.json({ form });
   } catch (err) {
+    console.error("Error retrieving form:", err);
     res.status(500).json({ error: "Error retrieving form" });
   }
 });
@@ -408,12 +450,14 @@ router.put(
       }
 
       if (userRole === 'accounts') {
-        // Accounts can mark approved forms as disbursed
+        // Accounts can mark approved forms as reimbursed or rejected
         if (form.status === 'Approved') {
-          allowedUpdates = ['status', 'accountsComments'];
-          statusValidation = ['Disbursed'];
+          allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
+          statusValidation = ['Reimbursed', 'Rejected'];
+        } else if (form.status === 'Reimbursed') {
+          return res.status(400).json({ error: 'This form has already been reimbursed' });
         } else if (form.status === 'Disbursed') {
-          return res.status(400).json({ error: 'This form has already been disbursed' });
+          return res.status(400).json({ error: 'This form has already been processed' });
         } else {
           return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
         }
@@ -450,6 +494,25 @@ router.put(
 
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: 'No valid fields to update or insufficient permissions' });
+      }
+
+      // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
+      if (req.body.status === 'Rejected') {
+        const roleMap = {
+          'coordinator': 'Coordinator',
+          'hod': 'HOD',
+          'principal': 'Principal',
+          'accounts': 'Accounts'
+        };
+        updates.rejectedBy = roleMap[userRole] || userRole;
+        // Store rejection remarks if provided
+        if (req.body.rejectionRemarks || req.body.remark || req.body.accountsRemarks) {
+          updates.rejectionRemarks = req.body.rejectionRemarks || req.body.remark || req.body.accountsRemarks;
+        }
+      } else if (req.body.status && req.body.status !== 'Rejected') {
+        // Clear rejection fields when approving/forwarding
+        updates.rejectedBy = null;
+        updates.rejectionRemarks = null;
       }
 
       // Update form fields

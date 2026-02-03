@@ -71,7 +71,7 @@ const DepartmentRoster = () => {
     ]
   }, [departments, allRequests])
 
-  // Get all members from all departments (mock data)
+  // Get all members from all departments (placeholder data - requires API integration)
   const allMembers = useMemo(() => {
     return departments.flatMap(dept => {
       const members = []
@@ -92,7 +92,7 @@ const DepartmentRoster = () => {
         lastReimbursement: '2024-09-15'
       })
 
-      // Add mock faculty members
+      // Add placeholder faculty members (requires API integration for real data)
       for (let i = 1; i <= dept.facultyCount - 1; i++) {
         members.push({
           id: `${dept.id}-faculty-${i}`,
@@ -110,7 +110,7 @@ const DepartmentRoster = () => {
         })
       }
 
-      // Add mock student members with FE/SE/TE/BE years
+      // Add placeholder student members with FE/SE/TE/BE years (requires API integration)
       const yearOptions = ['FE', 'SE', 'TE', 'BE']
       for (let i = 1; i <= Math.min(dept.studentCount, 10); i++) {
         const year = yearOptions[(i - 1) % 4]
@@ -228,7 +228,7 @@ const DepartmentRoster = () => {
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-50">
               <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                <span>Principal: {userProfile?.fullName || 'Dr. Jagan Kumar'}</span>
+                <span>Principal: {userProfile?.fullName || 'Principal'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />

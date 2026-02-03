@@ -14,10 +14,11 @@ import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
 
+// Default user profile fallback (overwritten by actual user data from auth)
 const initialUserProfile = {
-  fullName: "Dr. Sarah Johnson",
-  department: "Computer Science",
-  designation: "Associate Professor",
+  fullName: "Coordinator",
+  department: "",
+  designation: "Class Coordinator",
   role: "Coordinator",
 }
 
@@ -63,6 +64,8 @@ export default function CoordinatorDashboard() {
     lastUpdated: f.updatedAt ? new Date(f.updatedAt).toLocaleDateString() : 'N/A',
     documents: f.documents,
     remarks: f.remarks,
+    courseName: f.courseName || 'N/A',
+    marks: f.marks ?? null,
   })
 
   // Function to fetch requests (extracted for reuse)
@@ -204,7 +207,7 @@ export default function CoordinatorDashboard() {
         value: approvedRequests.length.toString(),
         icon: CheckCircle,
         color: "green",
-        subtitle: `₹${totalDisbursed.toLocaleString()} disbursed`,
+        subtitle: `₹${totalDisbursed.toLocaleString()} reimbursed`,
       },
       {
         title: "Rejected Requests",
@@ -281,10 +284,11 @@ export default function CoordinatorDashboard() {
       try {
         const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
 
-        // Update status to "Rejected" with remarks
+        // Update status to "Rejected" with remarks and rejectionRemarks for workflow tracking
         await studentFormsAPI.updateById(formId, {
           status: "Rejected",
-          remarks: rejectReason
+          remarks: rejectReason,
+          rejectionRemarks: rejectReason // Required for backend workflow visibility
         })
 
         // Refresh the requests to get updated data from server
@@ -498,6 +502,22 @@ export default function CoordinatorDashboard() {
                     <p className="text-gray-500">Student ID</p>
                     <p className="font-medium text-gray-900">
                       {requestDetails?.studentId || viewModal.request?.studentId || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Course Name</p>
+                    <p className="font-medium text-gray-900">
+                      {requestDetails?.courseName || viewModal.request?.courseName || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Marks</p>
+                    <p className="font-medium text-gray-900">
+                      {requestDetails?.marks !== undefined && requestDetails?.marks !== null
+                        ? `${requestDetails.marks}%`
+                        : viewModal.request?.marks !== undefined && viewModal.request?.marks !== null
+                          ? `${viewModal.request.marks}%`
+                          : "N/A"}
                     </p>
                   </div>
                   <div>

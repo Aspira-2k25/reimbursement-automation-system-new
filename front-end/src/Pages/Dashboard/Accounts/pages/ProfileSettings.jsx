@@ -3,13 +3,12 @@ import { motion } from 'framer-motion'
 import {
   User,
   Mail,
-  Phone,
   Building2,
-  Badge,
   Save,
   Loader2,
   AlertCircle,
-  CheckCircle
+  Shield,
+  Lock
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useAccountsContext } from './AccountsLayout'
@@ -21,10 +20,8 @@ const ProfileSettings = () => {
   const [formData, setFormData] = useState({
     fullName: userProfile?.fullName || '',
     email: userProfile?.email || '',
-    phone: userProfile?.phone || '',
     designation: userProfile?.designation || '',
-    department: userProfile?.department || 'Accounts',
-    employeeId: userProfile?.employeeId || ''
+    department: userProfile?.department || 'Accounts'
   })
 
   const handleChange = useCallback((field, value) => {
@@ -36,10 +33,9 @@ const ProfileSettings = () => {
     setIsLoading(true)
 
     try {
-      // Update profile via API
+      // Update profile via API - backend expects 'name' not 'fullName'
       await authAPI.updateProfile({
-        fullName: formData.fullName,
-        phone: formData.phone
+        name: formData.fullName
       })
 
       // Update local context
@@ -56,6 +52,10 @@ const ProfileSettings = () => {
       setIsLoading(false)
     }
   }, [formData, setUserProfile])
+
+  const handleChangePassword = useCallback(() => {
+    toast.info('Password change functionality would be implemented here')
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -79,7 +79,7 @@ const ProfileSettings = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Profile Picture Section */}
           <div className="flex items-center gap-6 pb-6 border-b border-gray-200">
-            <div className="w-20 h-20 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
               <span className="text-white text-2xl font-bold">
                 {formData.fullName ? formData.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AC'}
               </span>
@@ -87,7 +87,7 @@ const ProfileSettings = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{formData.fullName || 'Accounts User'}</h3>
               <p className="text-sm text-gray-500">{formData.designation || 'Accounts Officer'}</p>
-              <p className="text-xs text-amber-600 mt-1">{formData.department}</p>
+              <p className="text-xs text-[#3B945E] mt-1">{formData.department}</p>
             </div>
           </div>
 
@@ -103,7 +103,7 @@ const ProfileSettings = () => {
                 type="text"
                 value={formData.fullName}
                 onChange={(e) => handleChange('fullName', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] focus:border-[#57BA98]"
                 placeholder="Enter your full name"
               />
             </div>
@@ -122,36 +122,6 @@ const ProfileSettings = () => {
                 placeholder="Email address"
               />
               <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Phone className="w-4 h-4 inline mr-2" />
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                placeholder="Enter your phone number"
-              />
-            </div>
-
-            {/* Employee ID */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Badge className="w-4 h-4 inline mr-2" />
-                Employee ID
-              </label>
-              <input
-                type="text"
-                value={formData.employeeId}
-                disabled
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                placeholder="Employee ID"
-              />
             </div>
 
             {/* Designation */}
@@ -186,12 +156,12 @@ const ProfileSettings = () => {
           </div>
 
           {/* Info Box */}
-          <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-3 p-4 bg-[#65CCB8]/20 rounded-lg border border-[#65CCB8]/40">
+            <AlertCircle className="w-5 h-5 text-[#3B945E] mt-0.5 flex-shrink-0" />
             <div>
-              <h4 className="text-sm font-medium text-amber-800">Note</h4>
-              <p className="text-sm text-amber-700 mt-1">
-                Some fields cannot be edited. Please contact the administrator if you need to update your email, employee ID, designation, or department.
+              <h4 className="text-sm font-medium text-[#3B945E]">Note</h4>
+              <p className="text-sm text-slate-700 mt-1">
+                Some fields cannot be edited. Please contact the administrator if you need to update your email, designation, or department.
               </p>
             </div>
           </div>
@@ -201,7 +171,7 @@ const ProfileSettings = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -217,6 +187,32 @@ const ProfileSettings = () => {
             </button>
           </div>
         </form>
+      </motion.div>
+
+      {/* Security Settings - Change Password */}
+      <motion.div
+        className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="w-5 h-5 text-[#3B945E]" />
+          <h3 className="text-lg font-semibold text-gray-900">Security</h3>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={handleChangePassword}
+            className="flex items-center gap-3 w-full p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <Lock className="w-4 h-4 text-gray-500" />
+            <div>
+              <div className="text-sm font-medium text-gray-900">Change Password</div>
+              <div className="text-xs text-gray-500">Update your account password</div>
+            </div>
+          </button>
+        </div>
       </motion.div>
     </div>
   )

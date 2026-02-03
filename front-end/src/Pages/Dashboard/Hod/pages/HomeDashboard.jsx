@@ -16,7 +16,7 @@ import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import RequestTable from '../components/RequestTable'
 import { useHODContext } from './HODLayout'
-import { calculateStats, getRequestsByStatus } from '../data/mockData'
+import { calculateStats } from '../data/mockData'
 
 const HomeDashboard = () => {
   const {
@@ -146,7 +146,6 @@ const HomeDashboard = () => {
     // Calculate dynamic trends based on actual data
     const processedRequests = stats.total - stats.pending
     const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-    const avgAmount = stats.approved > 0 ? Math.round(stats.approvedAmount / stats.approved) : 0
 
     return [
       {
@@ -168,7 +167,7 @@ const HomeDashboard = () => {
       {
         title: "Approved Requests",
         value: stats.approved.toString(),
-        subtitle: `₹${stats.approvedAmount.toLocaleString()} disbursed`,
+        subtitle: `₹${stats.approvedAmount.toLocaleString()} reimbursed`,
         icon: CheckCircle,
         color: 'green',
         onClick: () => handleStatCardClick('Approved Requests')
@@ -243,7 +242,7 @@ const HomeDashboard = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold mb-2">
-              Welcome back, {userProfile?.fullName || 'Dr. Jagan Kumar'} 👋
+              Welcome back, {userProfile?.fullName || 'HOD'} 👋
             </h1>
             <p className="text-green-100 mb-4 text-sm sm:text-base">
               Head of Department • {userProfile?.department || 'Civil Engineering'}
@@ -316,7 +315,7 @@ const HomeDashboard = () => {
               },
               {
                 value: `₹${stats.approvedAmount.toLocaleString()}`,
-                label: 'Total Disbursed',
+                label: 'Total Reimbursed',
                 color: 'purple'
               },
               {
@@ -475,6 +474,14 @@ const HomeDashboard = () => {
                       <p className="text-sm text-gray-900 mt-1">{requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
                     </div>
                     <div>
+                      <label className="text-sm font-medium text-gray-500">Course Name</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.courseName || viewModal.request?.courseName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Marks</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.marks !== undefined && requestDetails?.marks !== null ? `${requestDetails.marks}%` : (viewModal.request?.marks !== undefined && viewModal.request?.marks !== null ? `${viewModal.request.marks}%` : 'N/A')}</p>
+                    </div>
+                    <div>
                       <label className="text-sm font-medium text-gray-500">Category</label>
                       <p className="text-sm text-gray-900 mt-1">{requestDetails?.reimbursementType || requestDetails?.category || viewModal.request?.category || 'N/A'}</p>
                     </div>
@@ -520,16 +527,6 @@ const HomeDashboard = () => {
                       </p>
                     </div>
                   </div>
-
-                  {/* Remarks/Description */}
-                  {(requestDetails?.remarks || viewModal.request?.description) && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Remarks / Description</label>
-                      <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-3 rounded-lg">
-                        {requestDetails?.remarks || viewModal.request?.description || 'N/A'}
-                      </p>
-                    </div>
-                  )}
 
                   {/* Documents */}
                   {requestDetails?.documents && requestDetails.documents.length > 0 && (

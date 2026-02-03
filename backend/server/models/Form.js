@@ -16,14 +16,18 @@ const FormSchema = new mongoose.Schema({
     accountName: { type: String },
     ifscCode: { type: String },
     accountNumber: { type: String },
-    remark: { type: String },
+    courseName: { type: String, required: true }, // NPTEL Course Name for reimbursement
+    marks: { type: Number, required: true }, // NPTEL course marks (0-100)
     reimbursementType: { type: String, default: "NPTEL" },
     applicantType: { type: String, default: "Faculty", enum: ["Faculty", "Coordinator", "HOD"] }, // Faculty, Coordinator, or HOD
     status: {
         type: String,
         default: "Under HOD",
-        enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Disbursed", "Rejected"]
+        enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Rejected"]
     },
+    // Track which role rejected the application (for workflow visibility)
+    rejectedBy: { type: String, enum: ["Coordinator", "HOD", "Principal", "Accounts", null], default: null },
+    rejectionRemarks: { type: String }, // Reason for rejection
     documents: [
         {
             // Support both local file fields and Cloudinary fields
