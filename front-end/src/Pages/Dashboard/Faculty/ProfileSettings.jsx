@@ -2,6 +2,7 @@ import React from "react"
 import { toast } from "react-hot-toast"
 import "../Dashboard.css"
 import { useProfile } from "./ProfileContext"
+import { authAPI } from '../../../services/api' 
 
 /**
  * Faculty ProfileSettings Component
@@ -63,6 +64,54 @@ export default function ProfileSettings() {
     setDesignation(profile.designation)
     toast.success("Form reset to default values")
   }
+
+  // Change password state & handlers
+  const [showChangePassword, setShowChangePassword] = React.useState(false)
+  const [passwordForm, setPasswordForm] = React.useState({ oldPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordErrors, setPasswordErrors] = React.useState({})
+  const [pwdLoading, setPwdLoading] = React.useState(false)
+  const [showPwd, setShowPwd] = React.useState({ old: false, new: false, confirm: false })
+
+  const toggleShowChangePassword = React.useCallback(() => setShowChangePassword(s => !s), [])
+
+  const handlePasswordInputChange = React.useCallback((field, value) => {
+    setPasswordForm(prev => ({ ...prev, [field]: value }))
+    if (passwordErrors[field]) setPasswordErrors(prev => ({ ...prev, [field]: '' }))
+  }, [passwordErrors])
+
+  const validatePasswordForm = React.useCallback(() => {
+    const errs = {}
+    if (!passwordForm.oldPassword) errs.oldPassword = 'Old password is required'
+    if (!passwordForm.newPassword) errs.newPassword = 'New password is required'
+    else if (passwordForm.newPassword.length < 8) errs.newPassword = 'Password must be at least 8 characters long'
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) errs.confirmPassword = 'Passwords do not match'
+    setPasswordErrors(errs)
+    return Object.keys(errs).length === 0
+  }, [passwordForm])
+
+  const handleSubmitPassword = React.useCallback(async () => {
+    if (!validatePasswordForm()) {
+      toast.error('Please fix the errors before saving')
+      return
+    }
+    setPwdLoading(true)
+    try {
+      await authAPI.changePassword({ oldPassword: passwordForm.oldPassword, newPassword: passwordForm.newPassword })
+      toast.success('Password changed successfully')
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+      setShowChangePassword(false)
+    } catch (e) {
+      toast.error(e?.error || e?.message || 'Failed to change password')
+    } finally {
+      setPwdLoading(false)
+    }
+  }, [passwordForm, validatePasswordForm])
+
+  const handleCancelChangePassword = React.useCallback(() => {
+    setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+    setPasswordErrors({})
+    setShowChangePassword(false)
+  }, [])
 
   return (
     <main className="mx-auto max-w-2xl px-3 sm:px-4 lg:px-6 py-6 sm:py-8 lg:py-10 page-content">
@@ -143,7 +192,40 @@ export default function ProfileSettings() {
             </button>
           </div>
         </form>
+
+        {/* Security Settings */}
+        <div className="mt-6 max-w-2xl mx-auto px-4">
+          {!showChangePassword ? (
+            <button onClick={toggleShowChangePassword} className="btn btn-outline w-full">Change Password</button>
+          ) : (
+            <div className="mt-4 p-4 border rounded bg-gray-50 space-y-3">
+              <label className="grid gap-1">
+                <span className="text-sm text-slate-600">Old Password</span>
+                <input className="input w-full" type={showPwd.old ? 'text' : 'password'} value={passwordForm.oldPassword} onChange={(e) => handlePasswordInputChange('oldPassword', e.target.value)} />
+                {passwordErrors.oldPassword && <p className="text-xs text-red-600 mt-1">{passwordErrors.oldPassword}</p>}
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-sm text-slate-600">New Password</span>
+                <input className="input w-full" type={showPwd.new ? 'text' : 'password'} value={passwordForm.newPassword} onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)} />
+                {passwordErrors.newPassword && <p className="text-xs text-red-600 mt-1">{passwordErrors.newPassword}</p>}
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-sm text-slate-600">Confirm Password</span>
+                <input className="input w-full" type={showPwd.confirm ? 'text' : 'password'} value={passwordForm.confirmPassword} onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)} />
+                {passwordErrors.confirmPassword && <p className="text-xs text-red-600 mt-1">{passwordErrors.confirmPassword}</p>}
+              </label>
+
+              <div className="flex gap-3">
+                <button onClick={handleCancelChangePassword} className="btn btn-outline">Cancel</button>
+                <button onClick={handleSubmitPassword} disabled={pwdLoading} className="btn btn-primary">{pwdLoading ? 'Saving...' : 'Save Password'}</button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
-    </main>
+    </main> 
   )
 }
