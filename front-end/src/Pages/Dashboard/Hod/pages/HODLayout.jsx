@@ -107,6 +107,8 @@ const HODLayout = ({ children }) => {
       updatedAt: f.updatedAt,
       documents: f.documents || [], // Very important for viewing documents!
       reimbursementType: f.reimbursementType,
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
     }
   }, [])
 
@@ -407,6 +409,10 @@ const HODLayout = ({ children }) => {
         const updateData = { status: newStatus }
         if (remarks) {
           updateData.remarks = remarks
+          // Add rejectionRemarks for workflow tracking when rejecting
+          if (newStatus === 'Rejected') {
+            updateData.rejectionRemarks = remarks
+          }
         }
 
         // Use correct API based on request type
