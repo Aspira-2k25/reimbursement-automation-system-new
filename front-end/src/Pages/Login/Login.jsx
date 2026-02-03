@@ -100,7 +100,7 @@ export default function LoginPage() {
             {/* Header */}
             <div className="text-center mb-6 sm:mb-8">
               <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>
-                Login In
+                Log In
               </h2>
             </div>
 

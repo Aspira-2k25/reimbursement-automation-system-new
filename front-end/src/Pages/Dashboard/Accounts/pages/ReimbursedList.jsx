@@ -184,7 +184,7 @@ const ReimbursedList = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">
-              Reimbursed Requests 💰
+              Reimbursed Requests 
             </h1>
             <p className="text-white/80 mb-4 text-sm sm:text-base">
               Successfully completed reimbursements
