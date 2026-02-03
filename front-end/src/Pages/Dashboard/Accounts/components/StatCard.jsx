@@ -1,18 +1,17 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-const StatCard = ({ title, value, subtitle, icon: Icon, color = 'amber', onClick }) => {
-  // Color configurations for amber theme
+const StatCard = ({ title, value, subtitle, icon: Icon, color = 'teal', onClick }) => {
   const colorConfig = {
-    amber: {
-      bg: 'bg-gradient-to-br from-amber-50 to-orange-50',
-      border: 'border-amber-200',
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-600',
-      valueColor: 'text-amber-700',
-      titleColor: 'text-gray-700',
-      subtitleColor: 'text-gray-500',
-      hoverBg: 'hover:from-amber-100 hover:to-orange-100'
+    teal: {
+      bg: 'bg-gradient-to-br from-[#E8F7F2] to-[#D7F1E7]',
+      border: 'border-[#B7E4D5]',
+      iconBg: 'bg-[#CFF3E5]',
+      iconColor: 'text-[#3B945E]',
+      valueColor: 'text-[#3B945E]',
+      titleColor: 'text-slate-700',
+      subtitleColor: 'text-slate-500',
+      hoverBg: 'hover:from-[#DFF7EF] hover:to-[#CBEFE1]'
     },
     green: {
       bg: 'bg-gradient-to-br from-green-50 to-emerald-50',
@@ -36,7 +35,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'amber', onClick
     }
   }
 
-  const colors = colorConfig[color] || colorConfig.amber
+  const colors = colorConfig[color] || colorConfig.teal
 
   return (
     <motion.div
@@ -66,7 +65,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'amber', onClick
 
       {/* Decorative element */}
       <div
-        className={`absolute bottom-0 left-0 right-0 h-1 rounded-b-xl bg-gradient-to-r from-amber-400 to-orange-400 opacity-50`}
+        className="absolute bottom-0 left-0 right-0 h-1 rounded-b-xl bg-gradient-to-r from-[#57BA98] to-[#3B945E] opacity-50"
       />
     </motion.div>
   )

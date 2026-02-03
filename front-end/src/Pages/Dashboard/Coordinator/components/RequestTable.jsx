@@ -86,6 +86,16 @@ export default function RequestTable({
               Category
             </th>
             <th
+              className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Course Name
+            </th>
+            <th
+              className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Marks
+            </th>
+            <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort("status")}
             >
@@ -137,6 +147,12 @@ export default function RequestTable({
               )}
               <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                 {request.category}
+              </td>
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                {request.courseName || 'N/A'}
+              </td>
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                {request.marks !== undefined && request.marks !== null ? `${request.marks}%` : 'N/A'}
               </td>
               <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <span className={getStatusBadge(request.status)}>
