@@ -21,7 +21,7 @@ const authController = {
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role },
+        { userId: user.id, username: user.username, role: user.role, email: user.email },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
