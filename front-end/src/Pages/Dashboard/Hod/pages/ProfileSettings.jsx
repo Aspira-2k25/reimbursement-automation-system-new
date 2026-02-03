@@ -158,8 +158,52 @@ const ProfileSettings = () => {
     setIsEditing(false)
   }, [userProfile])
 
-  const handleChangePassword = useCallback(() => {
-    toast.info('Password change functionality would be implemented here')
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordErrors, setPasswordErrors] = useState({})
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [showPwd, setShowPwd] = useState({ old: false, new: false, confirm: false })
+
+  const toggleShowChangePassword = useCallback(() => setShowChangePassword(s => !s), [])
+
+  const handlePasswordInputChange = useCallback((field, value) => {
+    setPasswordForm(prev => ({ ...prev, [field]: value }))
+    if (passwordErrors[field]) setPasswordErrors(prev => ({ ...prev, [field]: '' }))
+  }, [passwordErrors])
+
+  const validatePasswordForm = useCallback(() => {
+    const errs = {}
+    if (!passwordForm.oldPassword) errs.oldPassword = 'Old password is required'
+    if (!passwordForm.newPassword) errs.newPassword = 'New password is required'
+    else if (passwordForm.newPassword.length < 8) errs.newPassword = 'Password must be at least 8 characters long'
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) errs.confirmPassword = 'Passwords do not match'
+    setPasswordErrors(errs)
+    return Object.keys(errs).length === 0
+  }, [passwordForm])
+
+  const handleSubmitPassword = useCallback(async () => {
+    if (!validatePasswordForm()) {
+      toast.error('Please fix the errors before saving')
+      return
+    }
+
+    setPwdLoading(true)
+    try {
+      await authAPI.changePassword({ oldPassword: passwordForm.oldPassword, newPassword: passwordForm.newPassword })
+      toast.success('Password changed successfully')
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+      setShowChangePassword(false)
+    } catch (e) {
+      toast.error(e?.error || e?.message || 'Failed to change password')
+    } finally {
+      setPwdLoading(false)
+    }
+  }, [passwordForm, validatePasswordForm])
+
+  const handleCancelChangePassword = useCallback(() => {
+    setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+    setPasswordErrors({})
+    setShowChangePassword(false)
   }, [])
 
   return (
@@ -409,17 +453,73 @@ const ProfileSettings = () => {
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={handleChangePassword}
-                className="flex items-center gap-3 w-full p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <Lock className="w-4 h-4 text-gray-500" />
-                <div>
-                  <div className="text-sm font-medium text-gray-900">Change Password</div>
-                  <div className="text-xs text-gray-500">Update your account password</div>
-                </div>
-              </button>
+              {!showChangePassword ? (
+                <button
+                  onClick={toggleShowChangePassword}
+                  className="flex items-center gap-3 w-full p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <Lock className="w-4 h-4 text-gray-500" />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">Change Password</div>
+                    <div className="text-xs text-gray-500">Update your account password</div>
+                  </div>
+                </button>
+              ) : (
+                <div className="space-y-3 p-3 border rounded-lg bg-gray-50">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Old Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPwd.old ? 'text' : 'password'}
+                        value={passwordForm.oldPassword}
+                        onChange={(e) => handlePasswordInputChange('oldPassword', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg ${passwordErrors.oldPassword ? 'border-red-300' : 'border-gray-200'}`}
+                      />
+                      <button type="button" onClick={() => setShowPwd(p => ({ ...p, old: !p.old }))} className="absolute right-2 top-2 text-gray-500">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {passwordErrors.oldPassword && <p className="text-xs text-red-600 mt-1">{passwordErrors.oldPassword}</p>}
+                  </div>
 
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPwd.new ? 'text' : 'password'}
+                        value={passwordForm.newPassword}
+                        onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg ${passwordErrors.newPassword ? 'border-red-300' : 'border-gray-200'}`}
+                      />
+                      <button type="button" onClick={() => setShowPwd(p => ({ ...p, new: !p.new }))} className="absolute right-2 top-2 text-gray-500">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {passwordErrors.newPassword && <p className="text-xs text-red-600 mt-1">{passwordErrors.newPassword}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Confirm Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPwd.confirm ? 'text' : 'password'}
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg ${passwordErrors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`}
+                      />
+                      <button type="button" onClick={() => setShowPwd(p => ({ ...p, confirm: !p.confirm }))} className="absolute right-2 top-2 text-gray-500">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {passwordErrors.confirmPassword && <p className="text-xs text-red-600 mt-1">{passwordErrors.confirmPassword}</p>}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button onClick={handleCancelChangePassword} className="px-4 py-2 bg-gray-100 rounded-lg">Cancel</button>
+                    <button onClick={handleSubmitPassword} disabled={pwdLoading} className="px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">{pwdLoading ? 'Saving...' : 'Save Password'}</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
