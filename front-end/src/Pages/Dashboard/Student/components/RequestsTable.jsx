@@ -2,6 +2,7 @@ import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
+import { jsPDF } from "jspdf"
 import { studentFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -91,7 +92,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
                 <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 items-center">
                     <StatusBadge status={r.status || 'Pending'} />
                     {r.status === 'Rejected' && r.accountsRemarks && (
                       <span className="text-xs text-red-600 italic truncate max-w-[150px]" title={r.accountsRemarks}>
@@ -106,13 +107,92 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button
-                      className="icon-btn hover:bg-blue-50 disabled:opacity-50"
+                      className="icon-btn hover:bg-blue-50"
                       onClick={() => {
-                        const docUrl = r.documents?.[0]?.url;
-                        if (docUrl) window.open(docUrl, '_blank');
+                        // Generate PDF
+                        const doc = new jsPDF();
+                        const pageWidth = doc.internal.pageSize.getWidth();
+                        let y = 20;
+
+                        // Title
+                        doc.setFontSize(18);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT APPLICATION FORM', pageWidth / 2, y, { align: 'center' });
+                        y += 15;
+
+                        // Application ID and Status
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Application ID: ${r.applicationId || r._id || r.id || 'N/A'}`, 20, y);
+                        y += 7;
+                        doc.text(`Status: ${r.status || 'Pending'}`, 20, y);
+                        y += 12;
+
+                        // Applicant Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('APPLICANT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Name: ${r.name || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Student ID: ${r.studentId || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Email: ${r.email || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Department: ${r.department || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Division: ${r.division || 'N/A'}`, 20, y); y += 12;
+
+                        // Reimbursement Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Type: ${r.reimbursementType || r.category || 'NPTEL'}`, 20, y); y += 7;
+                        doc.text(`Amount: Rs. ${(r.amount || 0).toLocaleString('en-IN')}`, 20, y); y += 7;
+                        doc.text(`Academic Year: ${r.academicYear || 'N/A'}`, 20, y); y += 12;
+
+                        // Bank Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('BANK DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Account Name: ${r.accountName || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Account Number: ${r.accountNumber || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`IFSC Code: ${r.ifscCode || 'N/A'}`, 20, y); y += 12;
+
+                        // Dates Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('DATES', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        const submittedDate = r.submittedDate || r.createdAt ? new Date(r.submittedDate || r.createdAt).toLocaleDateString() : 'N/A';
+                        const updatedDate = r.updatedDate || r.updatedAt ? new Date(r.updatedDate || r.updatedAt).toLocaleDateString() : 'N/A';
+                        doc.text(`Submitted: ${submittedDate}`, 20, y); y += 7;
+                        doc.text(`Last Updated: ${updatedDate}`, 20, y); y += 12;
+
+                        // Remarks Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REMARKS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(r.remarks || r.rejectionRemarks || 'No remarks', 20, y); y += 15;
+
+                        // Footer
+                        doc.setFontSize(9);
+                        doc.setTextColor(128);
+                        doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, 280, { align: 'center' });
+
+                        // Save PDF
+                        doc.save(`Application_${r.applicationId || r._id || 'form'}.pdf`);
                       }}
-                      disabled={!r.documents?.[0]?.url}
-                      title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
+                      title="Download Application Form"
                       aria-label="Download"
                     >
                       <Download className="h-4 w-4" />
