@@ -28,8 +28,10 @@ const createNotification = async (notificationData, sendEmailNotification = true
     // Send email if requested and email is available
     if (sendEmailNotification && notificationData.userEmail) {
       try {
+        let emailResult = { success: false };
+
         if (notificationData.type === 'approval') {
-          await emailService.sendApprovalEmail(
+          emailResult = await emailService.sendApprovalEmail(
             {
               name: notificationData.userName || 'User',
               email: notificationData.userEmail,
@@ -42,7 +44,7 @@ const createNotification = async (notificationData, sendEmailNotification = true
             notificationData.phase
           );
         } else if (notificationData.type === 'rejection') {
-          await emailService.sendRejectionEmail(
+          emailResult = await emailService.sendRejectionEmail(
             {
               name: notificationData.userName || 'User',
               email: notificationData.userEmail,
@@ -55,18 +57,29 @@ const createNotification = async (notificationData, sendEmailNotification = true
             notificationData.remarks
           );
         } else if (notificationData.type === 'submission') {
-          await emailService.sendSubmissionEmail({
+          emailResult = await emailService.sendSubmissionEmail({
             name: notificationData.userName || 'User',
             email: notificationData.userEmail,
             applicationId: notificationData.applicationId,
             studentId: notificationData.studentId,
             amount: notificationData.amount,
           });
+        } else {
+          // generic status change or other notification type
+          emailResult = await emailService.sendEmail(
+            notificationData.userEmail,
+            notificationData.title || `Application Update: ${notificationData.applicationId}`,
+            `<p>Dear ${notificationData.userName || 'User'},</p><p>${notificationData.message}</p><p>Status: ${notificationData.status}</p>`
+          );
         }
 
-        // Mark email as sent
-        notification.emailSent = true;
-        await notification.save();
+        // Mark email as sent only if actually successful
+        if (emailResult && emailResult.success) {
+          notification.emailSent = true;
+          await notification.save();
+        } else {
+          console.warn('Notification created but email delivery failed:', emailResult?.error || 'Unknown error');
+        }
       } catch (emailError) {
         console.error('Failed to send email notification:', emailError);
         // Don't fail the whole operation if email fails
