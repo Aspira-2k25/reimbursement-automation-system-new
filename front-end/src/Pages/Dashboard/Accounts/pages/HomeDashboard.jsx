@@ -10,13 +10,12 @@ import {
   Search,
   IndianRupee,
   Eye,
-  Edit,
+
   Download,
   Printer,
   Check,
   X,
   Calendar,
-  Filter,
   XCircle,
   AlertCircle
 } from 'lucide-react'
@@ -45,7 +44,8 @@ const HomeDashboard = () => {
     setTypeFilter,
     dateFilter,
     setDateFilter,
-    loading
+    loading,
+    setActiveTab
   } = useAccountsContext()
 
   const [printModal, setPrintModal] = useState({ show: false, request: null })
@@ -66,15 +66,7 @@ const HomeDashboard = () => {
     }
   }, [navigate])
 
-  const handleEditRequest = useCallback((request) => {
-    // Open form in edit mode for bank details verification
-    const formId = request._id || request.id
-    if (request.applicantType === 'Student') {
-      navigate(`/student-form/edit/${formId}`)
-    } else {
-      navigate(`/nptel-form/edit/${formId}`)
-    }
-  }, [navigate])
+
 
   const handlePrintRequest = useCallback((request) => {
     setPrintModal({ show: true, request })
@@ -190,30 +182,35 @@ const HomeDashboard = () => {
         setSearchQuery('')
         break
       case 'Reimbursed':
-        setStatusFilter('Reimbursed')
-        setDepartmentFilter('All')
-        setTypeFilter('All')
-        setSearchQuery('')
+        // Navigate to Reimbursed List tab instead of filtering in queue
+        setActiveTab('reimbursed')
         break
       default:
         break
     }
-    toast.info(`Filtered to show ${statType.toLowerCase()}`)
-  }, [setStatusFilter, setDepartmentFilter, setTypeFilter, setSearchQuery])
+    if (statType !== 'Reimbursed') {
+      toast.info(`Filtered to show ${statType.toLowerCase()}`)
+    }
+  }, [setStatusFilter, setDepartmentFilter, setTypeFilter, setSearchQuery, setActiveTab])
 
-  // Get filtered requests
+  // Get filtered requests - Queue only shows pending (Approved) items
+  // Reimbursed items are shown in the dedicated Reimbursed List tab
   const filteredRequests = useMemo(() => {
-    return getFilteredRequests()
+    const allFiltered = getFilteredRequests()
+    // Exclude Reimbursed from queue - they have their own tab
+    return allFiltered.filter(r => r.status !== 'Reimbursed')
   }, [getFilteredRequests])
 
   const handleExportToCSV = useCallback(() => {
-    const headers = ['Application ID', 'Applicant', 'Type', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
+    const headers = ['Application ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
     const csvContent = [
       headers.join(','),
       ...filteredRequests.map(request => [
         request.applicationId || request.id,
         `"${request.applicantName}"`,
         request.applicantType,
+        `"${request.courseName || 'N/A'}"`,
+        request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A',
         request.department,
         request.amountNum || 0,
         request.status,
@@ -242,7 +239,7 @@ const HomeDashboard = () => {
         value: accountsStats.total.toString(),
         subtitle: `₹${accountsStats.totalAmount.toLocaleString()} total value`,
         icon: FileText,
-            color: 'teal',
+        color: 'teal',
         onClick: () => handleStatCardClick('Total Requests')
       },
       {
@@ -250,7 +247,7 @@ const HomeDashboard = () => {
         value: accountsStats.pendingDisbursement.toString(),
         subtitle: `₹${accountsStats.pendingAmount.toLocaleString()} pending`,
         icon: Clock,
-            color: 'teal',
+        color: 'teal',
         onClick: () => handleStatCardClick('Pending Reimbursement')
       },
       {
@@ -258,7 +255,7 @@ const HomeDashboard = () => {
         value: accountsStats.reimbursed.toString(),
         subtitle: `₹${accountsStats.reimbursedAmount.toLocaleString()} completed`,
         icon: CheckCircle,
-            color: 'teal',
+        color: 'teal',
         onClick: () => handleStatCardClick('Reimbursed')
       },
       {
@@ -266,8 +263,8 @@ const HomeDashboard = () => {
         value: `${accountsStats.disbursementRate}%`,
         subtitle: "Completion rate",
         icon: TrendingUp,
-            color: 'teal',
-        onClick: () => {}
+        color: 'teal',
+        onClick: () => { }
       }
     ]
   }, [accountsStats, handleStatCardClick])
@@ -354,7 +351,7 @@ const HomeDashboard = () => {
       <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
-              <h3 className="text-lg font-semibold text-gray-900">Reimbursement Queue</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Reimbursement Queue</h3>
             <p className="text-sm text-gray-500 mt-1">
               {filteredRequests.length} of {allRequests.length} requests
             </p>
@@ -404,9 +401,9 @@ const HomeDashboard = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
           >
-            <option value="All">All Status</option>
-            <option value="Approved">Pending Reimbursement</option>
-            <option value="Reimbursed">Reimbursed</option>
+            <option value="All">All Pending</option>
+            <option value="Approved">Awaiting Reimbursement</option>
+            <option value="Rejected">Rejected by Accounts</option>
           </select>
 
           {/* Department Filter */}
@@ -492,6 +489,8 @@ const HomeDashboard = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Applicant</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
@@ -502,14 +501,14 @@ const HomeDashboard = () => {
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center">
+                  <td colSpan={11} className="px-4 py-8 text-center">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#57BA98]" />
                     <p className="mt-2 text-sm text-gray-500">Loading requests...</p>
                   </td>
                 </tr>
               ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
                     No requests found matching your criteria
                   </td>
                 </tr>
@@ -520,9 +519,8 @@ const HomeDashboard = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
-                    className={`hover:bg-slate-50 transition-colors ${
-                      request.status === 'Reimbursed' ? 'bg-[#65CCB8]/20' : ''
-                    }`}
+                    className={`hover:bg-slate-50 transition-colors ${request.status === 'Reimbursed' ? 'bg-[#65CCB8]/20' : ''
+                      }`}
                   >
                     <td className="px-4 py-3">
                       <input
@@ -543,16 +541,17 @@ const HomeDashboard = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        request.applicantType === 'Student'
-                          ? 'bg-blue-100 text-blue-700'
-                          : request.applicantType === 'Faculty'
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${request.applicantType === 'Student'
+                        ? 'bg-blue-100 text-blue-700'
+                        : request.applicantType === 'Faculty'
                           ? 'bg-purple-100 text-purple-700'
                           : 'bg-gray-100 text-gray-700'
-                      }`}>
+                        }`}>
                         {request.applicantType}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{request.courseName || 'N/A'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{request.department}</td>
                     <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-gray-900">{request.amount}</span>
@@ -568,13 +567,7 @@ const HomeDashboard = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleEditRequest(request)}
-                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit Form"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+
                         <button
                           onClick={() => handlePrintRequest(request)}
                           className="p-1.5 text-gray-500 hover:text-[#3B945E] hover:bg-[#65CCB8]/20 rounded-lg transition-colors"

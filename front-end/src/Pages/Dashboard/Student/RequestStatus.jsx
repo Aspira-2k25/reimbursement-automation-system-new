@@ -44,6 +44,10 @@ const useStudentRequests = (addNotification) => {
         submittedDate: f.createdAt || f.submittedDate || new Date(),
         updatedDate: f.updatedAt || f.updatedDate || f.createdAt || new Date(),
         description: f.remarks || f.name || f.description || "",
+        courseName: f.courseName || 'N/A',
+        marks: f.marks ?? null,
+        documents: f.documents || [],
+        accountsRemarks: f.accountsRemarks || '',
       }))
 
       // Check for status changes and generate notifications
