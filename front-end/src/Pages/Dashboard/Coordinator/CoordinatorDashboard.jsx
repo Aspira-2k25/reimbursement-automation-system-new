@@ -64,6 +64,8 @@ export default function CoordinatorDashboard() {
     lastUpdated: f.updatedAt ? new Date(f.updatedAt).toLocaleDateString() : 'N/A',
     documents: f.documents,
     remarks: f.remarks,
+    courseName: f.courseName || 'N/A',
+    marks: f.marks ?? null,
   })
 
   // Function to fetch requests (extracted for reuse)
@@ -500,6 +502,22 @@ export default function CoordinatorDashboard() {
                     <p className="text-gray-500">Student ID</p>
                     <p className="font-medium text-gray-900">
                       {requestDetails?.studentId || viewModal.request?.studentId || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Course Name</p>
+                    <p className="font-medium text-gray-900">
+                      {requestDetails?.courseName || viewModal.request?.courseName || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Marks</p>
+                    <p className="font-medium text-gray-900">
+                      {requestDetails?.marks !== undefined && requestDetails?.marks !== null
+                        ? `${requestDetails.marks}%`
+                        : viewModal.request?.marks !== undefined && viewModal.request?.marks !== null
+                          ? `${viewModal.request.marks}%`
+                          : "N/A"}
                     </p>
                   </div>
                   <div>

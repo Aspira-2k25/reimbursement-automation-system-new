@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
@@ -9,21 +9,34 @@ import { useAuth } from '../../context/AuthContext'; // Import useAuth
 export default function EditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const navigateBack = useBackNavigation();
   const { user } = useAuth(); // Get authenticated user
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
+  const [isStudentForm, setIsStudentForm] = useState(false);
 
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API, Students use student-forms)
+        // Detect form type from URL path first (for Accounts role viewing different form types)
+        const isStudent = location.pathname.includes('/student-form/');
+        setIsStudentForm(isStudent);
+
+        // Select API based on URL path or user role
+        // URL path takes precedence (allows Accounts to edit both types)
         const userRole = user?.role?.toLowerCase();
-        const api = (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal')
-          ? facultyFormsAPI
-          : studentFormsAPI;
+        let api;
+
+        if (isStudent) {
+          api = studentFormsAPI;
+        } else if (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal' || userRole === 'accounts') {
+          api = facultyFormsAPI;
+        } else {
+          api = studentFormsAPI;
+        }
 
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures
@@ -42,7 +55,7 @@ export default function EditForm() {
     if (user) {
       fetchForm();
     }
-  }, [id, navigateBack, user]);
+  }, [id, navigateBack, user, location.pathname]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -98,6 +111,22 @@ export default function EditForm() {
       newErrors.accountNumber = 'Please enter a valid account number (9-18 digits)';
     }
 
+    if (!formData.courseName?.trim()) {
+      newErrors.courseName = 'NPTEL Course Name is required';
+    } else if (formData.courseName.trim().length < 3) {
+      newErrors.courseName = 'Course name must be at least 3 characters long';
+    }
+
+    // Marks validation
+    if (!formData.marks && formData.marks !== 0) {
+      newErrors.marks = 'Marks is required';
+    } else {
+      const marksNum = parseFloat(formData.marks);
+      if (isNaN(marksNum) || marksNum < 0 || marksNum > 100) {
+        newErrors.marks = 'Marks must be between 0 and 100';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -140,18 +169,22 @@ export default function EditForm() {
       // Convert amount to number explicitly
       formDataToSend.amount = parseFloat(formData.amount);
 
-      const nptelFile = document.getElementById('nptelResult').files[0];
-      const idCardFile = document.getElementById('idCard').files[0];
+      const nptelFile = document.getElementById('nptelResult')?.files[0];
+      const idCardFile = document.getElementById('idCard')?.files[0];
 
       if (nptelFile || idCardFile) {
         const uploadData = new FormData();
         if (nptelFile) uploadData.append('nptelResult', nptelFile);
         if (idCardFile) uploadData.append('idCard', idCardFile);
 
-        // Upload new files first if provided
+        // Upload new files first if provided - use correct API path based on user role
         try {
           const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-          const uploadResponse = await fetch(`${API_BASE_URL}/student-forms/${id}/documents`, {
+          const userRole = user?.role?.toLowerCase();
+          const isFacultyType = ['faculty', 'coordinator', 'hod', 'principal'].includes(userRole);
+          const uploadPath = isFacultyType ? 'forms' : 'student-forms';
+          
+          const uploadResponse = await fetch(`${API_BASE_URL}/${uploadPath}/${id}/documents`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -168,16 +201,18 @@ export default function EditForm() {
         } catch (error) {
           console.error('Error uploading files:', error);
           toast.error('Failed to upload files. Please try again.');
+          setSaving(false);
           return;
         }
       }
 
-      // Select API based on user role (Faculty and Coordinator use forms API)
+      // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API)
       const userRole = user?.role?.toLowerCase();
-      const api = (userRole === 'faculty' || userRole === 'coordinator') ? facultyFormsAPI : studentFormsAPI;
+      const isFacultyType = ['faculty', 'coordinator', 'hod', 'principal'].includes(userRole);
+      const api = isFacultyType ? facultyFormsAPI : studentFormsAPI;
       await api.updateById(id, formDataToSend);
 
-      toast.success('Form updated successfully!');
+      toast.success('Changes saved successfully!');
       // Navigate based on user role
       if (userRole === 'coordinator') {
         navigate('/dashboard/coordinator');
@@ -197,7 +232,7 @@ export default function EditForm() {
   if (loading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
       </div>
     );
   }
@@ -230,9 +265,9 @@ export default function EditForm() {
                 name="name"
                 value={formData?.name || ''}
                 onChange={handleChange}
-                className={`mt-1 block w-full rounded-md shadow-sm
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
                   ${errors.name ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
               />
               {errors.name && (
                 <p className="mt-2 text-sm text-red-600">{errors.name}</p>
@@ -241,24 +276,179 @@ export default function EditForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID *' : 'Student ID *'}
+                {(['faculty', 'coordinator', 'hod', 'principal'].includes(user?.role?.toLowerCase())) ? 'Faculty ID *' : 'Student ID *'}
               </label>
               <input
                 type="text"
                 name="studentId"
                 value={formData?.studentId || ''}
                 onChange={handleChange}
-                className={`mt-1 block w-full rounded-md shadow-sm
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
                   ${errors.studentId ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
               />
               {errors.studentId && (
                 <p className="mt-2 text-sm text-red-600">{errors.studentId}</p>
               )}
             </div>
 
-            {/* Add other form fields here... */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Division *</label>
+              <input
+                type="text"
+                name="division"
+                value={formData?.division || ''}
+                onChange={handleChange}
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                  ${errors.division ? 'border-red-300' : 'border-gray-300'}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+              />
+              {errors.division && (
+                <p className="mt-2 text-sm text-red-600">{errors.division}</p>
+              )}
+            </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email *</label>
+              <input
+                type="email"
+                name="email"
+                value={formData?.email || ''}
+                onChange={handleChange}
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                  ${errors.email ? 'border-red-300' : 'border-gray-300'}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+              />
+              {errors.email && (
+                <p className="mt-2 text-sm text-red-600">{errors.email}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Academic Year *</label>
+              <input
+                type="text"
+                name="academicYear"
+                placeholder="e.g., 2025-2026"
+                value={formData?.academicYear || ''}
+                onChange={handleChange}
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                  ${errors.academicYear ? 'border-red-300' : 'border-gray-300'}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+              />
+              {errors.academicYear && (
+                <p className="mt-2 text-sm text-red-600">{errors.academicYear}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Amount (₹) *</label>
+              <input
+                type="number"
+                name="amount"
+                min="1"
+                max="1500"
+                value={formData?.amount || ''}
+                onChange={handleChange}
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                  ${errors.amount ? 'border-red-300' : 'border-gray-300'}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+              />
+              {errors.amount && (
+                <p className="mt-2 text-sm text-red-600">{errors.amount}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Bank Details Section */}
+          <div className="border-t pt-6 mt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Account Holder Name *</label>
+                <input
+                  type="text"
+                  name="accountName"
+                  value={formData?.accountName || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                    ${errors.accountName ? 'border-red-300' : 'border-gray-300'}
+                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.accountName && (
+                  <p className="mt-2 text-sm text-red-600">{errors.accountName}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">IFSC Code *</label>
+                <input
+                  type="text"
+                  name="ifscCode"
+                  value={formData?.ifscCode || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                    ${errors.ifscCode ? 'border-red-300' : 'border-gray-300'}
+                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.ifscCode && (
+                  <p className="mt-2 text-sm text-red-600">{errors.ifscCode}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Account Number *</label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={formData?.accountNumber || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                    ${errors.accountNumber ? 'border-red-300' : 'border-gray-300'}
+                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.accountNumber && (
+                  <p className="mt-2 text-sm text-red-600">{errors.accountNumber}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">NPTEL Course Name <span className="text-gray-900 font-bold">*</span></label>
+                <input
+                  type="text"
+                  name="courseName"
+                  value={formData?.courseName || ''}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter NPTEL course name"
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm
+                    ${errors.courseName ? 'border-red-300' : 'border-gray-300'}`}
+                />
+                {errors.courseName && (
+                  <p className="mt-2 text-sm text-red-600">{errors.courseName}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span></label>
+                <input
+                  type="number"
+                  name="marks"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData?.marks || ''}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter NPTEL marks"
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm
+                    ${errors.marks ? 'border-red-300' : 'border-gray-300'}`}
+                />
+                {errors.marks && (
+                  <p className="mt-2 text-sm text-red-600">{errors.marks}</p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -277,8 +467,8 @@ export default function EditForm() {
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-md file:border-0
                     file:text-sm file:font-medium
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
+                    file:bg-teal-50 file:text-teal-700
+                    hover:file:bg-teal-100"
                 />
               </div>
 
@@ -295,8 +485,8 @@ export default function EditForm() {
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-md file:border-0
                     file:text-sm file:font-medium
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
+                    file:bg-teal-50 file:text-teal-700
+                    hover:file:bg-teal-100"
                 />
               </div>
             </div>
@@ -306,18 +496,26 @@ export default function EditForm() {
             <button
               type="button"
               onClick={navigateBack}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className={`px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm
-                ${saving ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-700'}
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm flex items-center gap-2 transition-colors
+                ${saving ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}
+                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500`}
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </button>
           </div>
         </form>

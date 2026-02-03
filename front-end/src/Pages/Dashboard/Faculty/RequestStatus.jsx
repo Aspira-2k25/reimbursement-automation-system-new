@@ -63,12 +63,16 @@ export default function RequestStatus() {
         // Assuming backend returns array of forms
         const mapped = Array.isArray(data) ? data.map(f => ({
           id: f.applicationId || f._id,
+          _id: f._id,
           category: f.reimbursementType || "NPTEL",
           status: f.status || "Pending",
           amount: f.amount,
           submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           updatedDate: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          description: f.remarks || f.name || "NPTEL Reimbursement"
+          description: f.remarks || f.name || "NPTEL Reimbursement",
+          courseName: f.courseName || 'N/A',
+          marks: f.marks ?? null,
+          documents: f.documents || [],
         })) : []
 
         // Check for status changes and generate notifications
