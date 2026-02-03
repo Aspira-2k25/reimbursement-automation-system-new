@@ -55,6 +55,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -67,6 +69,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
             <tr key={r.id} className="hover:bg-slate-50/60">
               <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
               <td className="px-4 py-3">{r.category}</td>
+              <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
+              <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
               <td className="px-4 py-3">
                 <div className="flex flex-col gap-1">
                   <StatusBadge status={r.status} />

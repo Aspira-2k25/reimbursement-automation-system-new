@@ -107,6 +107,8 @@ const HODLayout = ({ children }) => {
       updatedAt: f.updatedAt,
       documents: f.documents || [], // Very important for viewing documents!
       reimbursementType: f.reimbursementType,
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
     }
   }, [])
 
