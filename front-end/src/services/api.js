@@ -269,7 +269,18 @@ export const studentFormsAPI = {
       const res = await api.put(`/student-forms/${id}`, data);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw error.response?.data || { error: 'Network error', details: error.message };
+    }
+  },
+  /** Upload new documents for an existing form (multipart). Uses same base URL and auth as other calls. */
+  uploadDocuments: async (id, formData) => {
+    try {
+      const res = await api.post(`/student-forms/${id}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error', details: error.message };
     }
   },
   deleteById: async (id) => {

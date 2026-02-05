@@ -38,84 +38,68 @@ const securityHeaders = require('./middleware/securityHeaders'); // HTTP securit
 
 const app = express();
 
-// ----------------- Security Middleware -----------------
-// Apply HTTP security headers to all requests
-app.use(securityHeaders);
-
-// Rate limiting for API endpoints
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs (increased from 100)
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply rate limiting to API routes (not to health checks)
-app.use('/api/', limiter);
-
-// Stricter rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
-  message: 'Too many login attempts, please try again after 15 minutes.',
-  skipSuccessfulRequests: true, // Don't count successful requests
-});
-
-// Apply auth limiter to login/register endpoints
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-
-// ----------------- Middleware -----------------
-// CORS configuration - allow frontend domain from environment variable
+// ----------------- CORS (must be first so preflight/OPTIONS gets headers) -----------------
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or Postman)
     if (!origin) return callback(null, true);
 
-    // Build list of allowed origins
     const allowedOrigins = [
-      'https://reimbursement-automation-system-new-nu.vercel.app', // Explicitly allow deployed frontend
+      'https://reimbursement-automation-system-new-nu.vercel.app',
       'http://localhost:5173',
       'http://localhost:3000',
       'http://localhost:5174',
-      'http://localhost:5000'
+      'http://localhost:5000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5000'
     ];
+    if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
-    // Add FRONTEND_URL if set
-    if (process.env.FRONTEND_URL) {
-      allowedOrigins.push(process.env.FRONTEND_URL);
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
 
-    // Check if origin is allowed
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // Allow all Vercel preview/production deployments (*.vercel.app)
-    if (origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-
-    // In development, still validate against localhost patterns
+    // In development, allow any localhost/127.0.0.1 (any port)
     if (process.env.NODE_ENV !== 'production') {
-      // Allow localhost with any port in development only
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return callback(null, true);
-      }
+      try {
+        const u = new URL(origin);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return callback(null, true);
+      } catch (_) {}
     }
 
-    // Block other origins
     console.warn(`CORS blocked origin: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200 // significant for legacy browsers (IE11, various SmartTVs)
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200
 };
-
 app.use(cors(corsOptions));
+
+// ----------------- Security Middleware -----------------
+app.use(securityHeaders);
+
+// Rate limiting for API endpoints
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', limiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: 'Too many login attempts, please try again after 15 minutes.',
+  skipSuccessfulRequests: true,
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// ----------------- Body parsing -----------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
