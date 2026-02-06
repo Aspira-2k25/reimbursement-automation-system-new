@@ -6,6 +6,8 @@ const upload = require("../middleware/multer");  // <-- multer setup
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const notificationService = require('../utils/notificationServise');
+const dbUtils = require('../utils/database');
 
 // POST /api/forms/submit
 router.post(
@@ -117,6 +119,26 @@ router.post(
       console.log('Form saved with applicantType:', newForm.applicantType);
       console.log('Form saved with applicationId:', newForm.applicationId);
       console.log('============================');
+
+      // Send email notification for submission
+      try {
+        await notificationService.createNotification({
+          userId: userId,
+          applicationId: newForm.applicationId,
+          type: 'submission',
+          title: 'Application Submitted',
+          message: `Your reimbursement application ${newForm.applicationId} has been submitted successfully.`,
+          phase: applicantType,
+          status: initialStatus,
+          userEmail: req.body.email || req.user.email,
+          userName: req.body.name,
+          amount: req.body.amount,
+        }, true); // Send email notification
+      } catch (notifErr) {
+        console.error('Error sending submission notification:', notifErr);
+        // Don't fail the form submission if notification fails
+      }
+
       res.status(201).json({ message: "Form saved successfully!", form: newForm });
     } catch (err) {
       console.error("Error saving form:", err);
@@ -326,9 +348,9 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     const formUserId = form.userId;
     const userRole = req.user.role?.toLowerCase();
 
-    // Allow access if: owner OR HOD/Principal/Accounts (they can view all forms)
+    // Allow access if: owner OR Coordinator/HOD/Principal/Accounts (they can view all forms)
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
+    const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
@@ -365,7 +387,7 @@ router.put(
 
       // Allow update if: owner OR HOD/Principal/Accounts (they can update status)
       const isOwner = String(formUserId) === String(tokenUserId);
-      const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
+      const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAuthorizedRole) {
         return res.status(403).json({ error: "Not authorized to edit this form" });
@@ -425,6 +447,19 @@ router.put(
           allowedUpdates = ['name', 'email', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'remark'];
         }
         // Owners cannot change status of their own forms
+      }
+
+      if (userRole === 'coordinator') {
+        // Coordinators can approve/reject "Under HOD" forms for faculty
+        // This allows coordinators to manage faculty forms in their department
+        if (form.status === 'Under HOD' && !isOwner) {
+          allowedUpdates = ['status', 'remark'];
+          statusValidation = ['Under Principal', 'Rejected'];
+        } else if (form.status === 'Under HOD' && isOwner) {
+          return res.status(403).json({ error: 'Cannot modify your own form while under review' });
+        } else {
+          return res.status(403).json({ error: 'Coordinator can only approve/reject forms with status "Under HOD"' });
+        }
       }
 
       if (userRole === 'hod') {
@@ -521,6 +556,66 @@ router.put(
         { $set: updates },
         { new: true, runValidators: true }
       );
+
+      // Send email notification for status changes
+      if (updates.status && updates.status !== form.status) {
+        try {
+          const newStatus = updates.status;
+
+          // Determine phase based on who made the change
+          let phase = '';
+          if (userRole === 'hod') {
+            phase = 'HOD';
+          } else if (userRole === 'principal') {
+            phase = 'Principal';
+          } else if (userRole === 'accounts') {
+            phase = 'Accounts';
+          }
+
+          // Determine notification type
+          let notificationType = 'status_change';
+          if (newStatus === 'Rejected') {
+            notificationType = 'rejection';
+          } else if (['Under Principal', 'Approved'].includes(newStatus)) {
+            notificationType = 'approval';
+          }
+
+          // Get user email from form or lookup
+          let userEmail = form.email;
+          let userName = form.name;
+
+          // Try to get email from database if userId is numeric
+          try {
+            if (form.userId && !isNaN(form.userId)) {
+              const staffUser = await dbUtils.getStaffProfile(form.userId);
+              if (staffUser && staffUser.email) {
+                userEmail = staffUser.email;
+                userName = staffUser.name || userName;
+              }
+            }
+          } catch (dbError) {
+            console.error('Error fetching user details:', dbError);
+          }
+
+          // Create notification
+          await notificationService.createNotification({
+            userId: form.userId,
+            applicationId: form.applicationId,
+            type: notificationType,
+            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            phase: phase,
+            status: newStatus,
+            userEmail: userEmail,
+            userName: userName,
+            amount: form.amount,
+            remarks: updates.remark || form.remark,
+          }, true); // Send email notification
+        } catch (notifErr) {
+          console.error('Error sending status notification:', notifErr);
+          // Don't fail the update if notification fails
+        }
+      }
 
       res.json({ message: "Form updated successfully!", form: updatedForm });
     } catch (err) {

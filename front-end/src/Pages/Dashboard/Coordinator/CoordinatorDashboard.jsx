@@ -45,6 +45,7 @@ export default function CoordinatorDashboard() {
   const [approvedRequests, setApprovedRequests] = useState([])
   const [rejectedRequests, setRejectedRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [rejectLoading, setRejectLoading] = useState(false)
   const [viewModal, setViewModal] = useState({ show: false, request: null })
   const [viewLoading, setViewLoading] = useState(false)
   const [requestDetails, setRequestDetails] = useState(null)
@@ -131,13 +132,13 @@ export default function CoordinatorDashboard() {
       // Check for new requests and generate notifications
       const previousTotal = studentRequests.length + approvedRequests.length + rejectedRequests.length
       const currentTotal = mappedPending.length + mappedApproved.length + mappedRejected.length
-      
+
       if (previousTotal > 0 && currentTotal > previousTotal) {
         // New request detected
         const newRequests = [...mappedPending, ...mappedApproved, ...mappedRejected]
         const previousRequestIds = new Set([...studentRequests, ...approvedRequests, ...rejectedRequests].map(r => r.id))
         const newRequest = newRequests.find(r => !previousRequestIds.has(r.id))
-        
+
         if (newRequest) {
           const newNotification = {
             id: Date.now(),
@@ -281,6 +282,7 @@ export default function CoordinatorDashboard() {
 
   const confirmReject = useCallback(async () => {
     if (rejectReason.trim() && rejectModal.request) {
+      setRejectLoading(true)
       try {
         const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
 
@@ -312,6 +314,8 @@ export default function CoordinatorDashboard() {
       } catch (error) {
         console.error('Error rejecting request:', error)
         toast.error(error?.error || 'Failed to reject request')
+      } finally {
+        setRejectLoading(false)
       }
     }
   }, [rejectReason, rejectModal.request, fetchRequests])
@@ -633,10 +637,11 @@ export default function CoordinatorDashboard() {
               </button>
               <button
                 onClick={confirmReject}
-                disabled={!rejectReason.trim()}
-                className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                disabled={!rejectReason.trim() || rejectLoading}
+                className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center gap-2"
               >
-                Reject
+                {rejectLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {rejectLoading ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
           </div>

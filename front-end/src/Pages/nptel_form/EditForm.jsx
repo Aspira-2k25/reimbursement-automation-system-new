@@ -177,30 +177,23 @@ export default function EditForm() {
         if (nptelFile) uploadData.append('nptelResult', nptelFile);
         if (idCardFile) uploadData.append('idCard', idCardFile);
 
-        // Upload new files first if provided - use correct API path based on user role
         try {
-          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
           const userRole = user?.role?.toLowerCase();
           const isFacultyType = ['faculty', 'coordinator', 'hod', 'principal'].includes(userRole);
-          const uploadPath = isFacultyType ? 'forms' : 'student-forms';
-          
-          const uploadResponse = await fetch(`${API_BASE_URL}/${uploadPath}/${id}/documents`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-            body: uploadData,
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error('Failed to upload files');
+          if (isFacultyType) {
+            // Faculty form document upload would go here if you add a similar route for forms
+            toast.error('Document upload for faculty forms is not available in this flow. Save without new files.');
+            setSaving(false);
+            return;
           }
-
-          const { documents } = await uploadResponse.json();
+          const { documents } = await studentFormsAPI.uploadDocuments(id, uploadData);
           formDataToSend.documents = documents;
-        } catch (error) {
-          console.error('Error uploading files:', error);
-          toast.error('Failed to upload files. Please try again.');
+        } catch (uploadErr) {
+          console.error('Error uploading files:', uploadErr);
+          const msg = uploadErr?.error === 'Network error'
+            ? 'Cannot reach server. Check that the backend is running and try again.'
+            : (uploadErr?.error || uploadErr?.details || 'Failed to upload files.');
+          toast.error(msg);
           setSaving(false);
           return;
         }
@@ -223,7 +216,10 @@ export default function EditForm() {
       }
     } catch (err) {
       console.error('Error updating form:', err);
-      toast.error(err.error || 'Failed to update form. Please try again.');
+      const msg = err?.error === 'Network error'
+        ? 'Cannot reach server. Check that the backend is running and VITE_API_BASE_URL is correct.'
+        : [err?.error, err?.details].filter(Boolean).join('. ') || 'Failed to update form. Please try again.';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
