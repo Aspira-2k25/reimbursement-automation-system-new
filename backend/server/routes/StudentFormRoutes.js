@@ -393,6 +393,75 @@ router.get(
   }
 );
 
+// POST /api/student-forms/:id/documents - upload new documents for an existing form (for edit flow)
+router.post(
+  "/:id/documents",
+  authMiddleware.verifyToken,
+  upload.fields([
+    { name: "nptelResult", maxCount: 1 },
+    { name: "idCard", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
+      if (!form) {
+        form = await StudentForm.findOne({ applicationId: req.params.id });
+      }
+      if (!form) {
+        return res.status(404).json({ error: "Form not found" });
+      }
+
+      const userId = req.user.userId || req.user.email || req.user.id;
+      const userRole = req.user.role?.toLowerCase();
+      const isOwner = String(form.userId) === String(userId);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Only owner can update documents when form is Pending
+      if (form.status !== 'Pending' && !isAdmin) {
+        return res.status(403).json({ error: "Cannot update documents for this form status" });
+      }
+
+      let nptelResultUpload = null;
+      let idCardUpload = null;
+      if (req.files?.nptelResult?.[0]) {
+        nptelResultUpload = await uploadFile(req.files.nptelResult[0], {
+          folder: "reimbursement-Forms/Student_Form",
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
+        });
+      }
+      if (req.files?.idCard?.[0]) {
+        idCardUpload = await uploadFile(req.files.idCard[0], {
+          folder: "reimbursement-Forms/Student_Form",
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
+        });
+      }
+
+      const documents = [...(form.documents || [])];
+      if (nptelResultUpload) {
+        documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
+      }
+      if (idCardUpload) {
+        documents[1] = { url: idCardUpload.secure_url, publicId: idCardUpload.public_id };
+      }
+
+      return res.json({ documents });
+    } catch (err) {
+      console.error("Error uploading documents for student form:", err);
+      res.status(500).json({ error: "Failed to upload documents", details: err.message });
+    }
+  }
+);
+
 // GET /api/student-forms/:id - fetch a specific form by Mongo _id or applicationId
 router.get(
   "/:id",
@@ -414,14 +483,12 @@ router.get(
         return res.status(404).json({ error: "Form not found" });
       }
 
-      // Check access permissions
+      // Check access permissions (userId may be number in JWT; form.userId may be string or email)
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
-
-      // Allow access if:
-      // 1. User is the owner of the form
-      // 2. User is a coordinator, HOD, principal, or accounts (they need to view requests)
-      const isOwner = form.userId === userId;
+      const isOwner =
+        String(form.userId) === String(userId) ||
+        (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
       const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
@@ -442,6 +509,9 @@ router.put(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
+      console.log(`[DEBUG] PUT /student-forms/${req.params.id}`);
+      console.log(`[DEBUG] User:`, req.user);
+      console.log(`[DEBUG] Body:`, req.body);
       // Try to find by MongoDB _id first (if valid), then by applicationId
       let form = null;
       if (mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -461,12 +531,15 @@ router.put(
       const formId = form._id;
 
       const userId = req.user.userId || req.user.email || req.user.id;
-      const isOwner = form.userId === userId;
       const userRole = req.user.role?.toLowerCase();
+      // Match owner by userId or email (forms may store either from submit)
+      const isOwner =
+        String(form.userId) === String(userId) ||
+        (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
       const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
-        return res.status(403).json({ error: "Forbidden" });
+        return res.status(403).json({ error: "Forbidden", message: "You can only edit your own applications." });
       }
 
       // Determine allowed fields based on user role and form status
@@ -475,9 +548,10 @@ router.put(
       if (isOwner && form.status === 'Pending') {
         // Students can update their own pending forms (all editable fields)
         allowedUpdates = [
-          'name', 'studentId', 'division', 'email', 'academicYear',
+          'name', 'studentId', 'division', 'department', 'email', 'academicYear',
           'amount', 'accountName', 'ifscCode', 'accountNumber',
-          'remarks', 'documents'
+          'courseName', 'marks',
+          'remarks', 'documents', 'reimbursementType'
         ];
       } else if (isOwner) {
         // Students can only update remarks for non-pending forms
@@ -543,6 +617,8 @@ router.put(
         }
       });
 
+      console.log(`[DEBUG] Updates constructed:`, updates);
+
       // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
       if (req.body.status === 'Rejected') {
         const roleMap = {
@@ -564,7 +640,10 @@ router.put(
 
       // Check if there are any updates to apply
       if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: "No valid fields to update or insufficient permissions" });
+        const hint = isOwner && form.status !== 'Pending'
+          ? "You can only edit applications that are still Pending. After submission, only remarks can be updated."
+          : "No valid fields to update or insufficient permissions.";
+        return res.status(400).json({ error: "No valid fields to update", details: hint });
       }
 
       // Update updatedAt timestamp
@@ -616,20 +695,27 @@ router.put(
         }
 
         // Create notification
-        await notificationService.createNotification({
-          userId: form.userId,
-          applicationId: form.applicationId,
-          type: notificationType,
-          title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
-          message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
-          phase: phase,
-          status: newStatus,
-          userEmail: userEmail,
-          userName: userName,
-          studentId: form.studentId,
-          amount: form.amount,
-          remarks: updates.remarks || form.remarks,
-        }, true); // Send email notification
+        try {
+          console.log('[DEBUG] Creating notification for status:', newStatus);
+          await notificationService.createNotification({
+            userId: form.userId,
+            applicationId: form.applicationId,
+            type: notificationType,
+            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            phase: phase,
+            status: newStatus,
+            userEmail: userEmail,
+            userName: userName,
+            studentId: form.studentId,
+            amount: form.amount,
+            remarks: updates.remarks || form.remarks,
+          }, true); // Send email notification
+          console.log('[DEBUG] Notification created successfully');
+        } catch (notifError) {
+          // Log but don't fail the request if notification fails
+          console.error('[ERROR] Failed to create notification:', notifError);
+        }
       }
 
       return res.json({ form: updatedForm });
