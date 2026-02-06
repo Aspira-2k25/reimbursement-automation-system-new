@@ -20,6 +20,106 @@ export const initialHodData = {
   // Empty array - populated from API
   departmentMembers: [],
 
+  // All departments data for overview - real data populated dynamically
+  allDepartmentsData: [
+    {
+      id: 1,
+      name: 'Information Technology',
+      code: 'IT',
+      hod: 'HOD',
+      totalRequests: 0,
+      pendingRequests: 0,
+      underPrincipal: 0,
+      approvedRequests: 0,
+      rejectedRequests: 0,
+      totalDisbursed: 0,
+      approvalRate: 0,
+      facultyRequests: 0,
+      studentRequests: 0,
+      isOwnDepartment: false
+    },
+    {
+      id: 2,
+      name: 'Computer Engineering',
+      code: 'CE',
+      hod: 'HOD',
+      totalRequests: 0,
+      pendingRequests: 0,
+      underPrincipal: 0,
+      approvedRequests: 0,
+      rejectedRequests: 0,
+      totalDisbursed: 0,
+      approvalRate: 0,
+      facultyRequests: 0,
+      studentRequests: 0,
+      isOwnDepartment: false
+    },
+    {
+      id: 3,
+      name: 'CSE AI and ML',
+      code: 'AIML',
+      hod: 'HOD',
+      totalRequests: 0,
+      pendingRequests: 0,
+      underPrincipal: 0,
+      approvedRequests: 0,
+      rejectedRequests: 0,
+      totalDisbursed: 0,
+      approvalRate: 0,
+      facultyRequests: 0,
+      studentRequests: 0,
+      isOwnDepartment: false
+    },
+    {
+      id: 4,
+      name: 'CSE Data Science',
+      code: 'DS',
+      hod: 'HOD',
+      totalRequests: 0,
+      pendingRequests: 0,
+      underPrincipal: 0,
+      approvedRequests: 0,
+      rejectedRequests: 0,
+      totalDisbursed: 0,
+      approvalRate: 0,
+      facultyRequests: 0,
+      studentRequests: 0,
+      isOwnDepartment: false
+    },
+    {
+      id: 5,
+      name: 'Civil Engineering',
+      code: 'CVL',
+      hod: 'HOD',
+      totalRequests: 0,
+      pendingRequests: 0,
+      underPrincipal: 0,
+      approvedRequests: 0,
+      rejectedRequests: 0,
+      totalDisbursed: 0,
+      approvalRate: 0,
+      facultyRequests: 0,
+      studentRequests: 0,
+      isOwnDepartment: false
+    },
+    {
+      id: 6,
+      name: 'Mechanical Engineering',
+      code: 'MECH',
+      hod: 'HOD',
+      totalRequests: 0,
+      pendingRequests: 0,
+      underPrincipal: 0,
+      approvedRequests: 0,
+      rejectedRequests: 0,
+      totalDisbursed: 0,
+      approvalRate: 0,
+      facultyRequests: 0,
+      studentRequests: 0,
+      isOwnDepartment: false
+    }
+  ],
+
   notifications: []
 }
 
@@ -40,9 +140,9 @@ export const departments = [
  */
 export function calculateStats(requests = []) {
   const total = requests.length
-  
+
   // Count by status
-  const pending = requests.filter(r => 
+  const pending = requests.filter(r =>
     r.status === 'Pending' || r.status === 'Under HOD' || r.status === 'Under Coordinator'
   ).length
   const underPrincipal = requests.filter(r => r.status === 'Under Principal').length
@@ -93,13 +193,13 @@ export function calculateStats(requests = []) {
  */
 export function getRequestsByStatus(requests = [], status) {
   if (!status || status === 'All') return requests
-  
+
   if (status === 'Pending') {
-    return requests.filter(r => 
+    return requests.filter(r =>
       r.status === 'Pending' || r.status === 'Under HOD' || r.status === 'Under Coordinator'
     )
   }
-  
+
   return requests.filter(r => r.status === status)
 }
 
