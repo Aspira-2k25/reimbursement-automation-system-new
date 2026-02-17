@@ -82,7 +82,7 @@ const ApplyForReimbursement = () => {
             transition={{ duration: 0.3, delay: 0.1 }}
           >
             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-pulse"></div>
-            WELCOME, {userProfile?.fullName || 'Dr. Jagan Kumar'}
+            WELCOME, {userProfile?.fullName || 'HOD'}
           </motion.div>
 
           <motion.h1

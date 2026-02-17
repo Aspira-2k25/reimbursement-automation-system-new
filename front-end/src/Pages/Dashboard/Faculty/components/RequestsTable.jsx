@@ -10,6 +10,8 @@ function StatusBadge({ status }) {
     switch (status) {
       case "Approved":
         return "badge badge-approved"
+      case "Reimbursed":
+        return "badge badge-reimbursed"
       case "Pending":
       case "Under HOD":
       case "Under Principal":
@@ -53,6 +55,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -65,8 +69,17 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
             <tr key={r.id} className="hover:bg-slate-50/60">
               <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
               <td className="px-4 py-3">{r.category}</td>
+              <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
+              <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
               <td className="px-4 py-3">
-                <StatusBadge status={r.status} />
+                <div className="flex flex-col gap-1">
+                  <StatusBadge status={r.status} />
+                  {r.status === 'Rejected' && r.accountsRemarks && (
+                    <span className="text-xs text-red-600 italic truncate max-w-[150px]" title={r.accountsRemarks}>
+                      {r.accountsRemarks}
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-4 py-3">₹{r.amount.toLocaleString("en-IN")}</td>
               <td className="px-4 py-3">{new Date(r.submittedDate).toLocaleDateString()}</td>
@@ -80,8 +93,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       if (docUrl) window.open(docUrl, '_blank');
                     }}
                     disabled={!r.documents?.[0]?.url}
-                    title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
-                    aria-label="Download"
+                    title={r.documents?.[0]?.url ? "Download NPTEL Result" : "No Document"}
+                    aria-label="Download NPTEL Result"
                   >
                     <Download className="h-4 w-4" />
                   </button>
@@ -96,19 +109,22 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     <Eye className="h-4 w-4" />
                   </button>
                   <button
-                    className="icon-btn"
+                    className="icon-btn hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => {
                       setEditItem(r);
                       navigate(`/nptel-form/edit/${r.id}`);
                     }}
                     aria-label="Edit"
+                    disabled={r.status !== 'Under HOD'}
+                    title={r.status !== 'Under HOD' ? 'Editing locked — form has been acted upon' : 'Edit'}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
-                    className="icon-btn text-red-600 hover:bg-red-50"
+                    className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => setDeleteItem(r)}
                     aria-label="Delete"
+                    disabled={r.status !== 'Under HOD'}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -172,6 +188,13 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <div className="text-slate-500">Description</div>
                 <div className="font-medium">{viewItem.description}</div>
               </div>
+              {/* Show rejection remarks if rejected by Accounts */}
+              {viewItem.status === 'Rejected' && viewItem.accountsRemarks && (
+                <div className="md:col-span-2 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="text-red-600 font-medium text-sm">Rejection Reason</div>
+                  <div className="text-red-700 mt-1">{viewItem.accountsRemarks}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -271,7 +294,6 @@ function EditForm({ item, onSave, onCancel }) {
   const [form, setForm] = React.useState({
     category: item.category,
     description: item.description,
-    status: item.status,
     amount: item.amount,
   })
 
@@ -308,29 +330,22 @@ function EditForm({ item, onSave, onCancel }) {
         />
       </label>
       <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Status</span>
-        <select
-          className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          value={form.status}
-          onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-          required
-        >
-          <option value="Approved">Approved</option>
-          <option value="Pending">Pending</option>
-          <option value="Under HOD">Under HOD</option>
-          <option value="Under Principal">Under Principal</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-      </label>
-      <label className="grid gap-1">
         <span className="text-sm text-slate-600">Amount (₹)</span>
         <input
           className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           type="number"
-          min="0"
-          step="0.01"
+          min="1"
+          max="1500"
+          step="1"
           value={form.amount}
-          onChange={(e) => setForm((f) => ({ ...f, amount: Number(e.target.value || 0) }))}
+          onChange={(e) => {
+            const val = e.target.value;
+            const numVal = parseFloat(val);
+            if (val === '' || (!isNaN(numVal) && numVal > 0 && numVal <= 1500)) {
+              setForm((f) => ({ ...f, amount: val === '' ? '' : numVal }));
+            }
+          }}
+          onWheel={(e) => e.target.blur()}
           required
         />
       </label>

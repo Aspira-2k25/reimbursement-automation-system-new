@@ -221,7 +221,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
               </div>
               <div className="hidden md:block text-left">
                 <div className="text-sm font-medium" style={{ color: 'var(--color-dark-gray)' }}>
-                  {userProfile?.fullName || 'Dr. Rajesh Kumar'}
+                  {userProfile?.fullName || 'Principal'}
                 </div>
                 <div className="text-xs" style={{ color: 'var(--color-dark-gray)' }}>
                   {userProfile?.designation || 'Principal'}
@@ -247,13 +247,13 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                         <span className="text-white text-sm font-medium">
                           {userProfile?.fullName
                             ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
-                            : 'RK'
+                            : 'P'
                           }
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 truncate">
-                          {userProfile?.fullName || 'Dr. Rajesh Kumar'}
+                          {userProfile?.fullName || 'Principal'}
                         </div>
                         <div className="text-xs text-gray-500 truncate">
                           {userProfile?.email || 'No email set'}

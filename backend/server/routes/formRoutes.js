@@ -6,6 +6,8 @@ const upload = require("../middleware/multer");  // <-- multer setup
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const notificationService = require('../utils/notificationServise');
+const dbUtils = require('../utils/database');
 
 // POST /api/forms/submit
 router.post(
@@ -21,8 +23,7 @@ router.post(
       let userId = req.user.userId; // <-- get the logged-in user's ID from JWT
 
       // Debug logging
-      console.log('User from JWT:', req.user);
-      console.log('Extracted userId:', userId);
+      console.log('User from JWT (ID):', userId);
 
       // Fallback: if userId is null, use email as userId (for old JWT tokens)
       if (!userId && req.user.email) {
@@ -67,7 +68,10 @@ router.post(
       // Determine initial status based on applicant type
       // HOD applications go directly to Principal (skip HOD review)
       let initialStatus = "Under HOD"; // Default for Faculty/Coordinator
-      const applicantType = req.body.applicantType || 'Faculty';
+      const rawApplicantType = req.body.applicantType || 'Faculty';
+      // Normalize applicantType to match enum: Faculty, Coordinator, HOD
+      const applicantTypeMap = { 'faculty': 'Faculty', 'coordinator': 'Coordinator', 'hod': 'HOD' };
+      const applicantType = applicantTypeMap[rawApplicantType.toLowerCase()] || 'Faculty';
 
       console.log('=== FORM SUBMISSION DEBUG ===');
       console.log('Applicant Type:', applicantType);
@@ -92,10 +96,17 @@ router.post(
 
       console.log('Generated Application ID:', applicationId);
 
+      // Parse numeric fields
+      const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
+      const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
+
       const newForm = new Form({
         ...req.body,
+        amount, // Use parsed numeric value
+        marks, // Use parsed numeric value
         applicationId, // Use generated ID
         userId, // attach it to the form
+        applicantType, // Use normalized value (overrides req.body.applicantType)
         status: initialStatus, // Set based on applicant type (this should override model default)
         documents: [
           nptelResultUpload
@@ -112,6 +123,26 @@ router.post(
       console.log('Form saved with applicantType:', newForm.applicantType);
       console.log('Form saved with applicationId:', newForm.applicationId);
       console.log('============================');
+
+      // Send email notification for submission
+      try {
+        await notificationService.createNotification({
+          userId: userId,
+          applicationId: newForm.applicationId,
+          type: 'submission',
+          title: 'Application Submitted',
+          message: `Your reimbursement application ${newForm.applicationId} has been submitted successfully.`,
+          phase: applicantType,
+          status: initialStatus,
+          userEmail: req.body.email || req.user.email,
+          userName: req.body.name,
+          amount: req.body.amount,
+        }, true); // Send email notification
+      } catch (notifErr) {
+        console.error('Error sending submission notification:', notifErr);
+        // Don't fail the form submission if notification fails
+      }
+
       res.status(201).json({ message: "Form saved successfully!", form: newForm });
     } catch (err) {
       console.error("Error saving form:", err);
@@ -209,15 +240,38 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
   }
 });
 
-// GET /api/forms/rejected - Get rejected faculty forms
+// GET /api/forms/rejected - Get rejected faculty forms based on workflow visibility
+// WORKFLOW: Rejected applications only visible up to the level that rejected them
 router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
   try {
     const userRole = req.user.role?.toLowerCase();
-    if (!['hod', 'principal', 'coordinator', 'faculty'].includes(userRole)) {
+    if (!['hod', 'principal', 'coordinator', 'faculty', 'accounts'].includes(userRole)) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const forms = await Form.find({ status: "Rejected" }).sort({ updatedAt: -1 });
+    // Build visibility query based on role
+    // Faculty workflow: Faculty → HOD → Principal → Accounts
+    // HOD sees: rejectedBy HOD
+    // Principal sees: rejectedBy HOD OR Principal
+    // Accounts sees: rejectedBy Accounts only
+    let rejectedByFilter = [];
+
+    if (userRole === 'faculty' || userRole === 'coordinator') {
+      // Faculty/Coordinator can see all rejections (their own forms)
+      rejectedByFilter = ['HOD', 'Principal', 'Accounts'];
+    } else if (userRole === 'hod') {
+      rejectedByFilter = ['HOD'];
+    } else if (userRole === 'principal') {
+      rejectedByFilter = ['HOD', 'Principal'];
+    } else if (userRole === 'accounts') {
+      rejectedByFilter = ['Accounts'];
+    }
+
+    const forms = await Form.find({
+      status: "Rejected",
+      rejectedBy: { $in: rejectedByFilter }
+    }).sort({ updatedAt: -1 });
+
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching rejected forms:", err);
@@ -248,6 +302,7 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
 });
 
 // GET /api/forms/for-accounts - Get approved faculty forms for Accounts department
+// WORKFLOW: Accounts only sees applications approved by Principal, plus their own processed ones
 router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
   try {
     // Only accounts role can access this endpoint
@@ -256,9 +311,16 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Forbidden: Only accounts department can access this endpoint" });
     }
 
-    // Fetch forms with status "Approved" or "Disbursed" (for accounts processing)
+    // Fetch forms:
+    // - "Approved" (awaiting reimbursement)
+    // - "Reimbursed" (successfully processed by Accounts)
+    // - "Rejected" by Accounts only (not rejections from other levels)
     const forms = await Form.find({
-      status: { $in: ["Approved", "Disbursed"] }
+      $or: [
+        { status: "Approved" },
+        { status: "Reimbursed" },
+        { status: "Rejected", rejectedBy: "Accounts" }
+      ]
     }).sort({ updatedAt: -1 });
 
     console.log('Faculty forms for Accounts found:', forms.length);
@@ -272,10 +334,15 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
 // GET /api/forms/:id - Get a specific form by ID
 router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
+    const mongoose = require('mongoose');
+
     // Try to find by applicationId first, then by MongoDB _id
     let form = await Form.findOne({ applicationId: req.params.id });
     if (!form) {
-      form = await Form.findById(req.params.id);
+      // Only try findById if it's a valid ObjectId format
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await Form.findById(req.params.id);
+      }
     }
     if (!form) {
       return res.status(404).json({ error: "Form not found" });
@@ -285,15 +352,16 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     const formUserId = form.userId;
     const userRole = req.user.role?.toLowerCase();
 
-    // Allow access if: owner OR HOD/Principal/Accounts (they can view all forms)
+    // Allow access if: owner OR Coordinator/HOD/Principal/Accounts (they can view all forms)
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
+    const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
     }
     res.json({ form });
   } catch (err) {
+    console.error("Error retrieving form:", err);
     res.status(500).json({ error: "Error retrieving form" });
   }
 });
@@ -323,7 +391,7 @@ router.put(
 
       // Allow update if: owner OR HOD/Principal/Accounts (they can update status)
       const isOwner = String(formUserId) === String(tokenUserId);
-      const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
+      const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAuthorizedRole) {
         return res.status(403).json({ error: "Not authorized to edit this form" });
@@ -373,49 +441,53 @@ router.put(
       let allowedUpdates = [];
       let statusValidation = null;
 
-      if (isOwner) {
-        // Owners can update form details only if status allows it
-        if (['Under HOD', 'Under Principal'].includes(form.status)) {
-          // Form is under review - owner can only update remarks
-          allowedUpdates = ['remark'];
-        } else if (form.status === 'Pending') {
-          // Should not happen for faculty forms (they start at Under HOD), but handle it
-          allowedUpdates = ['name', 'email', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'remark'];
-        }
-        // Owners cannot change status of their own forms
-      }
-
-      if (userRole === 'hod') {
-        // HOD can approve/reject "Under HOD" forms (not their own)
-        if (form.status === 'Under HOD' && !isOwner) {
-          allowedUpdates = ['status', 'remark'];
-          statusValidation = ['Under Principal', 'Rejected'];
-        } else if (form.status === 'Under HOD' && isOwner) {
-          // HOD's own form is Under HOD - they can't approve their own form
-          // This shouldn't happen since HOD forms go directly to Principal
-          return res.status(403).json({ error: 'Cannot modify your own form while under review' });
-        }
-      }
-
-      if (userRole === 'principal') {
-        // Principal can approve/reject "Under Principal" forms
-        if (form.status === 'Under Principal') {
-          allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
-          statusValidation = ['Approved', 'Rejected'];
+      if (isOwner && !req.body.status) {
+        // Owners can update form details ONLY while the form is at its initial status
+        // (i.e., before the first approver has taken any action).
+        // Faculty/Coordinator forms start at "Under HOD", HOD forms start at "Under Principal".
+        const initialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
+        if (form.status === initialStatus) {
+          allowedUpdates = ['name', 'email', 'facultyId', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
         } else {
-          return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
+          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
         }
-      }
-
-      if (userRole === 'accounts') {
-        // Accounts can mark approved forms as disbursed
-        if (form.status === 'Approved') {
-          allowedUpdates = ['status', 'accountsComments'];
-          statusValidation = ['Disbursed'];
-        } else if (form.status === 'Disbursed') {
-          return res.status(400).json({ error: 'This form has already been disbursed' });
-        } else {
-          return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+      } else if (isOwner && req.body.status) {
+        // Owners cannot change the status of their own forms
+        return res.status(403).json({ error: 'Cannot change the status of your own form' });
+      } else if (!isOwner) {
+        // Non-owner authorized roles can only change status (approve/reject/reimburse)
+        if (userRole === 'coordinator') {
+          if (form.status === 'Under HOD') {
+            allowedUpdates = ['status', 'remark'];
+            statusValidation = ['Under Principal', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'Coordinator can only approve/reject forms with status "Under HOD"' });
+          }
+        } else if (userRole === 'hod') {
+          if (form.status === 'Under HOD') {
+            allowedUpdates = ['status', 'remark'];
+            statusValidation = ['Under Principal', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'HOD can only approve/reject forms with status "Under HOD"' });
+          }
+        } else if (userRole === 'principal') {
+          if (form.status === 'Under Principal') {
+            allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
+            statusValidation = ['Approved', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
+          }
+        } else if (userRole === 'accounts') {
+          if (form.status === 'Approved') {
+            allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
+            statusValidation = ['Reimbursed', 'Rejected'];
+          } else if (form.status === 'Reimbursed') {
+            return res.status(400).json({ error: 'This form has already been reimbursed' });
+          } else if (form.status === 'Disbursed') {
+            return res.status(400).json({ error: 'This form has already been processed' });
+          } else {
+            return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+          }
         }
       }
 
@@ -436,8 +508,9 @@ router.put(
         }
       });
 
-      // Handle document updates for owners
-      if (isOwner && form.status === 'Pending') {
+      // Handle document updates for owners (only at initial status)
+      const editableInitialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
+      if (isOwner && form.status === editableInitialStatus) {
         if (nptelResultUpload) {
           updates.documents = updates.documents || [...(form.documents || [])];
           updates.documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
@@ -452,12 +525,91 @@ router.put(
         return res.status(400).json({ error: 'No valid fields to update or insufficient permissions' });
       }
 
+      // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
+      if (req.body.status === 'Rejected') {
+        const roleMap = {
+          'coordinator': 'Coordinator',
+          'hod': 'HOD',
+          'principal': 'Principal',
+          'accounts': 'Accounts'
+        };
+        updates.rejectedBy = roleMap[userRole] || userRole;
+        // Store rejection remarks if provided
+        if (req.body.rejectionRemarks || req.body.remark || req.body.accountsRemarks) {
+          updates.rejectionRemarks = req.body.rejectionRemarks || req.body.remark || req.body.accountsRemarks;
+        }
+      } else if (req.body.status && req.body.status !== 'Rejected') {
+        // Clear rejection fields when approving/forwarding
+        updates.rejectedBy = null;
+        updates.rejectionRemarks = null;
+      }
+
       // Update form fields
       const updatedForm = await Form.findByIdAndUpdate(
         form._id,
         { $set: updates },
         { new: true, runValidators: true }
       );
+
+      // Send email notification for status changes
+      if (updates.status && updates.status !== form.status) {
+        try {
+          const newStatus = updates.status;
+
+          // Determine phase based on who made the change
+          let phase = '';
+          if (userRole === 'hod') {
+            phase = 'HOD';
+          } else if (userRole === 'principal') {
+            phase = 'Principal';
+          } else if (userRole === 'accounts') {
+            phase = 'Accounts';
+          }
+
+          // Determine notification type
+          let notificationType = 'status_change';
+          if (newStatus === 'Rejected') {
+            notificationType = 'rejection';
+          } else if (['Under Principal', 'Approved'].includes(newStatus)) {
+            notificationType = 'approval';
+          }
+
+          // Get user email from form or lookup
+          let userEmail = form.email;
+          let userName = form.name;
+
+          // Try to get email from database if userId is numeric
+          try {
+            if (form.userId && !isNaN(form.userId)) {
+              const staffUser = await dbUtils.getStaffProfile(form.userId);
+              if (staffUser && staffUser.email) {
+                userEmail = staffUser.email;
+                userName = staffUser.name || userName;
+              }
+            }
+          } catch (dbError) {
+            console.error('Error fetching user details:', dbError);
+          }
+
+          // Create notification
+          await notificationService.createNotification({
+            userId: form.userId,
+            applicationId: form.applicationId,
+            type: notificationType,
+            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            phase: phase,
+            status: newStatus,
+            userEmail: userEmail,
+            userName: userName,
+            amount: form.amount,
+            remarks: updates.remark || form.remark,
+          }, true); // Send email notification
+        } catch (notifErr) {
+          console.error('Error sending status notification:', notifErr);
+          // Don't fail the update if notification fails
+        }
+      }
 
       res.json({ message: "Form updated successfully!", form: updatedForm });
     } catch (err) {

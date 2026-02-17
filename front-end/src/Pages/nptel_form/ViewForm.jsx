@@ -132,16 +132,29 @@ export default function ViewForm() {
               <label className="block text-sm font-medium text-gray-600">Name</label>
               <div className="mt-1 text-gray-900">{formData.name}</div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">
-                {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID' : 'Student ID'}
-              </label>
-              <div className="mt-1 text-gray-900">{formData.studentId}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Division</label>
-              <div className="mt-1 text-gray-900">{formData.division}</div>
-            </div>
+            {(formData?.applicantType && formData.applicantType !== 'Student') ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Faculty ID</label>
+                  <div className="mt-1 text-gray-900">{formData.facultyId}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Job Title</label>
+                  <div className="mt-1 text-gray-900">{formData.jobTitle}</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Student ID</label>
+                  <div className="mt-1 text-gray-900">{formData.studentId}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Division</label>
+                  <div className="mt-1 text-gray-900">{formData.division}</div>
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-600">Email</label>
               <div className="mt-1 text-gray-900">{formData.email}</div>
@@ -163,8 +176,9 @@ export default function ViewForm() {
               <div className="mt-1">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                   ${formData.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                    formData.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'}`}>
+                    formData.status === 'Reimbursed' ? 'bg-teal-100 text-teal-800' :
+                      formData.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'}`}>
                   {formData.status}
                 </span>
               </div>
@@ -172,28 +186,37 @@ export default function ViewForm() {
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">Banking Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Account Name</label>
-              <div className="mt-1 text-gray-900">{formData.accountName}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">IFSC Code</label>
-              <div className="mt-1 text-gray-900">{formData.ifscCode}</div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-600">Account Number</label>
-              <div className="mt-1 text-gray-900">{formData.accountNumber}</div>
+        {(user?.role?.toLowerCase() === 'accounts' || user?.userId === formData.userId || user?.email === formData.email || formData.userId === (user?.userId || user?.email)) && (
+          <div className="mt-6 space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Banking Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600">Account Name</label>
+                <div className="mt-1 text-gray-900">{formData.accountName}</div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600">IFSC Code</label>
+                <div className="mt-1 text-gray-900">{formData.ifscCode}</div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-600">Account Number</label>
+                <div className="mt-1 text-gray-900">{formData.accountNumber}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {formData.remarks && (
+        {formData.courseName && (
           <div className="mt-6">
-            <h3 className="text-lg font-medium text-gray-900">Remarks</h3>
-            <div className="mt-2 text-gray-700 whitespace-pre-wrap">{formData.remarks}</div>
+            <h3 className="text-lg font-medium text-gray-900">NPTEL Course Name</h3>
+            <div className="mt-2 text-gray-700">{formData.courseName}</div>
+          </div>
+        )}
+
+        {(formData.marks || formData.marks === 0) && (
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-900">NPTEL Marks</h3>
+            <div className="mt-2 text-gray-700">{formData.marks}%</div>
           </div>
         )}
 
@@ -209,7 +232,7 @@ export default function ViewForm() {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors duration-150"
               >
                 <span className="text-sm">
-                  {index === 0 ? 'NPTEL Result' : ((user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID Card' : 'Student ID Card')}
+                  {index === 0 ? 'NPTEL Result' : ((formData?.applicantType && formData.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
                 </span>
                 <ExternalLink className="h-4 w-4" />
               </a>

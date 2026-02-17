@@ -44,6 +44,10 @@ const useStudentRequests = (addNotification) => {
         submittedDate: f.createdAt || f.submittedDate || new Date(),
         updatedDate: f.updatedAt || f.updatedDate || f.createdAt || new Date(),
         description: f.remarks || f.name || f.description || "",
+        courseName: f.courseName || 'N/A',
+        marks: f.marks ?? null,
+        documents: f.documents || [],
+        accountsRemarks: f.accountsRemarks || '',
       }))
 
       // Check for status changes and generate notifications
@@ -52,10 +56,11 @@ const useStudentRequests = (addNotification) => {
           const oldRequest = previousRequests.find(r => r.id === newRequest.id)
           if (oldRequest && oldRequest.status !== newRequest.status) {
             const statusMessages = {
-              'Approved': 'Your request has been approved',
-              'Rejected': 'Your request has been rejected',
-              'Under HOD': 'Your request is now under HOD review',
-              'Under Principal': 'Your request is now under Principal review',
+              'Approved': 'Your request has been approved and sent to Accounts for reimbursement',
+              'Rejected': 'Your request has been rejected. Please check the remarks for details',
+              'Reimbursed': 'Your reimbursement has been successfully reimbursed! Funds have been transferred to your account',
+              'Under HOD': 'Your request has been forwarded to HOD for review',
+              'Under Principal': 'Your request has been forwarded to Principal for approval',
               'Under Coordinator': 'Your request is now under Coordinator review'
             }
             addNotification({
