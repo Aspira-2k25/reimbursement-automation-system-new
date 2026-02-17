@@ -100,6 +100,8 @@ const HODLayout = ({ children }) => {
       email: f.email,
       division: f.division,
       studentId: f.studentId,
+      facultyId: f.facultyId,
+      jobTitle: f.jobTitle,
       name: f.name,
       remarks: f.remarks,
       academicYear: f.academicYear,
@@ -418,12 +420,12 @@ const HODLayout = ({ children }) => {
         // Use correct API based on request type
         let response
         try {
-          if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
-            console.log('Calling facultyFormsAPI.updateById with:', { formId, updateData })
-            response = await facultyFormsAPI.updateById(formId, updateData)
-          } else {
+          if (request.applicantType === 'Student') {
             console.log('Calling studentFormsAPI.updateById with:', { formId, updateData })
             response = await studentFormsAPI.updateById(formId, updateData)
+          } else {
+            console.log('Calling facultyFormsAPI.updateById with:', { formId, updateData })
+            response = await facultyFormsAPI.updateById(formId, updateData)
           }
           console.log('API response:', response)
         } catch (apiError) {

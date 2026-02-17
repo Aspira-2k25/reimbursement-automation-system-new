@@ -545,20 +545,23 @@ router.put(
       // Determine allowed fields based on user role and form status
       let allowedUpdates = [];
 
-      if (isOwner && form.status === 'Pending') {
-        // Students can update their own pending forms (all editable fields)
-        allowedUpdates = [
-          'name', 'studentId', 'division', 'department', 'email', 'academicYear',
-          'amount', 'accountName', 'ifscCode', 'accountNumber',
-          'courseName', 'marks',
-          'remarks', 'documents', 'reimbursementType'
-        ];
-      } else if (isOwner) {
-        // Students can only update remarks for non-pending forms
-        allowedUpdates = ['remarks'];
-      }
-
-      if (userRole === 'coordinator') {
+      if (isOwner && !req.body.status) {
+        // Owners can only edit their form while status is still "Pending"
+        // (before Coordinator takes any action). Once approved/rejected, editing is locked.
+        if (form.status === 'Pending') {
+          allowedUpdates = [
+            'name', 'studentId', 'division', 'department', 'email', 'academicYear',
+            'amount', 'accountName', 'ifscCode', 'accountNumber',
+            'courseName', 'marks',
+            'remarks', 'documents', 'reimbursementType'
+          ];
+        } else {
+          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
+        }
+      } else if (isOwner && req.body.status) {
+        // Owners cannot change the status of their own forms
+        return res.status(403).json({ error: 'Cannot change the status of your own form' });
+      } else if (userRole === 'coordinator') {
         // Coordinators can approve/reject pending requests and update status to "Under HOD" or "Rejected"
         if (form.status === 'Pending') {
           allowedUpdates = ['status', 'remarks'];

@@ -9,7 +9,7 @@ const ReimbursementForm = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    id: '',
+    facultyId: '',
     jobTitle: '',
     email: '',
     amount: '',
@@ -34,9 +34,9 @@ const ReimbursementForm = () => {
       newErrors.name = 'Name must be at least 2 characters long';
     }
 
-    // ID validation
-    if (!formData.id.trim()) {
-      newErrors.id = 'ID is required';
+    // Faculty ID validation
+    if (!formData.facultyId.trim()) {
+      newErrors.facultyId = 'Faculty ID is required';
     }
 
     // Job Title validation
@@ -118,7 +118,16 @@ const ReimbursementForm = () => {
 
     //for amount field
     if (name === "amount") {
-      if (value === "" || (value > 0 && value <= 1500)) {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else if (name === "marks") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -144,10 +153,10 @@ const ReimbursementForm = () => {
   //handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Prevent duplicate submissions
     if (isSubmitting) return;
-    
+
     if (!validateForm()) return;
 
     // Disable button immediately
@@ -272,26 +281,26 @@ const ReimbursementForm = () => {
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
 
-              {/* ID Field */}
+              {/* Faculty ID Field */}
               <div>
-                <label htmlFor="id" className="block text-sm font-medium text-gray-700 mb-1">
-                  ID *
+                <label htmlFor="facultyId" className="block text-sm font-medium text-gray-700 mb-1">
+                  Faculty ID *
                 </label>
                 <input
                   type="text"
-                  id="id"
-                  name="id"
-                  value={formData.id}
+                  id="facultyId"
+                  name="facultyId"
+                  value={formData.facultyId}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.id
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.facultyId
                     ? 'border-red-500'
-                    : formData.id.trim()
+                    : formData.facultyId.trim()
                       ? 'border-teal-500 bg-teal-50'
                       : 'border-gray-300'
                     }`}
                 />
-                {errors.id && <p className="text-red-500 text-xs mt-1">{errors.id}</p>}
+                {errors.facultyId && <p className="text-red-500 text-xs mt-1">{errors.facultyId}</p>}
               </div>
 
               <div>
@@ -305,7 +314,7 @@ const ReimbursementForm = () => {
                   value={formData.jobTitle}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.id ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.jobTitle ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
@@ -370,6 +379,7 @@ const ReimbursementForm = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   min="1"
                   max="1500"
                   step="1"
@@ -493,6 +503,7 @@ const ReimbursementForm = () => {
               name="marks"
               value={formData.marks}
               onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
               min="0"
               max="100"
               step="0.01"
@@ -571,8 +582,8 @@ const ReimbursementForm = () => {
               type="submit"
               disabled={isSubmitting}
               className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
-                ${isSubmitting 
-                  ? 'bg-teal-400 cursor-not-allowed text-white' 
+                ${isSubmitting
+                  ? 'bg-teal-400 cursor-not-allowed text-white'
                   : 'bg-teal-600 hover:bg-teal-700 text-white'
                 }`}
             >
