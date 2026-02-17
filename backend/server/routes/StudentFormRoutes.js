@@ -1,12 +1,15 @@
 // routes/studentFormRoutes.js
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const StudentForm = require("../models/StudentForm");
 const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const notificationService = require('../utils/notificationServise');
+const dbUtils = require('../utils/database');
 
 
 // POST /api/student-forms/submit
@@ -20,11 +23,7 @@ router.post(
   async (req, res) => {
     try {
       // Log the incoming request data
-      console.log('Form submission received:', {
-        body: req.body,
-        files: req.files,
-        user: req.user
-      });
+      console.log('Form submission received for user:', req.user?.email || req.user?.userId);
 
       const userId = req.user.userId || req.user.email;
 
@@ -70,11 +69,9 @@ router.post(
         });
       }
 
-      // Parse amount as number if present
-      const formData = {
-        ...req.body,
-        amount: req.body.amount ? parseFloat(req.body.amount) : undefined
-      };
+      // Parse numeric fields
+      const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
+      const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
       // Generate meaningful application ID
       // Format: S-NPT-2026-IT-001 (Student NPTEL 2026 IT Dept Sequence 1)
@@ -89,6 +86,8 @@ router.post(
 
       const newStudentForm = new StudentForm({
         ...req.body,
+        amount, // Use parsed numeric value
+        marks, // Use parsed numeric value
         applicationId, // Use generated ID
         userId,
         status: "Pending", // Ensure status is Pending when student submits
@@ -106,6 +105,22 @@ router.post(
       console.log('Form Application ID:', newStudentForm.applicationId);
 
       await newStudentForm.save();
+
+      // submission notification
+      await notificationService.createNotification({
+        userId: userId,
+        applicationId: newStudentForm.applicationId,
+        type: 'submission',
+        title: 'Application Submitted',
+        message: `Your reimbursement application ${newStudentForm.applicationId} has been submitted successfully.`,
+        phase: 'Student',
+        status: 'Pending',
+        userEmail: req.user.email || req.body.email,
+        userName: req.body.name,
+        studentId: req.body.studentId,
+        amount: req.body.amount,
+      }, true); // Send email notification
+
       res.status(201).json({ message: "Student form submitted successfully!", form: newStudentForm });
     } catch (err) {
       console.error("Error saving student form:", err);
@@ -194,21 +209,38 @@ router.get(
   }
 );
 
-// GET /api/student-forms/rejected - Get rejected requests for coordinators
+// GET /api/student-forms/rejected - Get rejected requests based on role-specific visibility
+// WORKFLOW: Rejected applications only visible up to the level that rejected them
 router.get(
   "/rejected",
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Only coordinators, HODs, and principals can access this endpoint
       const userRole = req.user.role?.toLowerCase();
-      if (!['coordinator', 'hod', 'principal'].includes(userRole)) {
-        return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
+      if (!['coordinator', 'hod', 'principal', 'accounts'].includes(userRole)) {
+        return res.status(403).json({ error: "Forbidden: Access denied" });
       }
 
-      // Fetch forms with status "Rejected"
+      // Build visibility query based on role
+      // Coordinator sees: rejectedBy Coordinator
+      // HOD sees: rejectedBy Coordinator OR HOD
+      // Principal sees: rejectedBy Coordinator, HOD, OR Principal
+      // Accounts sees: rejectedBy Accounts only (their own rejections)
+      let rejectedByFilter = [];
+
+      if (userRole === 'coordinator') {
+        rejectedByFilter = ['Coordinator'];
+      } else if (userRole === 'hod') {
+        rejectedByFilter = ['Coordinator', 'HOD'];
+      } else if (userRole === 'principal') {
+        rejectedByFilter = ['Coordinator', 'HOD', 'Principal'];
+      } else if (userRole === 'accounts') {
+        rejectedByFilter = ['Accounts'];
+      }
+
       const forms = await StudentForm.find({
-        status: "Rejected"
+        status: "Rejected",
+        rejectedBy: { $in: rejectedByFilter }
       }).sort({ updatedAt: -1 });
 
       return res.json({ forms });
@@ -246,6 +278,7 @@ router.get(
 );
 
 // GET /api/student-forms/for-accounts - Get approved requests for Accounts department
+// WORKFLOW: Accounts only sees applications approved by Principal, plus their own processed ones
 router.get(
   "/for-accounts",
   authMiddleware.verifyToken,
@@ -257,9 +290,16 @@ router.get(
         return res.status(403).json({ error: "Forbidden: Only accounts department can access this endpoint" });
       }
 
-      // Fetch forms with status "Approved" or "Disbursed" (for accounts processing)
+      // Fetch forms:
+      // - "Approved" (awaiting reimbursement)
+      // - "Reimbursed" (successfully processed by Accounts)
+      // - "Rejected" by Accounts only (not rejections from other levels)
       const forms = await StudentForm.find({
-        status: { $in: ["Approved", "Disbursed"] }
+        $or: [
+          { status: "Approved" },
+          { status: "Reimbursed" },
+          { status: "Rejected", rejectedBy: "Accounts" }
+        ]
       }).sort({ updatedAt: -1 });
 
       console.log('Student forms for Accounts found:', forms.length);
@@ -353,14 +393,86 @@ router.get(
   }
 );
 
+// POST /api/student-forms/:id/documents - upload new documents for an existing form (for edit flow)
+router.post(
+  "/:id/documents",
+  authMiddleware.verifyToken,
+  upload.fields([
+    { name: "nptelResult", maxCount: 1 },
+    { name: "idCard", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
+      if (!form) {
+        form = await StudentForm.findOne({ applicationId: req.params.id });
+      }
+      if (!form) {
+        return res.status(404).json({ error: "Form not found" });
+      }
+
+      const userId = req.user.userId || req.user.email || req.user.id;
+      const userRole = req.user.role?.toLowerCase();
+      const isOwner = String(form.userId) === String(userId);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Only owner can update documents when form is Pending
+      if (form.status !== 'Pending' && !isAdmin) {
+        return res.status(403).json({ error: "Cannot update documents for this form status" });
+      }
+
+      let nptelResultUpload = null;
+      let idCardUpload = null;
+      if (req.files?.nptelResult?.[0]) {
+        nptelResultUpload = await uploadFile(req.files.nptelResult[0], {
+          folder: "reimbursement-Forms/Student_Form",
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
+        });
+      }
+      if (req.files?.idCard?.[0]) {
+        idCardUpload = await uploadFile(req.files.idCard[0], {
+          folder: "reimbursement-Forms/Student_Form",
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
+        });
+      }
+
+      const documents = [...(form.documents || [])];
+      if (nptelResultUpload) {
+        documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
+      }
+      if (idCardUpload) {
+        documents[1] = { url: idCardUpload.secure_url, publicId: idCardUpload.public_id };
+      }
+
+      return res.json({ documents });
+    } catch (err) {
+      console.error("Error uploading documents for student form:", err);
+      res.status(500).json({ error: "Failed to upload documents", details: err.message });
+    }
+  }
+);
+
 // GET /api/student-forms/:id - fetch a specific form by Mongo _id or applicationId
 router.get(
   "/:id",
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first, then by applicationId
-      let form = await StudentForm.findById(req.params.id);
+      // Try to find by MongoDB _id first (if valid), then by applicationId
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
 
       // If not found by _id, try applicationId
       if (!form) {
@@ -371,14 +483,12 @@ router.get(
         return res.status(404).json({ error: "Form not found" });
       }
 
-      // Check access permissions
+      // Check access permissions (userId may be number in JWT; form.userId may be string or email)
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
-
-      // Allow access if:
-      // 1. User is the owner of the form
-      // 2. User is a coordinator, HOD, principal, or accounts (they need to view requests)
-      const isOwner = form.userId === userId;
+      const isOwner =
+        String(form.userId) === String(userId) ||
+        (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
       const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
@@ -399,8 +509,14 @@ router.put(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first, then by applicationId
-      let form = await StudentForm.findById(req.params.id);
+      console.log(`[DEBUG] PUT /student-forms/${req.params.id}`);
+      console.log(`[DEBUG] User:`, req.user);
+      console.log(`[DEBUG] Body:`, req.body);
+      // Try to find by MongoDB _id first (if valid), then by applicationId
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
 
       // If not found by _id, try applicationId
       if (!form) {
@@ -415,30 +531,37 @@ router.put(
       const formId = form._id;
 
       const userId = req.user.userId || req.user.email || req.user.id;
-      const isOwner = form.userId === userId;
       const userRole = req.user.role?.toLowerCase();
+      // Match owner by userId or email (forms may store either from submit)
+      const isOwner =
+        String(form.userId) === String(userId) ||
+        (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
       const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
-        return res.status(403).json({ error: "Forbidden" });
+        return res.status(403).json({ error: "Forbidden", message: "You can only edit your own applications." });
       }
 
       // Determine allowed fields based on user role and form status
       let allowedUpdates = [];
 
-      if (isOwner && form.status === 'Pending') {
-        // Students can update their own pending forms (all editable fields)
-        allowedUpdates = [
-          'name', 'studentId', 'division', 'email', 'academicYear',
-          'amount', 'accountName', 'ifscCode', 'accountNumber',
-          'remarks', 'documents'
-        ];
-      } else if (isOwner) {
-        // Students can only update remarks for non-pending forms
-        allowedUpdates = ['remarks'];
-      }
-
-      if (userRole === 'coordinator') {
+      if (isOwner && !req.body.status) {
+        // Owners can only edit their form while status is still "Pending"
+        // (before Coordinator takes any action). Once approved/rejected, editing is locked.
+        if (form.status === 'Pending') {
+          allowedUpdates = [
+            'name', 'studentId', 'division', 'department', 'email', 'academicYear',
+            'amount', 'accountName', 'ifscCode', 'accountNumber',
+            'courseName', 'marks',
+            'remarks', 'documents', 'reimbursementType'
+          ];
+        } else {
+          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
+        }
+      } else if (isOwner && req.body.status) {
+        // Owners cannot change the status of their own forms
+        return res.status(403).json({ error: 'Cannot change the status of your own form' });
+      } else if (userRole === 'coordinator') {
         // Coordinators can approve/reject pending requests and update status to "Under HOD" or "Rejected"
         if (form.status === 'Pending') {
           allowedUpdates = ['status', 'remarks'];
@@ -472,16 +595,19 @@ router.put(
           return res.status(403).json({ error: 'Principal can only approve/reject requests with status "Under Principal"' });
         }
       } else if (userRole === 'accounts') {
-        // Accounts can mark approved requests as disbursed
+        // Accounts can mark approved requests as reimbursed or rejected
         if (form.status === 'Approved') {
-          allowedUpdates = ['status', 'accountsComments'];
-          // Validate status change - Accounts can only set to "Disbursed"
-          if (req.body.status && req.body.status !== 'Disbursed') {
-            return res.status(400).json({ error: 'Accounts can only mark approved requests as Disbursed' });
+          allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
+          // Validate status change - Accounts can set to "Reimbursed" or "Rejected"
+          if (req.body.status && !['Reimbursed', 'Rejected'].includes(req.body.status)) {
+            return res.status(400).json({ error: 'Accounts can only mark approved requests as Reimbursed or Rejected' });
           }
+        } else if (form.status === 'Reimbursed') {
+          // Already reimbursed, no further updates allowed
+          return res.status(400).json({ error: 'This request has already been reimbursed' });
         } else if (form.status === 'Disbursed') {
-          // Already disbursed, no further updates allowed
-          return res.status(400).json({ error: 'This request has already been disbursed' });
+          // Already disbursed (legacy), no further updates allowed
+          return res.status(400).json({ error: 'This request has already been processed' });
         } else {
           return res.status(403).json({ error: 'Accounts can only process requests with status "Approved"' });
         }
@@ -494,9 +620,33 @@ router.put(
         }
       });
 
+      console.log(`[DEBUG] Updates constructed:`, updates);
+
+      // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
+      if (req.body.status === 'Rejected') {
+        const roleMap = {
+          'coordinator': 'Coordinator',
+          'hod': 'HOD',
+          'principal': 'Principal',
+          'accounts': 'Accounts'
+        };
+        updates.rejectedBy = roleMap[userRole] || userRole;
+        // Store rejection remarks if provided
+        if (req.body.rejectionRemarks || req.body.remarks || req.body.accountsRemarks) {
+          updates.rejectionRemarks = req.body.rejectionRemarks || req.body.remarks || req.body.accountsRemarks;
+        }
+      } else if (req.body.status && req.body.status !== 'Rejected') {
+        // Clear rejection fields when approving/forwarding
+        updates.rejectedBy = null;
+        updates.rejectionRemarks = null;
+      }
+
       // Check if there are any updates to apply
       if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: "No valid fields to update or insufficient permissions" });
+        const hint = isOwner && form.status !== 'Pending'
+          ? "You can only edit applications that are still Pending. After submission, only remarks can be updated."
+          : "No valid fields to update or insufficient permissions.";
+        return res.status(400).json({ error: "No valid fields to update", details: hint });
       }
 
       // Update updatedAt timestamp
@@ -507,6 +657,69 @@ router.put(
         { $set: updates },
         { new: true, runValidators: true }
       );
+
+      // Check if status changed and trigger notifications
+      if (updates.status && updates.status !== form.status) {
+        const newStatus = updates.status;
+
+        // Determine phase based on who made the change
+        let phase = '';
+        if (userRole === 'coordinator') {
+          phase = 'Coordinator';
+        } else if (userRole === 'hod') {
+          phase = 'HOD';
+        } else if (userRole === 'principal') {
+          phase = 'Principal';
+        }
+
+        // Determine notification type
+        let notificationType = 'status_change';
+        if (newStatus === 'Rejected') {
+          notificationType = 'rejection';
+        } else if (['Under HOD', 'Under Principal', 'Approved'].includes(newStatus)) {
+          notificationType = 'approval';
+        }
+
+        // Get user email from login token or fallback to form email
+        let userEmail = form.email; // Fallback to form email
+        let userName = form.name;
+
+        try {
+          // Priority: 1. Postgres Profile Email, 2. Form Email
+          if (form.userId && !isNaN(form.userId)) {
+            const staffUser = await dbUtils.getStaffProfile(form.userId);
+            if (staffUser && staffUser.email) {
+              userEmail = staffUser.email;
+              userName = staffUser.name || userName;
+            }
+          }
+        } catch (dbError) {
+          console.error('Error fetching user details:', dbError);
+        }
+
+        // Create notification
+        try {
+          console.log('[DEBUG] Creating notification for status:', newStatus);
+          await notificationService.createNotification({
+            userId: form.userId,
+            applicationId: form.applicationId,
+            type: notificationType,
+            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            phase: phase,
+            status: newStatus,
+            userEmail: userEmail,
+            userName: userName,
+            studentId: form.studentId,
+            amount: form.amount,
+            remarks: updates.remarks || form.remarks,
+          }, true); // Send email notification
+          console.log('[DEBUG] Notification created successfully');
+        } catch (notifError) {
+          // Log but don't fail the request if notification fails
+          console.error('[ERROR] Failed to create notification:', notifError);
+        }
+      }
 
       return res.json({ form: updatedForm });
     } catch (err) {
@@ -522,8 +735,12 @@ router.delete(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first, then by applicationId
-      let form = await StudentForm.findById(req.params.id);
+      // Try to find by MongoDB _id first (if valid), then by applicationId
+      let form = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        form = await StudentForm.findById(req.params.id);
+      }
+
       if (!form) {
         form = await StudentForm.findOne({ applicationId: req.params.id });
       }

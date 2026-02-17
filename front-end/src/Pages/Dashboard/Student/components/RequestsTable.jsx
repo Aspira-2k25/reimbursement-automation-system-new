@@ -1,7 +1,8 @@
-import React, { useState } from "react"
+import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
+import { jsPDF } from "jspdf"
 import { studentFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -19,13 +20,15 @@ function StatusBadge({ status }) {
   const cls =
     normalized === "approved"
       ? "badge badge-approved"
-      : normalized === "rejected"
-        ? "badge badge-rejected"
-        : normalized === "under hod"
-          ? "badge badge-under-hod"
-          : pendingStatuses.has(normalized)
-            ? "badge badge-pending"
-            : "badge badge-pending"
+      : normalized === "reimbursed"
+        ? "badge badge-reimbursed"
+        : normalized === "rejected"
+          ? "badge badge-rejected"
+          : normalized === "under hod"
+            ? "badge badge-under-hod"
+            : pendingStatuses.has(normalized)
+              ? "badge badge-pending"
+              : "badge badge-pending"
 
   return <span className={cls}>{status}</span>
 }
@@ -59,6 +62,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -75,7 +80,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 const date = new Date(dateValue);
                 if (isNaN(date.getTime())) return 'N/A';
                 return date.toLocaleDateString();
-              } catch (e) {
+              } catch {
                 return 'N/A';
               }
             };
@@ -84,8 +89,17 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               <tr key={r.id || r._id} className="hover:bg-slate-50/60">
                 <td className="px-4 py-3 font-medium text-slate-900">{r.id || r._id || 'N/A'}</td>
                 <td className="px-4 py-3">{r.category || r.reimbursementType || 'NPTEL'}</td>
+                <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
+                <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={r.status || 'Pending'} />
+                  <div className="flex flex-col gap-1 items-center">
+                    <StatusBadge status={r.status || 'Pending'} />
+                    {r.status === 'Rejected' && r.accountsRemarks && (
+                      <span className="text-xs text-red-600 italic truncate max-w-[150px]" title={r.accountsRemarks}>
+                        {r.accountsRemarks}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">₹{(r.amount || 0).toLocaleString("en-IN")}</td>
                 <td className="px-4 py-3">{formatDate(r.submittedDate || r.createdAt)}</td>
@@ -93,13 +107,92 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button
-                      className="icon-btn hover:bg-blue-50 disabled:opacity-50"
+                      className="icon-btn hover:bg-blue-50"
                       onClick={() => {
-                        const docUrl = r.documents?.[0]?.url;
-                        if (docUrl) window.open(docUrl, '_blank');
+                        // Generate PDF
+                        const doc = new jsPDF();
+                        const pageWidth = doc.internal.pageSize.getWidth();
+                        let y = 20;
+
+                        // Title
+                        doc.setFontSize(18);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT APPLICATION FORM', pageWidth / 2, y, { align: 'center' });
+                        y += 15;
+
+                        // Application ID and Status
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Application ID: ${r.applicationId || r._id || r.id || 'N/A'}`, 20, y);
+                        y += 7;
+                        doc.text(`Status: ${r.status || 'Pending'}`, 20, y);
+                        y += 12;
+
+                        // Applicant Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('APPLICANT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Name: ${r.name || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Student ID: ${r.studentId || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Email: ${r.email || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Department: ${r.department || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Division: ${r.division || 'N/A'}`, 20, y); y += 12;
+
+                        // Reimbursement Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Type: ${r.reimbursementType || r.category || 'NPTEL'}`, 20, y); y += 7;
+                        doc.text(`Amount: Rs. ${(r.amount || 0).toLocaleString('en-IN')}`, 20, y); y += 7;
+                        doc.text(`Academic Year: ${r.academicYear || 'N/A'}`, 20, y); y += 12;
+
+                        // Bank Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('BANK DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Account Name: ${r.accountName || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Account Number: ${r.accountNumber || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`IFSC Code: ${r.ifscCode || 'N/A'}`, 20, y); y += 12;
+
+                        // Dates Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('DATES', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        const submittedDate = r.submittedDate || r.createdAt ? new Date(r.submittedDate || r.createdAt).toLocaleDateString() : 'N/A';
+                        const updatedDate = r.updatedDate || r.updatedAt ? new Date(r.updatedDate || r.updatedAt).toLocaleDateString() : 'N/A';
+                        doc.text(`Submitted: ${submittedDate}`, 20, y); y += 7;
+                        doc.text(`Last Updated: ${updatedDate}`, 20, y); y += 12;
+
+                        // Remarks Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REMARKS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(r.remarks || r.rejectionRemarks || 'No remarks', 20, y); y += 15;
+
+                        // Footer
+                        doc.setFontSize(9);
+                        doc.setTextColor(128);
+                        doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, 280, { align: 'center' });
+
+                        // Save PDF
+                        doc.save(`Application_${r.applicationId || r._id || 'form'}.pdf`);
                       }}
-                      disabled={!r.documents?.[0]?.url}
-                      title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
+                      title="Download Application Form"
                       aria-label="Download"
                     >
                       <Download className="h-4 w-4" />
@@ -112,18 +205,20 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       <Eye className="h-4 w-4" />
                     </button>
                     <button
-                      className="icon-btn hover:bg-green-50 disabled:opacity-50"
+                      className="icon-btn hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => navigate(`/nptel-form/edit/${r._id || r.applicationId || r.id}`)}
                       aria-label="Edit"
                       disabled={r.status !== 'Pending'}
+                      title={r.status !== 'Pending' ? 'Editing locked — form has been acted upon' : 'Edit'}
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => setDeleteItem(r)}
                       aria-label="Delete"
                       disabled={r.status !== 'Pending'}
+                      title={r.status !== 'Pending' ? 'Deletion locked — form has been acted upon' : 'Delete'}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -230,6 +325,13 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                   <div className="text-slate-500">Description</div>
                   <div className="font-medium">{viewItem.description}</div>
                 </div>
+                {/* Show rejection remarks if rejected by Accounts */}
+                {viewItem.status === 'Rejected' && viewItem.accountsRemarks && (
+                  <div className="md:col-span-2 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-600 font-medium text-sm">Rejection Reason</div>
+                    <div className="text-red-700 mt-1">{viewItem.accountsRemarks}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -327,7 +429,6 @@ function EditForm({ item, onSave, onCancel }) {
   const [form, setForm] = React.useState({
     category: item.category,
     description: item.description,
-    status: item.status,
     amount: item.amount,
   })
 
@@ -364,29 +465,22 @@ function EditForm({ item, onSave, onCancel }) {
         />
       </label>
       <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Status</span>
-        <select
-          className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          value={form.status}
-          onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-          required
-        >
-          {["Approved", "Pending", "Rejected"].map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1">
         <span className="text-sm text-slate-600">Amount (₹)</span>
         <input
           className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           type="number"
-          min="0"
-          step="0.01"
+          min="1"
+          max="1500"
+          step="1"
           value={form.amount}
-          onChange={(e) => setForm((f) => ({ ...f, amount: Number(e.target.value || 0) }))}
+          onChange={(e) => {
+            const val = e.target.value;
+            const numVal = parseFloat(val);
+            if (val === '' || (!isNaN(numVal) && numVal > 0 && numVal <= 1500)) {
+              setForm((f) => ({ ...f, amount: val === '' ? '' : numVal }));
+            }
+          }}
+          onWheel={(e) => e.target.blur()}
           required
         />
       </label>

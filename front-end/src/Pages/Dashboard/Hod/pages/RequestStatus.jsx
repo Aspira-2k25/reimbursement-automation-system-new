@@ -81,13 +81,16 @@ const RequestStatus = () => {
       const forms = data?.forms || data || []
       const mapped = Array.isArray(forms) ? forms.map(f => ({
         id: f.applicationId || f._id,
+        _id: f._id,
         category: f.reimbursementType || 'NPTEL',
         status: f.status || 'Under HOD',
         amount: parseFloat(f.amount) || 0,
         submittedDate: f.createdAt || new Date().toISOString(),
         updatedDate: f.updatedAt || new Date().toISOString(),
         description: f.remarks || f.name || 'NPTEL Reimbursement',
-        documents: f.documents || []
+        documents: f.documents || [],
+        courseName: f.courseName || 'N/A',
+        marks: f.marks ?? null,
       })) : []
 
       setRequests(mapped)
@@ -317,7 +320,7 @@ const RequestStatus = () => {
                           if (docUrl) window.open(docUrl, '_blank')
                         }}
                         disabled={!r.documents?.[0]?.url}
-                        title={r.documents?.[0]?.url ? 'Download Document' : 'No Document'}
+                        title={r.documents?.[0]?.url ? 'Download NPTEL Result' : 'No Document'}
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -331,17 +334,19 @@ const RequestStatus = () => {
                       </button>
                       {/* Edit */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
-                        title="Edit"
+                        title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
+                        disabled={r.status !== 'Under Principal'}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       {/* Delete */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setDeleteItem(r)}
-                        title="Delete"
+                        title={r.status !== 'Under Principal' ? 'Cannot delete — form has been acted upon' : 'Delete'}
+                        disabled={r.status !== 'Under Principal'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

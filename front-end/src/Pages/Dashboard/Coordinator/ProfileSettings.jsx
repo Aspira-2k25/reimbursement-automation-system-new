@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from "react"
 import { toast } from "react-hot-toast"
 import { authAPI } from '../../../services/api' 
 
-// Dummy user data
+// Default user profile fallback (overwritten by actual user data)
 const initialUserData = {
-  fullName: "Dr. Sarah Johnson",
-  department: "Computer Science",
-  designation: "Associate Professor",
+  fullName: "Coordinator",
+  department: "",
+  designation: "Class Coordinator",
   role: "Coordinator",
 }
 

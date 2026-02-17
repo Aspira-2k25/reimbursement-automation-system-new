@@ -347,7 +347,7 @@ export default function ApplyReimbursement() {
             <SummaryCard
               title="Total Approved"
               value={loading ? "..." : summary.approved}
-              subtitle={`₹${summary.disbursed.toLocaleString()} disbursed`}
+              subtitle={`₹${summary.disbursed.toLocaleString()} reimbursed`}
               icon={CheckCircle}
               color="green"
             />
@@ -430,7 +430,7 @@ export default function ApplyReimbursement() {
                                 if (docUrl) window.open(docUrl, '_blank')
                               }}
                               disabled={!r.documents?.[0]?.url}
-                              title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
+                              title={r.documents?.[0]?.url ? "Download NPTEL Result" : "No Document"}
                             >
                               <Download className="h-4 w-4 text-slate-600" />
                             </button>
@@ -444,17 +444,19 @@ export default function ApplyReimbursement() {
                             </button>
                             {/* Edit button */}
                             <button
-                              className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
-                              title="Edit"
+                              title={r.status !== 'Under HOD' ? 'Editing locked — form has been acted upon' : 'Edit'}
+                              disabled={r.status !== 'Under HOD'}
                             >
                               <Pencil className="h-4 w-4 text-slate-600" />
                             </button>
                             {/* Delete button */}
                             <button
-                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => setDeleteItem(r)}
-                              title="Delete"
+                              title={r.status !== 'Under HOD' ? 'Cannot delete — form has been acted upon' : 'Delete'}
+                              disabled={r.status !== 'Under HOD'}
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </button>

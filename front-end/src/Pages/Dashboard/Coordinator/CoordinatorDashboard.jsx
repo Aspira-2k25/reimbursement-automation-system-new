@@ -14,10 +14,11 @@ import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
 
+// Default user profile fallback (overwritten by actual user data from auth)
 const initialUserProfile = {
-  fullName: "Dr. Sarah Johnson",
-  department: "Computer Science",
-  designation: "Associate Professor",
+  fullName: "Coordinator",
+  department: "",
+  designation: "Class Coordinator",
   role: "Coordinator",
 }
 
@@ -44,6 +45,7 @@ export default function CoordinatorDashboard() {
   const [approvedRequests, setApprovedRequests] = useState([])
   const [rejectedRequests, setRejectedRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [rejectLoading, setRejectLoading] = useState(false)
   const [viewModal, setViewModal] = useState({ show: false, request: null })
   const [viewLoading, setViewLoading] = useState(false)
   const [requestDetails, setRequestDetails] = useState(null)
@@ -56,6 +58,8 @@ export default function CoordinatorDashboard() {
     applicationId: f.applicationId,
     studentName: f.name || 'N/A',
     studentId: f.studentId || 'N/A',
+    facultyId: f.facultyId,
+    jobTitle: f.jobTitle,
     category: f.reimbursementType || f.category || "NPTEL",
     status: f.status || "Pending",
     amount: f.amount ? `₹${f.amount.toLocaleString()}` : '₹0',
@@ -63,6 +67,8 @@ export default function CoordinatorDashboard() {
     lastUpdated: f.updatedAt ? new Date(f.updatedAt).toLocaleDateString() : 'N/A',
     documents: f.documents,
     remarks: f.remarks,
+    courseName: f.courseName || 'N/A',
+    marks: f.marks ?? null,
   })
 
   // Function to fetch requests (extracted for reuse)
@@ -128,13 +134,13 @@ export default function CoordinatorDashboard() {
       // Check for new requests and generate notifications
       const previousTotal = studentRequests.length + approvedRequests.length + rejectedRequests.length
       const currentTotal = mappedPending.length + mappedApproved.length + mappedRejected.length
-      
+
       if (previousTotal > 0 && currentTotal > previousTotal) {
         // New request detected
         const newRequests = [...mappedPending, ...mappedApproved, ...mappedRejected]
         const previousRequestIds = new Set([...studentRequests, ...approvedRequests, ...rejectedRequests].map(r => r.id))
         const newRequest = newRequests.find(r => !previousRequestIds.has(r.id))
-        
+
         if (newRequest) {
           const newNotification = {
             id: Date.now(),
@@ -204,7 +210,7 @@ export default function CoordinatorDashboard() {
         value: approvedRequests.length.toString(),
         icon: CheckCircle,
         color: "green",
-        subtitle: `₹${totalDisbursed.toLocaleString()} disbursed`,
+        subtitle: `₹${totalDisbursed.toLocaleString()} reimbursed`,
       },
       {
         title: "Rejected Requests",
@@ -278,13 +284,15 @@ export default function CoordinatorDashboard() {
 
   const confirmReject = useCallback(async () => {
     if (rejectReason.trim() && rejectModal.request) {
+      setRejectLoading(true)
       try {
         const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
 
-        // Update status to "Rejected" with remarks
+        // Update status to "Rejected" with remarks and rejectionRemarks for workflow tracking
         await studentFormsAPI.updateById(formId, {
           status: "Rejected",
-          remarks: rejectReason
+          remarks: rejectReason,
+          rejectionRemarks: rejectReason // Required for backend workflow visibility
         })
 
         // Refresh the requests to get updated data from server
@@ -308,6 +316,8 @@ export default function CoordinatorDashboard() {
       } catch (error) {
         console.error('Error rejecting request:', error)
         toast.error(error?.error || 'Failed to reject request')
+      } finally {
+        setRejectLoading(false)
       }
     }
   }, [rejectReason, rejectModal.request, fetchRequests])
@@ -501,6 +511,22 @@ export default function CoordinatorDashboard() {
                     </p>
                   </div>
                   <div>
+                    <p className="text-gray-500">Course Name</p>
+                    <p className="font-medium text-gray-900">
+                      {requestDetails?.courseName || viewModal.request?.courseName || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Marks</p>
+                    <p className="font-medium text-gray-900">
+                      {requestDetails?.marks !== undefined && requestDetails?.marks !== null
+                        ? `${requestDetails.marks}%`
+                        : viewModal.request?.marks !== undefined && viewModal.request?.marks !== null
+                          ? `${viewModal.request.marks}%`
+                          : "N/A"}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-gray-500">Category</p>
                     <p className="font-medium text-gray-900">
                       {requestDetails?.reimbursementType ||
@@ -558,7 +584,7 @@ export default function CoordinatorDashboard() {
                         >
                           <FileText className="w-5 h-5 text-blue-600" />
                           <span className="text-sm text-blue-600 hover:underline">
-                            Document {index + 1}
+                            {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
                           </span>
                         </a>
                       ))}
@@ -613,10 +639,11 @@ export default function CoordinatorDashboard() {
               </button>
               <button
                 onClick={confirmReject}
-                disabled={!rejectReason.trim()}
-                className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                disabled={!rejectReason.trim() || rejectLoading}
+                className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center gap-2"
               >
-                Reject
+                {rejectLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {rejectLoading ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
           </div>
