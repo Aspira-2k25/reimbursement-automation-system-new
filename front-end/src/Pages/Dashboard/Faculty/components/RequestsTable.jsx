@@ -93,8 +93,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       if (docUrl) window.open(docUrl, '_blank');
                     }}
                     disabled={!r.documents?.[0]?.url}
-                    title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
-                    aria-label="Download"
+                    title={r.documents?.[0]?.url ? "Download NPTEL Result" : "No Document"}
+                    aria-label="Download NPTEL Result"
                   >
                     <Download className="h-4 w-4" />
                   </button>
@@ -109,19 +109,22 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     <Eye className="h-4 w-4" />
                   </button>
                   <button
-                    className="icon-btn"
+                    className="icon-btn hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => {
                       setEditItem(r);
                       navigate(`/nptel-form/edit/${r.id}`);
                     }}
                     aria-label="Edit"
+                    disabled={r.status !== 'Under HOD'}
+                    title={r.status !== 'Under HOD' ? 'Editing locked — form has been acted upon' : 'Edit'}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
-                    className="icon-btn text-red-600 hover:bg-red-50"
+                    className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => setDeleteItem(r)}
                     aria-label="Delete"
+                    disabled={r.status !== 'Under HOD'}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -291,7 +294,6 @@ function EditForm({ item, onSave, onCancel }) {
   const [form, setForm] = React.useState({
     category: item.category,
     description: item.description,
-    status: item.status,
     amount: item.amount,
   })
 
@@ -328,29 +330,22 @@ function EditForm({ item, onSave, onCancel }) {
         />
       </label>
       <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Status</span>
-        <select
-          className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          value={form.status}
-          onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-          required
-        >
-          <option value="Approved">Approved</option>
-          <option value="Pending">Pending</option>
-          <option value="Under HOD">Under HOD</option>
-          <option value="Under Principal">Under Principal</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-      </label>
-      <label className="grid gap-1">
         <span className="text-sm text-slate-600">Amount (₹)</span>
         <input
           className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           type="number"
-          min="0"
-          step="0.01"
+          min="1"
+          max="1500"
+          step="1"
           value={form.amount}
-          onChange={(e) => setForm((f) => ({ ...f, amount: Number(e.target.value || 0) }))}
+          onChange={(e) => {
+            const val = e.target.value;
+            const numVal = parseFloat(val);
+            if (val === '' || (!isNaN(numVal) && numVal > 0 && numVal <= 1500)) {
+              setForm((f) => ({ ...f, amount: val === '' ? '' : numVal }));
+            }
+          }}
+          onWheel={(e) => e.target.blur()}
           required
         />
       </label>

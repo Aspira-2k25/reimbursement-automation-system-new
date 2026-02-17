@@ -132,16 +132,29 @@ export default function ViewForm() {
               <label className="block text-sm font-medium text-gray-600">Name</label>
               <div className="mt-1 text-gray-900">{formData.name}</div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">
-                {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID' : 'Student ID'}
-              </label>
-              <div className="mt-1 text-gray-900">{formData.studentId}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Division</label>
-              <div className="mt-1 text-gray-900">{formData.division}</div>
-            </div>
+            {(formData?.applicantType && formData.applicantType !== 'Student') ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Faculty ID</label>
+                  <div className="mt-1 text-gray-900">{formData.facultyId}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Job Title</label>
+                  <div className="mt-1 text-gray-900">{formData.jobTitle}</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Student ID</label>
+                  <div className="mt-1 text-gray-900">{formData.studentId}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Division</label>
+                  <div className="mt-1 text-gray-900">{formData.division}</div>
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-600">Email</label>
               <div className="mt-1 text-gray-900">{formData.email}</div>
@@ -219,7 +232,7 @@ export default function ViewForm() {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors duration-150"
               >
                 <span className="text-sm">
-                  {index === 0 ? 'NPTEL Result' : ((user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID Card' : 'Student ID Card')}
+                  {index === 0 ? 'NPTEL Result' : ((formData?.applicantType && formData.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
                 </span>
                 <ExternalLink className="h-4 w-4" />
               </a>

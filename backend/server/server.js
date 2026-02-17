@@ -64,7 +64,7 @@ const corsOptions = {
       try {
         const u = new URL(origin);
         if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return callback(null, true);
-      } catch (_) {}
+      } catch (_) { }
     }
 
     console.warn(`CORS blocked origin: ${origin}`);
@@ -83,7 +83,7 @@ app.use(securityHeaders);
 // Rate limiting for API endpoints
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
+  max: 5000,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
