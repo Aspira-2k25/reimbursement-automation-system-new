@@ -50,10 +50,10 @@ const HomeDashboard = () => {
 
       let data
       // Use Faculty API for Faculty/Coordinator, Student API for Students
-      if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
-        data = await facultyFormsAPI.getById(formId)
-      } else {
+      if (request.applicantType === 'Student') {
         data = await studentFormsAPI.getById(formId)
+      } else {
+        data = await facultyFormsAPI.getById(formId)
       }
 
       const formData = data?.form || data
@@ -469,9 +469,9 @@ const HomeDashboard = () => {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">
-                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Student ID' : 'Employee ID'}
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Student ID' : 'Faculty ID'}
                       </label>
-                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.facultyId || requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Course Name</label>
@@ -543,7 +543,7 @@ const HomeDashboard = () => {
                           >
                             <FileText className="w-5 h-5 text-green-600" />
                             <span className="text-sm text-green-600 hover:underline">
-                              Document {index + 1}
+                              {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
                             </span>
                           </a>
                         ))}
