@@ -106,9 +106,9 @@ const PrintableForm = ({ request }) => {
             </tr>
             <tr className="border-b border-gray-200">
               <td className="py-2 font-semibold">
-                {request.applicantType === 'Student' ? 'Student ID:' : 'Employee ID:'}
+                {request.applicantType === 'Student' ? 'Student ID:' : 'Faculty ID:'}
               </td>
-              <td className="py-2">{request.studentId || request.applicantId || 'N/A'}</td>
+              <td className="py-2">{request.facultyId || request.studentId || request.applicantId || 'N/A'}</td>
             </tr>
             <tr className="border-b border-gray-200">
               <td className="py-2 font-semibold">Department:</td>

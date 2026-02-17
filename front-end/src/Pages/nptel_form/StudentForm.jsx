@@ -119,7 +119,16 @@ const StudentNptelForm = () => {
     const { name, value } = e.target;
 
     if (name === "amount") {
-      if (value === "" || (value > 0 && value <= 1500)) {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else if (name === "marks") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -142,10 +151,10 @@ const StudentNptelForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Prevent duplicate submissions
     if (isSubmitting) return;
-    
+
     if (!validateForm()) return;
 
     // Disable button immediately
@@ -355,6 +364,7 @@ const StudentNptelForm = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   min="1"
                   max="1500"
                   step="1"
@@ -473,6 +483,7 @@ const StudentNptelForm = () => {
               name="marks"
               value={formData.marks}
               onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
               min="0"
               max="100"
               step="0.01"
@@ -538,8 +549,8 @@ const StudentNptelForm = () => {
               type="submit"
               disabled={isSubmitting}
               className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
-                ${isSubmitting 
-                  ? 'bg-teal-400 cursor-not-allowed text-white' 
+                ${isSubmitting
+                  ? 'bg-teal-400 cursor-not-allowed text-white'
                   : 'bg-teal-600 hover:bg-teal-700 text-white'
                 }`}
             >
