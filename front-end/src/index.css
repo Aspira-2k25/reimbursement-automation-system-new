@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Hide number input spinner arrows to prevent accidental scroll changes */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Subtle animations for hero shapes */
 @keyframes floatY {
   0% { transform: translateY(0); }

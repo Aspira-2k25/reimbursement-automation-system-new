@@ -16,7 +16,7 @@ export default function EditForm() {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
-  const [isStudentForm, setIsStudentForm] = useState(false);
+  const [, setIsStudentForm] = useState(false);
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -41,6 +41,25 @@ export default function EditForm() {
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures
 
+        // Check if the form is still editable based on its status
+        // Student forms: editable only at "Pending"
+        // Faculty/Coordinator forms: editable only at "Under HOD"
+        // HOD forms: editable only at "Under Principal"
+        const editableStatuses = {
+          'Student': 'Pending',
+          'Faculty': 'Under HOD',
+          'Coordinator': 'Under HOD',
+          'HOD': 'Under Principal',
+        };
+        const applicantType = form.applicantType || (isStudent ? 'Student' : 'Faculty');
+        const requiredStatus = editableStatuses[applicantType] || (isStudent ? 'Pending' : 'Under HOD');
+
+        if (form.status !== requiredStatus) {
+          toast.error('This form can no longer be edited. Once an approver acts on a form, editing is permanently locked.');
+          navigateBack();
+          return;
+        }
+
         setFormData(form);
         setErrors({});
       } catch (err) {
@@ -55,7 +74,7 @@ export default function EditForm() {
     if (user) {
       fetchForm();
     }
-  }, [id, navigateBack, user, location.pathname]);
+  }, [id, user, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validateForm = () => {
     const newErrors = {};
@@ -64,12 +83,23 @@ export default function EditForm() {
       newErrors.name = 'Name is required';
     }
 
-    if (!formData.studentId?.trim()) {
-      newErrors.studentId = 'Student ID is required';
-    }
-
-    if (!formData.division?.trim()) {
-      newErrors.division = 'Division is required';
+    // For faculty forms: validate facultyId and jobTitle
+    // For student forms: validate studentId and division
+    const isFacultyForm = formData?.applicantType && formData.applicantType !== 'Student';
+    if (isFacultyForm) {
+      if (!formData.facultyId?.trim()) {
+        newErrors.facultyId = 'Faculty ID is required';
+      }
+      if (!formData.jobTitle?.trim()) {
+        newErrors.jobTitle = 'Job Title is required';
+      }
+    } else {
+      if (!formData.studentId?.trim()) {
+        newErrors.studentId = 'Student ID is required';
+      }
+      if (!formData.division?.trim()) {
+        newErrors.division = 'Division is required';
+      }
     }
 
     if (!formData.email?.trim()) {
@@ -135,7 +165,16 @@ export default function EditForm() {
     const { name, value } = e.target;
 
     if (name === 'amount') {
-      if (value === '' || (value > 0 && value <= 1500)) {
+      const numValue = parseFloat(value);
+      if (value === '' || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+        }));
+      }
+    } else if (name === 'marks') {
+      const numValue = parseFloat(value);
+      if (value === '' || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData(prev => ({
           ...prev,
           [name]: value,
@@ -164,10 +203,15 @@ export default function EditForm() {
       setSaving(true);
 
       // Handle file updates if needed
-      const formDataToSend = { ...formData };
+      // Only send editable fields — strip status, _id, applicantType, etc.
+      const { status: _status, _id: _oid, __v: _v, applicantType: _at, applicationId: _aid, userId: _uid, createdAt: _ca, updatedAt: _ua, documents: _docs, rejectedBy: _rb, rejectionRemarks: _rr, ...editableFields } = formData;
+      const formDataToSend = { ...editableFields };
 
       // Convert amount to number explicitly
       formDataToSend.amount = parseFloat(formData.amount);
+
+      // Convert marks to number explicitly
+      formDataToSend.marks = parseFloat(formData.marks);
 
       const nptelFile = document.getElementById('nptelResult')?.files[0];
       const idCardFile = document.getElementById('idCard')?.files[0];
@@ -270,39 +314,75 @@ export default function EditForm() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {(['faculty', 'coordinator', 'hod', 'principal'].includes(user?.role?.toLowerCase())) ? 'Faculty ID *' : 'Student ID *'}
-              </label>
-              <input
-                type="text"
-                name="studentId"
-                value={formData?.studentId || ''}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.studentId ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              />
-              {errors.studentId && (
-                <p className="mt-2 text-sm text-red-600">{errors.studentId}</p>
-              )}
-            </div>
+            {(formData?.applicantType && formData.applicantType !== 'Student') ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Faculty ID *</label>
+                  <input
+                    type="text"
+                    name="facultyId"
+                    value={formData?.facultyId || ''}
+                    onChange={handleChange}
+                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                      ${errors.facultyId ? 'border-red-300' : 'border-gray-300'}
+                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                  />
+                  {errors.facultyId && (
+                    <p className="mt-2 text-sm text-red-600">{errors.facultyId}</p>
+                  )}
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Division *</label>
-              <input
-                type="text"
-                name="division"
-                value={formData?.division || ''}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.division ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              />
-              {errors.division && (
-                <p className="mt-2 text-sm text-red-600">{errors.division}</p>
-              )}
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Job Title *</label>
+                  <input
+                    type="text"
+                    name="jobTitle"
+                    value={formData?.jobTitle || ''}
+                    onChange={handleChange}
+                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                      ${errors.jobTitle ? 'border-red-300' : 'border-gray-300'}
+                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                  />
+                  {errors.jobTitle && (
+                    <p className="mt-2 text-sm text-red-600">{errors.jobTitle}</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Student ID *</label>
+                  <input
+                    type="text"
+                    name="studentId"
+                    value={formData?.studentId || ''}
+                    onChange={handleChange}
+                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                      ${errors.studentId ? 'border-red-300' : 'border-gray-300'}
+                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                  />
+                  {errors.studentId && (
+                    <p className="mt-2 text-sm text-red-600">{errors.studentId}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Division *</label>
+                  <input
+                    type="text"
+                    name="division"
+                    value={formData?.division || ''}
+                    onChange={handleChange}
+                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                      ${errors.division ? 'border-red-300' : 'border-gray-300'}
+                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                  />
+                  {errors.division && (
+                    <p className="mt-2 text-sm text-red-600">{errors.division}</p>
+                  )}
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Email *</label>
@@ -346,6 +426,7 @@ export default function EditForm() {
                 max="1500"
                 value={formData?.amount || ''}
                 onChange={handleChange}
+                onWheel={(e) => e.target.blur()}
                 className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
                   ${errors.amount ? 'border-red-300' : 'border-gray-300'}
                   focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
@@ -435,6 +516,7 @@ export default function EditForm() {
                   step="0.01"
                   value={formData?.marks || ''}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   required
                   placeholder="Enter NPTEL marks"
                   className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm
@@ -470,7 +552,7 @@ export default function EditForm() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  {(user?.role?.toLowerCase() === 'faculty' || user?.role?.toLowerCase() === 'coordinator') ? 'Faculty ID Card' : 'Student ID Card'}
+                  {(formData?.applicantType && formData.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card'}
                 </label>
                 <input
                   type="file"

@@ -58,6 +58,8 @@ export default function CoordinatorDashboard() {
     applicationId: f.applicationId,
     studentName: f.name || 'N/A',
     studentId: f.studentId || 'N/A',
+    facultyId: f.facultyId,
+    jobTitle: f.jobTitle,
     category: f.reimbursementType || f.category || "NPTEL",
     status: f.status || "Pending",
     amount: f.amount ? `₹${f.amount.toLocaleString()}` : '₹0',
@@ -582,7 +584,7 @@ export default function CoordinatorDashboard() {
                         >
                           <FileText className="w-5 h-5 text-blue-600" />
                           <span className="text-sm text-blue-600 hover:underline">
-                            Document {index + 1}
+                            {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
                           </span>
                         </a>
                       ))}

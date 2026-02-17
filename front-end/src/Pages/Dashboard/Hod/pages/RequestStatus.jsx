@@ -320,7 +320,7 @@ const RequestStatus = () => {
                           if (docUrl) window.open(docUrl, '_blank')
                         }}
                         disabled={!r.documents?.[0]?.url}
-                        title={r.documents?.[0]?.url ? 'Download Document' : 'No Document'}
+                        title={r.documents?.[0]?.url ? 'Download NPTEL Result' : 'No Document'}
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -334,17 +334,19 @@ const RequestStatus = () => {
                       </button>
                       {/* Edit */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
-                        title="Edit"
+                        title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
+                        disabled={r.status !== 'Under Principal'}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       {/* Delete */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setDeleteItem(r)}
-                        title="Delete"
+                        title={r.status !== 'Under Principal' ? 'Cannot delete — form has been acted upon' : 'Delete'}
+                        disabled={r.status !== 'Under Principal'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
