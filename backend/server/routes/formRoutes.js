@@ -68,7 +68,10 @@ router.post(
       // Determine initial status based on applicant type
       // HOD applications go directly to Principal (skip HOD review)
       let initialStatus = "Under HOD"; // Default for Faculty/Coordinator
-      const applicantType = req.body.applicantType || 'Faculty';
+      const rawApplicantType = req.body.applicantType || 'Faculty';
+      // Normalize applicantType to match enum: Faculty, Coordinator, HOD
+      const applicantTypeMap = { 'faculty': 'Faculty', 'coordinator': 'Coordinator', 'hod': 'HOD' };
+      const applicantType = applicantTypeMap[rawApplicantType.toLowerCase()] || 'Faculty';
 
       console.log('=== FORM SUBMISSION DEBUG ===');
       console.log('Applicant Type:', applicantType);
@@ -103,6 +106,7 @@ router.post(
         marks, // Use parsed numeric value
         applicationId, // Use generated ID
         userId, // attach it to the form
+        applicantType, // Use normalized value (overrides req.body.applicantType)
         status: initialStatus, // Set based on applicant type (this should override model default)
         documents: [
           nptelResultUpload
@@ -437,64 +441,53 @@ router.put(
       let allowedUpdates = [];
       let statusValidation = null;
 
-      if (isOwner) {
-        // Owners can update form details only if status allows it
-        if (['Under HOD', 'Under Principal'].includes(form.status)) {
-          // Form is under review - owner can only update remarks
-          allowedUpdates = ['remark'];
-        } else if (form.status === 'Pending') {
-          // Should not happen for faculty forms (they start at Under HOD), but handle it
-          allowedUpdates = ['name', 'email', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'remark'];
-        }
-        // Owners cannot change status of their own forms
-      }
-
-      if (userRole === 'coordinator') {
-        // Coordinators can approve/reject "Under HOD" forms for faculty
-        // This allows coordinators to manage faculty forms in their department
-        if (form.status === 'Under HOD' && !isOwner) {
-          allowedUpdates = ['status', 'remark'];
-          statusValidation = ['Under Principal', 'Rejected'];
-        } else if (form.status === 'Under HOD' && isOwner) {
-          return res.status(403).json({ error: 'Cannot modify your own form while under review' });
+      if (isOwner && !req.body.status) {
+        // Owners can update form details ONLY while the form is at its initial status
+        // (i.e., before the first approver has taken any action).
+        // Faculty/Coordinator forms start at "Under HOD", HOD forms start at "Under Principal".
+        const initialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
+        if (form.status === initialStatus) {
+          allowedUpdates = ['name', 'email', 'facultyId', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
         } else {
-          return res.status(403).json({ error: 'Coordinator can only approve/reject forms with status "Under HOD"' });
+          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
         }
-      }
-
-      if (userRole === 'hod') {
-        // HOD can approve/reject "Under HOD" forms (not their own)
-        if (form.status === 'Under HOD' && !isOwner) {
-          allowedUpdates = ['status', 'remark'];
-          statusValidation = ['Under Principal', 'Rejected'];
-        } else if (form.status === 'Under HOD' && isOwner) {
-          // HOD's own form is Under HOD - they can't approve their own form
-          // This shouldn't happen since HOD forms go directly to Principal
-          return res.status(403).json({ error: 'Cannot modify your own form while under review' });
-        }
-      }
-
-      if (userRole === 'principal') {
-        // Principal can approve/reject "Under Principal" forms
-        if (form.status === 'Under Principal') {
-          allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
-          statusValidation = ['Approved', 'Rejected'];
-        } else {
-          return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
-        }
-      }
-
-      if (userRole === 'accounts') {
-        // Accounts can mark approved forms as reimbursed or rejected
-        if (form.status === 'Approved') {
-          allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
-          statusValidation = ['Reimbursed', 'Rejected'];
-        } else if (form.status === 'Reimbursed') {
-          return res.status(400).json({ error: 'This form has already been reimbursed' });
-        } else if (form.status === 'Disbursed') {
-          return res.status(400).json({ error: 'This form has already been processed' });
-        } else {
-          return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+      } else if (isOwner && req.body.status) {
+        // Owners cannot change the status of their own forms
+        return res.status(403).json({ error: 'Cannot change the status of your own form' });
+      } else if (!isOwner) {
+        // Non-owner authorized roles can only change status (approve/reject/reimburse)
+        if (userRole === 'coordinator') {
+          if (form.status === 'Under HOD') {
+            allowedUpdates = ['status', 'remark'];
+            statusValidation = ['Under Principal', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'Coordinator can only approve/reject forms with status "Under HOD"' });
+          }
+        } else if (userRole === 'hod') {
+          if (form.status === 'Under HOD') {
+            allowedUpdates = ['status', 'remark'];
+            statusValidation = ['Under Principal', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'HOD can only approve/reject forms with status "Under HOD"' });
+          }
+        } else if (userRole === 'principal') {
+          if (form.status === 'Under Principal') {
+            allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
+            statusValidation = ['Approved', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
+          }
+        } else if (userRole === 'accounts') {
+          if (form.status === 'Approved') {
+            allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
+            statusValidation = ['Reimbursed', 'Rejected'];
+          } else if (form.status === 'Reimbursed') {
+            return res.status(400).json({ error: 'This form has already been reimbursed' });
+          } else if (form.status === 'Disbursed') {
+            return res.status(400).json({ error: 'This form has already been processed' });
+          } else {
+            return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+          }
         }
       }
 
@@ -515,8 +508,9 @@ router.put(
         }
       });
 
-      // Handle document updates for owners
-      if (isOwner && form.status === 'Pending') {
+      // Handle document updates for owners (only at initial status)
+      const editableInitialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
+      if (isOwner && form.status === editableInitialStatus) {
         if (nptelResultUpload) {
           updates.documents = updates.documents || [...(form.documents || [])];
           updates.documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
