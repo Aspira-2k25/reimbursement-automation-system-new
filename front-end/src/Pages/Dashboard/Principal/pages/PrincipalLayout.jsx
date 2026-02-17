@@ -123,6 +123,8 @@ const PrincipalLayout = ({ children }) => {
       email: f.email,
       division: f.division,
       studentId: f.studentId,
+      facultyId: f.facultyId,
+      jobTitle: f.jobTitle,
       name: f.name,
       remarks: f.remarks,
       academicYear: f.academicYear,
@@ -131,7 +133,9 @@ const PrincipalLayout = ({ children }) => {
       documents: f.documents || [],
       reimbursementType: f.reimbursementType,
       hodComments: f.hodComments || '',
-      principalComments: f.principalComments || ''
+      principalComments: f.principalComments || '',
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
     }
   }, [])
 
@@ -302,6 +306,10 @@ const PrincipalLayout = ({ children }) => {
         }
         if (comments) {
           updateData.remarks = comments
+          // Add rejectionRemarks for workflow tracking when rejecting
+          if (newStatus === 'Rejected') {
+            updateData.rejectionRemarks = comments
+          }
         }
 
         // Call the correct API based on applicant type

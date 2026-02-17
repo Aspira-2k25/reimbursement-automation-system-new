@@ -10,7 +10,7 @@ import { initialHodData, calculateStats } from '../data/mockData'
  * Shows all departments with expandable detail view for HOD's own department
  */
 const AllDepartmentOverview = () => {
-  const { userProfile, allRequests } = useHODContext()
+  const { userProfile, allRequests, loading } = useHODContext()
   const [expandedDept, setExpandedDept] = useState(null)
   const [activeTab, setActiveTab] = useState('pending')
 
@@ -142,6 +142,31 @@ const AllDepartmentOverview = () => {
   // Get current tab requests
   const currentTabRequests = categorizedRequests[activeTab] || []
 
+  // Show loading state to prevent blank screen
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <Building className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">All Departments Overview</h1>
+              <p className="text-gray-600 mt-1">Loading department data...</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-600">Loading department statistics...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -183,7 +208,7 @@ const AllDepartmentOverview = () => {
         <StatCard
           title="Approved"
           value={overallStats.approved.toString()}
-          subtitle={`₹${overallStats.totalDisbursed.toLocaleString()} disbursed`}
+          subtitle={`₹${overallStats.totalDisbursed.toLocaleString()} reimbursed`}
           icon={CheckCircle}
           color="green"
         />
@@ -212,8 +237,8 @@ const AllDepartmentOverview = () => {
               key={dept.id}
               onClick={() => handleDepartmentClick(dept)}
               className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${dept.isOwnDepartment
-                  ? 'border-green-400 bg-green-50 ring-2 ring-green-200'
-                  : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                ? 'border-green-400 bg-green-50 ring-2 ring-green-200'
+                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                 }`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -258,7 +283,7 @@ const AllDepartmentOverview = () => {
 
               <div className="mt-3 pt-3 border-t text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Disbursed:</span>
+                  <span className="text-gray-500">Reimbursed:</span>
                   <span className="font-semibold text-green-600">₹{dept.totalDisbursed.toLocaleString()}</span>
                 </div>
               </div>
@@ -332,8 +357,8 @@ const AllDepartmentOverview = () => {
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${req.applicantType === 'Faculty'
-                          ? 'bg-purple-100 text-purple-600'
-                          : 'bg-teal-100 text-teal-600'
+                        ? 'bg-purple-100 text-purple-600'
+                        : 'bg-teal-100 text-teal-600'
                         }`}>
                         {req.applicantName?.charAt(0) || 'U'}
                       </div>
@@ -341,8 +366,8 @@ const AllDepartmentOverview = () => {
                         <div className="font-semibold text-gray-900">{req.applicantName}</div>
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.applicantType === 'Faculty'
-                              ? 'bg-purple-100 text-purple-700'
-                              : 'bg-teal-100 text-teal-700'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-teal-100 text-teal-700'
                             }`}>
                             {req.applicantType}
                           </span>
@@ -363,9 +388,9 @@ const AllDepartmentOverview = () => {
                         </div>
                       </div>
                       <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${req.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                          req.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                            req.status === 'Under Principal' ? 'bg-blue-100 text-blue-700' :
-                              'bg-orange-100 text-orange-700'
+                        req.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                          req.status === 'Under Principal' ? 'bg-blue-100 text-blue-700' :
+                            'bg-orange-100 text-orange-700'
                         }`}>
                         {req.status}
                       </span>
