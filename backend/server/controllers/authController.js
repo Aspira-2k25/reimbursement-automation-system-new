@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
+const { addToBlacklist } = require('../utils/tokenBlacklist');
 
 const authController = {
   // Login function
@@ -21,7 +22,7 @@ const authController = {
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, email: user.email },
+        { userId: user.id, username: user.username, role: user.role, email: user.email, department: user.department },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
@@ -83,13 +84,14 @@ const authController = {
       // Use staff ID if found, otherwise use email as userId for Google users
       const userId = staff?.id || email;
 
+      const department = staff?.department || null;
       const token = jwt.sign(
-        { userId, email, role, name },
+        { userId, email, role, name, department },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
 
-      return res.json({ token, user: { id: userId, email, name, role } });
+      return res.json({ token, user: { id: userId, email, name, role, department } });
     } catch (error) {
       console.error('Google login error:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -254,11 +256,21 @@ const authController = {
     }
   },
 
-  // Logout function (client-side token removal)
+  // Logout function — blacklists the token so it can't be reused
   logout: async (req, res) => {
     try {
-      // In a real application, you might want to blacklist the token
-      // For now, we'll just return a success message
+      const authHeader = req.headers.authorization;
+      const token = authHeader && authHeader.split(' ')[1];
+
+      if (token && req.user) {
+        // Calculate remaining TTL from the JWT's exp claim
+        const now = Math.floor(Date.now() / 1000);
+        const remainingSeconds = (req.user.exp || now) - now;
+        if (remainingSeconds > 0) {
+          addToBlacklist(token, remainingSeconds);
+        }
+      }
+
       res.json({ message: 'Logout successful' });
     } catch (error) {
       console.error('Logout error:', error);
