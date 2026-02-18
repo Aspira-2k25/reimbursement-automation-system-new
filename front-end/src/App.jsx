@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import LoadingSpinner from './components/LoadingSpinner'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Lazy load pages for code splitting and better performance
 const LoginPage = lazy(() => import('./Pages/Login/Login'))
@@ -23,13 +24,13 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard/*" element={<Dashboard />} />
-          <Route path="/form" element={<ReimbursementForm />} />
-          <Route path="/nptel-form/view/:id" element={<ViewForm />} />
-          <Route path="/nptel-form/edit/:id" element={<EditForm />} />
-          <Route path="/student-form/view/:id" element={<ViewForm />} />
-          <Route path="/student-nptel-form" element={<StudentNptelForm />} />
-          <Route path="/faculty-nptel-form" element={<ReimbursementForm />} />
+          <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />
+          <Route path="/nptel-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
+          <Route path="/nptel-form/edit/:id" element={<ProtectedRoute><EditForm /></ProtectedRoute>} />
+          <Route path="/student-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
+          <Route path="/student-nptel-form" element={<ProtectedRoute><StudentNptelForm /></ProtectedRoute>} />
+          <Route path="/faculty-nptel-form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />
           {/* Catch-all route MUST be last */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -39,7 +40,3 @@ function App() {
 }
 
 export default App
-
-
-
-
