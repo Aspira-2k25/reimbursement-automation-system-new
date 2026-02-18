@@ -36,34 +36,33 @@ router.post(
         return res.status(400).json({ error: 'User ID not found in token' });
       }
 
-      // Upload received files to Cloudinary (if present)
-      // Use memory buffer (serverless) or file path (local dev)
-      let nptelResultUpload = null;
-      let idCardUpload = null;
-
+      // Upload received files to Cloudinary in parallel (if present)
+      const uploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        nptelResultUpload = await uploadFile(
-          req.files.nptelResult[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
-
       if (req.files?.idCard?.[0]) {
-        idCardUpload = await uploadFile(
-          req.files.idCard[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
+      const [nptelResultUpload, idCardUpload] = await Promise.all(uploadPromises);
 
       // Determine initial status based on applicant type
       // HOD applications go directly to Principal (skip HOD review)
@@ -397,42 +396,43 @@ router.put(
         return res.status(403).json({ error: "Not authorized to edit this form" });
       }
 
-      // Upload new files if provided
-      // Use memory buffer (serverless) or file path (local dev)
-      let nptelResultUpload = null;
-      let idCardUpload = null;
-
+      // Upload new files if provided (parallel with old file cleanup)
+      const updateUploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        // Delete old file from Cloudinary if exists
-        if (form.documents?.[0]?.publicId) {
-          await cloudinary.uploader.destroy(form.documents[0].publicId);
-        }
-        nptelResultUpload = await uploadFile(
-          req.files.nptelResult[0],
-          {
-            folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false
-          }
+        updateUploadPromises.push(
+          (async () => {
+            if (form.documents?.[0]?.publicId) {
+              await cloudinary.uploader.destroy(form.documents[0].publicId);
+            }
+            return uploadFile(req.files.nptelResult[0], {
+              folder: "reimbursement-Forms/Faculty_Form",
+              resource_type: "image",
+              use_filename: true,
+              unique_filename: false
+            });
+          })()
         );
+      } else {
+        updateUploadPromises.push(Promise.resolve(null));
       }
-
       if (req.files?.idCard?.[0]) {
-        // Delete old file from Cloudinary if exists
-        if (form.documents?.[1]?.publicId) {
-          await cloudinary.uploader.destroy(form.documents[1].publicId);
-        }
-        idCardUpload = await uploadFile(
-          req.files.idCard[0],
-          {
-            folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false
-          }
+        updateUploadPromises.push(
+          (async () => {
+            if (form.documents?.[1]?.publicId) {
+              await cloudinary.uploader.destroy(form.documents[1].publicId);
+            }
+            return uploadFile(req.files.idCard[0], {
+              folder: "reimbursement-Forms/Faculty_Form",
+              resource_type: "image",
+              use_filename: true,
+              unique_filename: false
+            });
+          })()
         );
+      } else {
+        updateUploadPromises.push(Promise.resolve(null));
       }
+      const [nptelResultUpload, idCardUpload] = await Promise.all(updateUploadPromises);
 
       // Determine allowed updates based on user role and form status
       // Faculty/Coordinator/HOD (owners) can only edit their own pending/under-review forms
