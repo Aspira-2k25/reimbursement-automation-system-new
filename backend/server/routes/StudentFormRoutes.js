@@ -29,34 +29,33 @@ router.post(
 
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
 
-      // Upload received files to Cloudinary (if present)
-      // Use memory buffer (serverless) or file path (local dev)
-      let nptelResultUpload = null;
-      let idCardUpload = null;
-
+      // Upload received files to Cloudinary in parallel (if present)
+      const uploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        nptelResultUpload = await uploadFile(
-          req.files.nptelResult[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
-
       if (req.files?.idCard?.[0]) {
-        idCardUpload = await uploadFile(
-          req.files.idCard[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
+      const [nptelResultUpload, idCardUpload] = await Promise.all(uploadPromises);
 
       // Validate required fields before saving
       const requiredFields = ['name', 'studentId', 'division', 'email'];
@@ -429,22 +428,32 @@ router.post(
 
       let nptelResultUpload = null;
       let idCardUpload = null;
+      const docUploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        nptelResultUpload = await uploadFile(req.files.nptelResult[0], {
-          folder: "reimbursement-Forms/Student_Form",
-          resource_type: "image",
-          use_filename: true,
-          unique_filename: false,
-        });
+        docUploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
+            folder: "reimbursement-Forms/Student_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false,
+          })
+        );
+      } else {
+        docUploadPromises.push(Promise.resolve(null));
       }
       if (req.files?.idCard?.[0]) {
-        idCardUpload = await uploadFile(req.files.idCard[0], {
-          folder: "reimbursement-Forms/Student_Form",
-          resource_type: "image",
-          use_filename: true,
-          unique_filename: false,
-        });
+        docUploadPromises.push(
+          uploadFile(req.files.idCard[0], {
+            folder: "reimbursement-Forms/Student_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false,
+          })
+        );
+      } else {
+        docUploadPromises.push(Promise.resolve(null));
       }
+      [nptelResultUpload, idCardUpload] = await Promise.all(docUploadPromises);
 
       const documents = [...(form.documents || [])];
       if (nptelResultUpload) {
