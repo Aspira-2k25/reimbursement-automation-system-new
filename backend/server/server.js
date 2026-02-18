@@ -18,6 +18,7 @@ if (missingEnvVars.length > 0) {
 
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 
@@ -77,6 +78,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// ----------------- Response Compression -----------------
+app.use(compression());
+
 // ----------------- Security Middleware -----------------
 app.use(securityHeaders);
 
@@ -118,45 +122,48 @@ if (fs.existsSync(publicPath)) {
 }
 
 // ----------------- Health / Basic routes -----------------
-// Health check root
+// Health check root (safe for production - no config leakage)
 app.get('/', (req, res) => {
   res.json({
     ok: true,
     service: 'backend',
-    time: new Date().toISOString(),
-    env: {
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-      hasMongoUri: !!process.env.MONGO_URI,
-      hasJwtSecret: !!process.env.JWT_SECRET,
-      nodeEnv: process.env.NODE_ENV || 'not set',
-      isVercel: !!process.env.VERCEL,
-      // Don't expose actual values, just check if they exist
-      envVarCount: Object.keys(process.env).filter(key =>
-        key.includes('DATABASE') ||
-        key.includes('MONGO') ||
-        key.includes('JWT') ||
-        key.includes('CLOUDINARY')
-      ).length
-    }
+    time: new Date().toISOString()
   });
 });
 
-// Test Postgres connection
-app.get('/test-db', async (req, res) => {
-  try {
-    const result = await dbUtils.testConnection();
-    if (result.success) {
-      res.json({
-        message: 'Postgres connected successfully!',
-        timestamp: result.timestamp
-      });
-    } else {
-      res.status(500).json({ error: 'Postgres connection failed', details: result.error });
+// Test Postgres connection - only available in development
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/test-db', async (req, res) => {
+    try {
+      const result = await dbUtils.testConnection();
+      if (result.success) {
+        res.json({
+          message: 'Postgres connected successfully!',
+          timestamp: result.timestamp
+        });
+      } else {
+        res.status(500).json({ error: 'Postgres connection failed', details: result.error });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Postgres connection failed', details: error.message });
     }
-  } catch (error) {
-    res.status(500).json({ error: 'Postgres connection failed', details: error.message });
-  }
-});
+  });
+
+  // Debug endpoint (Postgres) - only available in development
+  app.get('/api/debug/user/:moodleId', async (req, res) => {
+    try {
+      const { moodleId } = req.params;
+      const user = await dbUtils.getUserForLogin(moodleId);
+      res.json({
+        moodleId,
+        userFound: !!user,
+        user: user
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Debug failed', details: error.message });
+    }
+  });
+}
 
 // Get all users (Postgres) - Protected route
 app.get('/api/users', authMiddleware.verifyToken, async (req, res) => {
@@ -168,22 +175,20 @@ app.get('/api/users', authMiddleware.verifyToken, async (req, res) => {
   }
 });
 
-// Debug endpoint (Postgres)
-app.get('/api/debug/user/:moodleId', async (req, res) => {
-  try {
-    const { moodleId } = req.params;
-    const user = await dbUtils.getUserForLogin(moodleId);
-    res.json({
-      moodleId,
-      userFound: !!user,
-      user: user
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Debug failed', details: error.message });
+// ----------------- API Routes -----------------
+// Cache-Control middleware for read-only GET endpoints
+// Short cache to reduce redundant DB hits while keeping data fresh
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') {
+    // Cache for 60 seconds, allow stale response for 30s while revalidating
+    res.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=30');
+  } else {
+    // No caching for mutations
+    res.set('Cache-Control', 'no-store');
   }
+  next();
 });
 
-// ----------------- API Routes -----------------
 // Auth
 app.use('/api/auth', authRoutes);
 
