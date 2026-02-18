@@ -58,7 +58,7 @@ const corsOptions = {
     if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Removed wildcard *.vercel.app — only the exact production frontend URL is allowed
 
     // In development, allow any localhost/127.0.0.1 (any port)
     if (process.env.NODE_ENV !== 'production') {
@@ -104,8 +104,8 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
 // ----------------- Body parsing -----------------
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Optional: serve static uploaded files (if you store locally in 'public' or 'uploads')
 // Adjust if you store in cloud (S3/Cloudinary) instead
@@ -234,10 +234,10 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Default error response (more info in development)
+  // Default error response — never leak internal details in production
   res.status(500).json({
     error: 'Something went wrong!',
-    message: err.message, // Temporarily show error message in production for debugging
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });

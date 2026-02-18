@@ -1,18 +1,24 @@
 const jwt = require('jsonwebtoken');
+const { isBlacklisted } = require('../utils/tokenBlacklist');
 
 const authMiddleware = {
   // Verify JWT token
   verifyToken: (req, res, next) => {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Access token required' });
     }
 
     const token = authHeader.split(' ')[1]; // Bearer TOKEN
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Invalid token format' });
+    }
+
+    // Check if the token has been blacklisted (logged out)
+    if (isBlacklisted(token)) {
+      return res.status(401).json({ error: 'Token has been revoked' });
     }
 
     try {
@@ -43,15 +49,20 @@ const authMiddleware = {
   // Optional authentication (doesn't fail if no token)
   optionalAuth: (req, res, next) => {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return next(); // Continue without authentication
     }
 
     const token = authHeader.split(' ')[1];
-    
+
     if (!token) {
       return next(); // Continue without authentication
+    }
+
+    // Skip blacklisted tokens silently in optional auth
+    if (isBlacklisted(token)) {
+      return next();
     }
 
     try {
