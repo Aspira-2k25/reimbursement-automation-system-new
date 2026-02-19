@@ -197,7 +197,6 @@ export default function LoginPage() {
                         }
                       }, 50);
                     } catch (err) {
-                      console.error('Google login error:', err);
                       setError(err.message || 'Google login failed. Please try again.');
                     }
                   }}

@@ -1,11 +1,14 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
 const { addToBlacklist } = require('../utils/tokenBlacklist');
 
+// Initialize Google OAuth client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 const authController = {
-  // Login function
   // Login function
   login: async (req, res, next) => {
     try {
@@ -20,17 +23,24 @@ const authController = {
       // Update last login time
       await dbUtils.updateLastLogin(user.id);
 
-      // Generate JWT token
+      // Generate JWT token with short expiry
       const token = jwt.sign(
         { userId: user.id, username: user.username, role: user.role, email: user.email, department: user.department },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      // Return user data (without sensitive information)
+      // Set httpOnly cookie for security
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+
+      // Return user data (without sensitive information or token)
       res.json({
         message: 'Login successful',
-        token,
         user: {
           id: user.id,
           username: user.username,
@@ -58,23 +68,37 @@ const authController = {
         return res.status(400).json({ error: 'Missing Google credential' });
       }
 
-      // Verify the Google ID token (Node 18+ has global fetch)
-      const resp = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-      if (!resp.ok) {
+      // Verify the Google ID token using official library with audience check
+      let ticket;
+      try {
+        ticket = await googleClient.verifyIdToken({
+          idToken: credential,
+          audience: process.env.GOOGLE_CLIENT_ID, // Verify token is for our app
+        });
+      } catch (verifyError) {
+        console.error('Google token verification failed:', verifyError);
         return res.status(401).json({ error: 'Invalid Google token' });
       }
-      const payload = await resp.json();
+
+      const payload = ticket.getPayload();
       const email = payload?.email;
       const name = payload?.name || 'Google User';
+      const emailVerified = payload?.email_verified;
+
       if (!email) {
         return res.status(400).json({ error: 'Google token missing email' });
+      }
+
+      // Verify email is confirmed by Google
+      if (!emailVerified) {
+        return res.status(400).json({ error: 'Email not verified by Google' });
       }
 
       // Validate email domain - only allow apsit.edu.in domain
       const allowedDomain = 'apsit.edu.in';
       if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
         return res.status(403).json({
-          error: `Please sign in with your institutional email.`
+          error: 'Please sign in with your institutional email.'
         });
       }
 
@@ -85,13 +109,27 @@ const authController = {
       const userId = staff?.id || email;
 
       const department = staff?.department || null;
+      
+      // Generate JWT with shorter expiry for security
       const token = jwt.sign(
         { userId, email, role, name, department },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      return res.json({ token, user: { id: userId, email, name, role, department } });
+      // Set httpOnly cookie
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+
+      return res.json({ 
+        message: 'Login successful',
+        user: { id: userId, email, name, role, department }
+        // Token NOT in response body - only in httpOnly cookie
+      });
     } catch (error) {
       console.error('Google login error:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -174,9 +212,17 @@ const authController = {
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
 
+      // Set httpOnly cookie (consistent with login)
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours for new registrations
+      });
+
       res.status(201).json({
         message: 'User created successfully',
-        token,
+        // Token NOT in response body - only in httpOnly cookie
         user: newUser
       });
 
@@ -265,11 +311,18 @@ const authController = {
       if (token && req.user) {
         // Calculate remaining TTL from the JWT's exp claim
         const now = Math.floor(Date.now() / 1000);
-        const remainingSeconds = (req.user.exp || now) - now;
+        const remainingSeconds = Math.max(0, (req.user.exp || now) - now);
         if (remainingSeconds > 0) {
-          addToBlacklist(token, remainingSeconds);
+          await addToBlacklist(token, remainingSeconds);
         }
       }
+
+      // Clear httpOnly cookie if using cookie-based auth
+      res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
 
       res.json({ message: 'Logout successful' });
     } catch (error) {

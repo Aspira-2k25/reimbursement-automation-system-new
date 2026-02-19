@@ -369,8 +369,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     try {
                       await onDelete?.(deleteItem._id);
                       setDeleteItem(null);
-                    } catch (error) {
-                      console.error('Error deleting form:', error);
+                    } catch {
                       toast.error('Failed to delete form. Please try again.');
                     }
                   }}
@@ -411,8 +410,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     setEditItem(null);
                     // Trigger a refetch if parent provided a callback
                     window.location.reload();
-                  } catch (error) {
-                    console.error('Error updating form:', error);
+                  } catch {
                     toast.error('Failed to update form. Please try again.');
                   }
                 }}
