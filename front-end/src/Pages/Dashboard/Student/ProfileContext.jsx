@@ -39,8 +39,8 @@ export function ProfileProvider({ children }) {
         const parsed = JSON.parse(saved)
         return { ...defaultProfile, ...parsed }
       }
-    } catch (e) {
-      console.error('Error loading profile from localStorage:', e)
+    } catch {
+      // Silently handle localStorage errors
     }
     return defaultProfile
   })
@@ -73,8 +73,8 @@ export function ProfileProvider({ children }) {
         department: profile.department,
         departmentSet: profile.departmentSet
       }))
-    } catch (e) {
-      console.error('Error saving profile to localStorage:', e)
+    } catch {
+      // Silently handle localStorage errors
     }
   }, [profile.department, profile.departmentSet])
 
