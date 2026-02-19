@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,33 @@ const DEPARTMENTS = [
   "Civil Engineering",
   "Mechanical Engineering"
 ];
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 1 * 1024 * 1024; // 1MB
+  
+  if (!file) return { valid: true };
+  
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+  
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 1MB' };
+  }
+  
+  return { valid: true };
+};
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
@@ -166,27 +193,45 @@ const StudentNptelForm = () => {
         formDataToSend.append(key, formData[key]);
       });
 
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-      if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
+      
+      // Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
+      }
+      
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
 
       formDataToSend.append("reimbursementType", "NPTEL");
-      const token = localStorage.getItem("token");
+      
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
+      // SECURITY: Use httpOnly cookies instead of localStorage token
       const res = await fetch(`${API_BASE_URL}/student-forms/submit`, {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-        },
+        credentials: 'include', // Important: include cookies for auth
         body: formDataToSend,
       });
 
       const data = await res.json();
       if (res.ok) {
         toast.success("Application submitted successfully! Your request is now under review.");
-        console.log(data);
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
       } else {
@@ -195,7 +240,6 @@ const StudentNptelForm = () => {
         setIsSubmitting(false);
       }
     } catch (err) {
-      console.error("Error submitting form:", err);
       toast.error("Form submission failed. Please try again.");
       // Re-enable button on error so user can retry
       setIsSubmitting(false);
@@ -514,6 +558,7 @@ const StudentNptelForm = () => {
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
+                  ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
@@ -532,6 +577,7 @@ const StudentNptelForm = () => {
                   type="file"
                   id="idCard"
                   name="idCard"
+                  ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4

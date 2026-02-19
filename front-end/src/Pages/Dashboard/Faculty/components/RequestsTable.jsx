@@ -2,6 +2,7 @@ import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
+import { facultyFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
 
@@ -90,7 +91,16 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     className="icon-btn hover:bg-blue-50 disabled:opacity-50"
                     onClick={() => {
                       const docUrl = r.documents?.[0]?.url;
-                      if (docUrl) window.open(docUrl, '_blank');
+                      // SECURITY: Validate URL before opening
+                      if (docUrl) {
+                        const isValidUrl = docUrl.startsWith('https://') || docUrl.startsWith('http://');
+                        const isTrustedDomain = docUrl.includes('cloudinary.com') || docUrl.includes('res.cloudinary.com');
+                        if (isValidUrl && isTrustedDomain) {
+                          window.open(docUrl, '_blank', 'noopener,noreferrer');
+                        } else {
+                          toast.error('Invalid document URL');
+                        }
+                      }
                     }}
                     disabled={!r.documents?.[0]?.url}
                     title={r.documents?.[0]?.url ? "Download NPTEL Result" : "No Document"}
@@ -228,25 +238,13 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
                 onClick={async () => {
                   try {
-                    const token = localStorage.getItem('token');
-                    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-                    const response = await fetch(`${API_BASE_URL}/forms/${deleteItem.id}`, {
-                      method: 'DELETE',
-                      headers: {
-                        'Authorization': `Bearer ${token}`
-                      }
-                    });
-
-                    if (response.ok) {
-                      onDelete?.(deleteItem.id);
-                      setDeleteItem(null);
-                    } else {
-                      const data = await response.json();
-                      toast.error(data.error || 'Failed to delete form');
-                    }
+                    // SECURITY: Use centralized API service with httpOnly cookies
+                    await facultyFormsAPI.deleteById(deleteItem.id);
+                    onDelete?.(deleteItem.id);
+                    setDeleteItem(null);
+                    toast.success('Form deleted successfully');
                   } catch (error) {
-                    console.error('Error deleting form:', error);
-                    toast.error('Failed to delete form. Please try again.');
+                    toast.error(error.error || 'Failed to delete form');
                   }
                 }}
               >
@@ -279,7 +277,6 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               onCancel={() => setEditItem(null)}
               onSave={(payload) => {
                 // TODO: Implement actual save logic
-                console.log('Saving request:', payload)
                 setEditItem(null)
               }}
             />
