@@ -1,8 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 1 * 1024 * 1024; // 1MB
+  
+  if (!file) return { valid: true };
+  
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+  
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 1MB' };
+  }
+  
+  return { valid: true };
+};
 
 const ReimbursementForm = () => {
   const navigate = useNavigate();
@@ -23,6 +50,10 @@ const ReimbursementForm = () => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // SECURITY: Use refs for file inputs instead of direct DOM access
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
 
   const validateForm = () => {
     const newErrors = {};
@@ -112,9 +143,15 @@ const ReimbursementForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  //handle input change
+  //handle input change - SECURITY: Sanitize inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // SECURITY: Sanitize text inputs
+    let sanitizedValue = value;
+    if (name !== 'amount' && name !== 'marks') {
+      sanitizedValue = sanitizeInput(value);
+    }
 
     //for amount field
     if (name === "amount") {
@@ -136,11 +173,11 @@ const ReimbursementForm = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: sanitizedValue,
       });
     }
 
-    //clear errors when user sttarts typing
+    //clear errors when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -165,9 +202,9 @@ const ReimbursementForm = () => {
     try {
       const formDataToSend = new FormData();
 
-      //append all text fields
+      //append all text fields - SECURITY: Sanitize before sending
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key]);
+        formDataToSend.append(key, sanitizeInput(formData[key]));
       });
 
       // Set applicantType based on user role
@@ -179,21 +216,38 @@ const ReimbursementForm = () => {
         formDataToSend.append('department', user.department);
       }
 
-      //append files
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-      if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
+      
+      // SECURITY: Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
+      }
+      
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
 
-      //get jwt tocken from login
-      const token = localStorage.getItem("token");
+      // SECURITY: Token is now in httpOnly cookie, no need to manually add
+      // The browser will automatically send the cookie with credentials: 'include'
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
       const res = await fetch(`${API_BASE_URL}/forms/submit`, {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,  // add tocken for authorization
-        },
+        credentials: 'include', // SECURITY: Include cookies for authentication
         body: formDataToSend,
       });
 
@@ -540,6 +594,7 @@ const ReimbursementForm = () => {
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
+                  ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
@@ -563,6 +618,7 @@ const ReimbursementForm = () => {
                   type="file"
                   id="idCard"
                   name="idCard"
+                  ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
