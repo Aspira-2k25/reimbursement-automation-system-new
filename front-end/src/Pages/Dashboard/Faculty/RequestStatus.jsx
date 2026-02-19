@@ -100,8 +100,7 @@ export default function RequestStatus() {
         setPreviousRequests(mapped)
         setRequests(mapped)
         setError(null)
-      } catch (err) {
-        console.error("Failed to load requests:", err)
+      } catch {
         setError("Failed to load your requests. Please try again.")
       } finally {
         setLoading(false)

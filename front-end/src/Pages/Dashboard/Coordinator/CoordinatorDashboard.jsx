@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import "../Dashboard.css"
 import Navbar from "./components/Navbar"
 import { useAuth } from "../../../context/AuthContext.jsx"
@@ -13,6 +13,23 @@ import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide-react"
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
+
+// SECURITY: Input sanitization helper to prevent XSS
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .trim();
+};
+
+// SECURITY: Validate and sanitize rejection reason
+const sanitizeRejectionReason = (reason) => {
+  const sanitized = sanitizeInput(reason);
+  // Limit length to prevent DoS
+  return sanitized.substring(0, 500);
+};
 
 // Default user profile fallback (overwritten by actual user data from auth)
 const initialUserProfile = {
@@ -88,9 +105,7 @@ export default function CoordinatorDashboard() {
       if (pendingResult.status === 'fulfilled') {
         const pendingData = pendingResult.value
         pendingForms = pendingData?.forms || pendingData || []
-        console.log('Fetched pending requests:', pendingForms.length)
       } else {
-        console.error('Error fetching pending requests:', pendingResult.reason)
         toast.error('Failed to fetch pending requests')
       }
 
@@ -99,9 +114,7 @@ export default function CoordinatorDashboard() {
       if (approvedResult.status === 'fulfilled') {
         const approvedData = approvedResult.value
         approvedForms = approvedData?.forms || approvedData || []
-        console.log('Fetched approved requests:', approvedForms.length)
       } else {
-        console.error('Error fetching approved requests:', approvedResult.reason)
         // Don't show error toast for approved requests if it's just empty or 403
         const status = approvedResult.reason?.response?.status
         if (status && status !== 404 && status !== 403) {
@@ -114,9 +127,7 @@ export default function CoordinatorDashboard() {
       if (rejectedResult.status === 'fulfilled') {
         const rejectedData = rejectedResult.value
         rejectedForms = rejectedData?.forms || rejectedData || []
-        console.log('Fetched rejected requests:', rejectedForms.length)
       } else {
-        console.error('Error fetching rejected requests:', rejectedResult.reason)
         // Don't show error toast for rejected requests if it's just empty or 403
         const status = rejectedResult.reason?.response?.status
         if (status && status !== 404 && status !== 403) {
@@ -128,8 +139,6 @@ export default function CoordinatorDashboard() {
       const mappedPending = pendingForms.map(mapFormToRequest)
       const mappedApproved = approvedForms.map(mapFormToRequest)
       const mappedRejected = rejectedForms.map(mapFormToRequest)
-
-      console.log('Mapped pending:', mappedPending.length, 'Mapped approved:', mappedApproved.length, 'Mapped rejected:', mappedRejected.length)
 
       // Check for new requests and generate notifications
       const previousTotal = studentRequests.length + approvedRequests.length + rejectedRequests.length
@@ -159,7 +168,6 @@ export default function CoordinatorDashboard() {
       setApprovedRequests(mappedApproved)
       setRejectedRequests(mappedRejected)
     } catch (error) {
-      console.error('Unexpected error fetching requests:', error)
       toast.error(error?.error || 'Failed to fetch requests')
       setStudentRequests([])
       setApprovedRequests([])
@@ -232,7 +240,6 @@ export default function CoordinatorDashboard() {
       const data = await studentFormsAPI.getById(formId)
       setRequestDetails(data?.form || data)
     } catch (error) {
-      console.error("Error fetching request details:", error)
       toast.error(error?.error || "Failed to load request details")
       // Fallback to basic request data so modal still shows something
       setRequestDetails(request)
@@ -270,7 +277,6 @@ export default function CoordinatorDashboard() {
 
       toast.success(`Request ${request.id} approved and sent to HOD for ${request.studentName}`)
     } catch (error) {
-      console.error('Error approving request:', error)
       toast.error(error?.error || 'Failed to approve request')
     }
   }, [fetchRequests])
@@ -286,13 +292,16 @@ export default function CoordinatorDashboard() {
     if (rejectReason.trim() && rejectModal.request) {
       setRejectLoading(true)
       try {
+        // SECURITY: Sanitize rejection reason before sending to API
+        const sanitizedReason = sanitizeRejectionReason(rejectReason);
+        
         const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
 
-        // Update status to "Rejected" with remarks and rejectionRemarks for workflow tracking
+        // Update status to "Rejected" with sanitized remarks
         await studentFormsAPI.updateById(formId, {
           status: "Rejected",
-          remarks: rejectReason,
-          rejectionRemarks: rejectReason // Required for backend workflow visibility
+          remarks: sanitizedReason,
+          rejectionRemarks: sanitizedReason // Required for backend workflow visibility
         })
 
         // Refresh the requests to get updated data from server
@@ -314,7 +323,6 @@ export default function CoordinatorDashboard() {
         setRejectModal({ show: false, request: null })
         setRejectReason("")
       } catch (error) {
-        console.error('Error rejecting request:', error)
         toast.error(error?.error || 'Failed to reject request')
       } finally {
         setRejectLoading(false)
@@ -327,15 +335,21 @@ export default function CoordinatorDashboard() {
     setRejectReason("")
   }, [])
 
-  // Handle escape key for modal
+  // Handle escape key for modal - FIXED: Added proper cleanup and viewModal handler
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && rejectModal.show) {
-        closeRejectModal()
+      if (e.key === 'Escape') {
+        if (rejectModal.show) {
+          closeRejectModal();
+        }
+        if (viewModal.show) {
+          closeViewModal();
+        }
       }
     }
 
-    if (rejectModal.show) {
+    // Only add listener when either modal is open
+    if (rejectModal.show || viewModal.show) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
     }
@@ -344,7 +358,7 @@ export default function CoordinatorDashboard() {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
     }
-  }, [rejectModal.show, closeRejectModal])
+  }, [rejectModal.show, viewModal.show, closeRejectModal, closeViewModal])
 
   const renderContent = () => {
     switch (activeTab) {
@@ -574,20 +588,39 @@ export default function CoordinatorDashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-2">Documents</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {requestDetails.documents.map((doc, index) => (
-                        <a
-                          key={index}
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          <FileText className="w-5 h-5 text-blue-600" />
-                          <span className="text-sm text-blue-600 hover:underline">
-                            {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
-                          </span>
-                        </a>
-                      ))}
+                      {requestDetails.documents.map((doc, index) => {
+                        // SECURITY: Validate URL before rendering to prevent XSS
+                        const isValidUrl = doc.url && (
+                          doc.url.startsWith('https://') || 
+                          doc.url.startsWith('http://')
+                        );
+                        
+                        // Only allow Cloudinary URLs (trusted domain)
+                        const isTrustedDomain = doc.url && (
+                          doc.url.includes('cloudinary.com') ||
+                          doc.url.includes('res.cloudinary.com')
+                        );
+                        
+                        if (!isValidUrl || !isTrustedDomain) {
+                          console.warn('Blocked potentially unsafe document URL:', doc.url);
+                          return null;
+                        }
+                        
+                        return (
+                          <a
+                            key={index}
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            <span className="text-sm text-blue-600 hover:underline">
+                              {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
+                            </span>
+                          </a>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
