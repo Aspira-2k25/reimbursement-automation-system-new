@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const { isBlacklisted } = require('../utils/tokenBlacklist');
 
 // Extract token from Authorization header or httpOnly cookie
 const extractToken = (req) => {
@@ -11,18 +10,30 @@ const extractToken = (req) => {
       return parts[1];
     }
   }
-  
+
   // Then try httpOnly cookie
   if (req.cookies && req.cookies.auth_token) {
     return req.cookies.auth_token;
   }
-  
+
   return null;
 };
 
 const authMiddleware = {
   // Verify JWT token
-  verifyToken: async (req, res, next) => {
+  verifyToken: (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Access token required' });
+    }
+
+    const token = authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+
     try {
       const token = extractToken(req);
 
@@ -63,7 +74,7 @@ const authMiddleware = {
       const normalizedRoles = roles.map(r => r.toLowerCase());
 
       if (!normalizedRoles.includes(userRole)) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: 'Insufficient permissions',
           required: roles,
           current: req.user.role
@@ -85,7 +96,7 @@ const authMiddleware = {
       const normalizedRoles = roles.map(r => r.toLowerCase());
 
       if (!normalizedRoles.includes(userRole)) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: 'Insufficient permissions',
           message: `This action requires one of the following roles: ${roles.join(', ')}`
         });
@@ -96,7 +107,19 @@ const authMiddleware = {
   },
 
   // Optional authentication (doesn't fail if no token)
-  optionalAuth: async (req, res, next) => {
+  optionalAuth: (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return next(); // Continue without authentication
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    if (!token) {
+      return next(); // Continue without authentication
+    }
+
     try {
       const token = extractToken(req);
 

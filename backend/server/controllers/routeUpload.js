@@ -3,9 +3,8 @@ const router = express.Router();
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
-const { verifyToken } = require("../middleware/auth");
 
-router.post('/upload', verifyToken, upload.single('image'), async function (req, res) {
+router.post('/upload', upload.single('image'), async function (req, res) {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -29,7 +28,8 @@ router.post('/upload', verifyToken, upload.single('image'), async function (req,
     console.error('Upload error:', err);
     res.status(500).json({
       success: false,
-      message: "Error uploading file"
+      message: "Error uploading file",
+      error: err.message
     });
   }
 });
