@@ -12,11 +12,8 @@ router.get(
       const userId = req.user.userId || req.user.email || req.user.id;
       const { limit, unreadOnly } = req.query;
 
-      const parsedLimit = limit ? parseInt(limit, 10) : 50;
-      const clampedLimit = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 100);
-
       const notifications = await notificationService.getUserNotifications(userId, {
-        limit: clampedLimit,
+        limit: limit ? parseInt(limit) : 50,
         unreadOnly: unreadOnly === 'true',
       });
 
