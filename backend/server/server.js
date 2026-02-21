@@ -100,7 +100,7 @@ const corsOptions = {
     if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    // Removed wildcard *.vercel.app — only the exact production frontend URL is allowed
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
 
     // In development, allow any localhost/127.0.0.1 (any port)
     if (process.env.NODE_ENV !== 'production') {
@@ -183,40 +183,8 @@ app.use('/api/forms/submit', formSubmitLimiter);
 app.use('/api/student-forms/submit', formSubmitLimiter);
 
 // ----------------- Body parsing -----------------
-// Increased to 1MB for JSON payloads with validation middleware
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// ----------------- Input Validation -----------------
-// Apply input sanitization and length validation
-app.use(sanitizeInput);
-app.use(validateInputLength);
-
-// ----------------- Request Timeout Middleware -----------------
-// Prevents long-running requests from consuming resources
-const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT_MS) || 30000; // 30 seconds default
-
-const timeoutMiddleware = (req, res, next) => {
-  // Set timeout for the request
-  req.setTimeout(REQUEST_TIMEOUT, () => {
-    res.status(408).json({
-      error: 'Request timeout',
-      message: 'The request took too long to process'
-    });
-  });
-  
-  // Set timeout for the response
-  res.setTimeout(REQUEST_TIMEOUT, () => {
-    res.status(408).json({
-      error: 'Request timeout',
-      message: 'The server took too long to respond'
-    });
-  });
-  
-  next();
-};
-
-app.use(timeoutMiddleware);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Optional: serve static uploaded files (if you store locally in 'public' or 'uploads')
 // Adjust if you store in cloud (S3/Cloudinary) instead
@@ -262,8 +230,8 @@ if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
 }
 
 // Get all users (Postgres) - Protected route, restricted to admin roles
-app.get('/api/users', 
-  authMiddleware.verifyToken, 
+app.get('/api/users',
+  authMiddleware.verifyToken,
   authMiddleware.requireRole(['Principal', 'HOD', 'Accounts']),
   async (req, res) => {
     try {
@@ -371,25 +339,17 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Handle timeout errors
-  if (err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET') {
-    return res.status(408).json({
-      error: 'Request timeout',
-      message: 'The request took too long to process'
-    });
-  }
-
-  // Default error response — never leak internal details in production
+  // Default error response (more info in development)
   res.status(500).json({
     error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-    // Never include stack traces in production
+    message: err.message, // Temporarily show error message in production for debugging
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
 // ----------------- Server bootstrap -----------------
 // In serverless / test environments we export the app and let the platform
-// handle the HTTP server. 
+// handle the HTTP server.
 // IMPORTANT: In serverless, we should NOT connect to databases on module load
 // because: 1) It slows down cold starts, 2) Connections might fail and crash the function
 // Instead, connect lazily when routes are actually called (lazy initialization)

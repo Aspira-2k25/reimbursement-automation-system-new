@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
-const { addToBlacklist } = require('../utils/tokenBlacklist');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -25,7 +24,7 @@ const authController = {
 
       // Generate JWT token with short expiry
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, email: user.email, department: user.department },
+        { userId: user.id, username: user.username, role: user.role, email: user.email },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
@@ -108,28 +107,13 @@ const authController = {
       // Use staff ID if found, otherwise use email as userId for Google users
       const userId = staff?.id || email;
 
-      const department = staff?.department || null;
-      
-      // Generate JWT with shorter expiry for security
       const token = jwt.sign(
-        { userId, email, role, name, department },
+        { userId, email, role, name },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      // Set httpOnly cookie
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      return res.json({ 
-        message: 'Login successful',
-        user: { id: userId, email, name, role, department }
-        // Token NOT in response body - only in httpOnly cookie
-      });
+      return res.json({ token, user: { id: userId, email, name, role } });
     } catch (error) {
       console.error('Google login error:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -302,28 +286,11 @@ const authController = {
     }
   },
 
-  // Logout function — blacklists the token so it can't be reused
+  // Logout function (client-side token removal)
   logout: async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader && authHeader.split(' ')[1];
-
-      if (token && req.user) {
-        // Calculate remaining TTL from the JWT's exp claim
-        const now = Math.floor(Date.now() / 1000);
-        const remainingSeconds = Math.max(0, (req.user.exp || now) - now);
-        if (remainingSeconds > 0) {
-          await addToBlacklist(token, remainingSeconds);
-        }
-      }
-
-      // Clear httpOnly cookie if using cookie-based auth
-      res.clearCookie('auth_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      });
-
+      // In a real application, you might want to blacklist the token
+      // For now, we'll just return a success message
       res.json({ message: 'Logout successful' });
     } catch (error) {
       console.error('Logout error:', error);
