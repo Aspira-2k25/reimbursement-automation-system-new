@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { studentFormsAPI } from '../../services/api';
 
 const ViewEditForm = ({ mode = 'view' }) => {
   const { id } = useParams();
@@ -14,27 +15,14 @@ const ViewEditForm = ({ mode = 'view' }) => {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-        const response = await fetch(`${API_BASE_URL}/student-forms/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setFormData(data.form);
-        } else {
-          const error = await response.json();
-          toast.error(error.error || 'Failed to fetch form');
-          if (response.status === 401) {
-            navigate('/login');
-          }
-        }
+        // SECURITY: Use centralized API service with httpOnly cookies
+        const data = await studentFormsAPI.getById(id);
+        setFormData(data.form);
       } catch (error) {
-        console.error('Error fetching form:', error);
-        toast.error('Failed to fetch form. Please try again.');
+        toast.error(error.error || 'Failed to fetch form');
+        if (error.status === 401) {
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }
@@ -84,29 +72,12 @@ const ViewEditForm = ({ mode = 'view' }) => {
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem('token');
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-        const response = await fetch(`${API_BASE_URL}/student-forms/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        toast.success('Changes saved successfully!');
-        navigate('/dashboard/requests');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to update form');
-        // Re-enable button on error
-        setIsSubmitting(false);
-      }
+      // SECURITY: Use centralized API service with httpOnly cookies
+      await studentFormsAPI.updateById(id, formData);
+      toast.success('Changes saved successfully!');
+      navigate('/dashboard/requests');
     } catch (error) {
-      console.error('Error updating form:', error);
-      toast.error('Failed to update form. Please try again.');
+      toast.error(error.error || 'Failed to update form');
       // Re-enable button on error
       setIsSubmitting(false);
     }

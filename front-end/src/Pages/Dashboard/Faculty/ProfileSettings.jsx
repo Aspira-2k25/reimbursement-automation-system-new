@@ -45,8 +45,6 @@ export default function ProfileSettings() {
       
       // Show success message
       toast.success("Faculty profile updated successfully!")
-      
-      console.log("Faculty profile updated:", { name, department: dept, designation })
     } catch (error) {
       toast.error("Failed to update profile. Please try again.")
     } finally {
