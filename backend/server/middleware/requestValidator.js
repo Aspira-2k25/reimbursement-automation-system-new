@@ -33,12 +33,17 @@ const MAX_JSON_SIZE = 1024 * 1024; // 1MB
  */
 const validateInputLength = (req, res, next) => {
   // Skip for GET requests and file uploads
-  if (req.method === 'GET' || req.is('multipart/form-data')) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || req.is('multipart/form-data')) {
     return next();
   }
 
   const errors = [];
   const body = req.body;
+
+  // Guard against undefined/null body (e.g. bodyless requests)
+  if (!body || typeof body !== 'object') {
+    return next();
+  }
 
   // Check overall request size
   const contentLength = parseInt(req.headers['content-length'] || '0');
@@ -52,11 +57,11 @@ const validateInputLength = (req, res, next) => {
   // Validate each field length
   for (const [field, value] of Object.entries(body)) {
     const limit = FIELD_LENGTH_LIMITS[field];
-    
+
     if (limit && typeof value === 'string' && value.length > limit) {
       errors.push(`${field} exceeds maximum length of ${limit} characters`);
     }
-    
+
     // Check for potentially dangerous patterns
     if (typeof value === 'string') {
       // Block MongoDB operators in string values
@@ -84,14 +89,14 @@ const validateUploadSize = (maxSizeMB = 10) => {
   return (req, res, next) => {
     const contentLength = parseInt(req.headers['content-length'] || '0');
     const maxSize = maxSizeMB * 1024 * 1024;
-    
+
     if (contentLength > maxSize) {
       return res.status(413).json({
         error: 'File too large',
         message: `Upload size exceeds ${maxSizeMB}MB limit`
       });
     }
-    
+
     next();
   };
 };
@@ -105,13 +110,13 @@ const sanitizeInput = (req, res, next) => {
       if (typeof value === 'string') {
         // Trim whitespace
         req.body[key] = value.trim();
-        
+
         // Remove null bytes
         req.body[key] = req.body[key].replace(/\x00/g, '');
       }
     }
   }
-  
+
   next();
 };
 

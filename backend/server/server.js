@@ -212,6 +212,11 @@ app.get('/', (req, res) => {
   });
 });
 
+// HEAD requests for health checks (Vercel, uptime monitors)
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
+
 // Test Postgres connection - only available in development with strict authentication
 if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
   app.get('/test-db', authMiddleware.verifyToken, authMiddleware.requireRole(['Principal']), async (req, res) => {
