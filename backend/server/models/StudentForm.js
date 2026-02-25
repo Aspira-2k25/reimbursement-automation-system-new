@@ -37,4 +37,12 @@ const StudentFormSchema = new mongoose.Schema({
     ],
 }, { timestamps: true });
 
+// Indexes for query performance on commonly filtered fields
+StudentFormSchema.index({ userId: 1 });
+StudentFormSchema.index({ status: 1 });
+StudentFormSchema.index({ department: 1 });
+StudentFormSchema.index({ status: 1, department: 1 }); // Compound: HOD queries filter by both
+StudentFormSchema.index({ status: 1, rejectedBy: 1 }); // Compound: rejected queries
+StudentFormSchema.index({ updatedAt: -1 }); // Sorting by latest update
+
 module.exports = mongoose.model("StudentForm", StudentFormSchema);

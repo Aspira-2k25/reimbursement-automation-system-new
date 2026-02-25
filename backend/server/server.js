@@ -6,20 +6,58 @@ if (!process.env.VERCEL && !process.env.VERCEL_ENV && process.env.NODE_ENV !== '
   require('dotenv').config({ quiet: true }); // Suppress dotenv logs
 }
 
-// Validate critical environment variables
+// ============================================
+// Security: Validate critical environment variables
+// ============================================
 const requiredEnvVars = ['JWT_SECRET'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
   console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+}
+
+// Validate JWT secret strength
+const JWT_MIN_LENGTH = 64;
+const KNOWN_WEAK_SECRETS = [
+  'your_super_secret_jwt_key_here',
+  'secret',
+  'jwt_secret',
+  'mysecret',
+  'password',
+  '123456',
+  'change_me',
+  'your_64_character_or_longer_random_secret_here_minimum_sixty_four_chars'
+];
+
+// In development, warn but don't crash for weak secrets
+// In production, enforce strict validation
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < JWT_MIN_LENGTH) {
+    throw new Error(`JWT_SECRET must be at least ${JWT_MIN_LENGTH} characters. Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`);
+  }
+
+  if (KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
+    throw new Error('JWT_SECRET is a known weak/default value. Generate a secure random string.');
+  }
+  console.log('✅ JWT secret validation passed');
+} else {
+  // Development mode - warn but allow
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < JWT_MIN_LENGTH ||
+    KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
+    console.warn('⚠️  JWT_SECRET is weak or using default value. This is OK for development only.');
+    console.warn('   For production, generate a secure 64+ character secret.');
+  } else {
+    console.log('✅ JWT secret validation passed');
   }
 }
 
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
 
 // Database/connectors
 const connectMongoDB = require('./config/mongo');
@@ -35,89 +73,120 @@ const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user
 const upload = require('./middleware/multer');             // multer middleware (if needed)
 const authMiddleware = require('./middleware/auth');       // auth middleware for protected routes
 const securityHeaders = require('./middleware/securityHeaders'); // HTTP security headers
+const { requestContext } = require('./middleware/requestContext'); // Request ID tracking
+const { validateInputLength, sanitizeInput } = require('./middleware/requestValidator'); // Input validation
 
 const app = express();
 
-// ----------------- Security Middleware -----------------
-// Apply HTTP security headers to all requests
-app.use(securityHeaders);
+// Add request ID tracking early in the middleware chain
+app.use(requestContext);
 
-// Rate limiting for API endpoints
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs (increased from 100)
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply rate limiting to API routes (not to health checks)
-app.use('/api/', limiter);
-
-// Stricter rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
-  message: 'Too many login attempts, please try again after 15 minutes.',
-  skipSuccessfulRequests: true, // Don't count successful requests
-});
-
-// Apply auth limiter to login/register endpoints
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-
-// ----------------- Middleware -----------------
-// CORS configuration - allow frontend domain from environment variable
+// ----------------- CORS (must be first so preflight/OPTIONS gets headers) -----------------
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or Postman)
     if (!origin) return callback(null, true);
 
-    // Build list of allowed origins
     const allowedOrigins = [
-      'https://reimbursement-automation-system-new-nu.vercel.app', // Explicitly allow deployed frontend
+      'https://reimbursement-automation-system-new-nu.vercel.app',
       'http://localhost:5173',
       'http://localhost:3000',
       'http://localhost:5174',
-      'http://localhost:5000'
+      'http://localhost:5000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5000'
     ];
+    if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
-    // Add FRONTEND_URL if set
-    if (process.env.FRONTEND_URL) {
-      allowedOrigins.push(process.env.FRONTEND_URL);
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
 
-    // Check if origin is allowed
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // Allow all Vercel preview/production deployments (*.vercel.app)
-    if (origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-
-    // In development, still validate against localhost patterns
+    // In development, allow any localhost/127.0.0.1 (any port)
     if (process.env.NODE_ENV !== 'production') {
-      // Allow localhost with any port in development only
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return callback(null, true);
-      }
+      try {
+        const u = new URL(origin);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return callback(null, true);
+      } catch (_) { }
     }
 
-    // Block other origins
     console.warn(`CORS blocked origin: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
-  credentials: true,
+  credentials: true, // Important: allow cookies to be sent
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200 // significant for legacy browsers (IE11, various SmartTVs)
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token'],
+  exposedHeaders: ['X-Request-ID'], // Headers clients can access
+  optionsSuccessStatus: 200
 };
-
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Cookie parser middleware (required for httpOnly cookies)
+app.use(cookieParser());
+
+// ----------------- Response Compression -----------------
+app.use(compression());
+
+// ----------------- Security Middleware -----------------
+app.use(securityHeaders);
+
+// ============================================
+// Rate Limiting Configuration
+// ============================================
+
+// General API rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 100, // 100 requests per window
+  message: {
+    error: 'Too many requests',
+    message: 'Please try again later.',
+    retryAfter: Math.ceil((parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000) / 1000)
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/' && req.method === 'GET'
+});
+app.use('/api/', limiter);
+
+// Strict rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: {
+    error: 'Too many login attempts',
+    message: 'Please try again after 15 minutes.',
+    retryAfter: 900
+  },
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/google', authLimiter);
+
+// Form submission rate limiting
+const formSubmitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 form submissions per hour
+  message: {
+    error: 'Too many form submissions',
+    message: 'Please try again later.',
+    retryAfter: 3600
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/forms/submit', formSubmitLimiter);
+app.use('/api/student-forms/submit', formSubmitLimiter);
+
+// ----------------- Body parsing -----------------
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// Input sanitization & validation (after body parsing, before routes)
+app.use(sanitizeInput);
+app.use(validateInputLength);
 
 // Optional: serve static uploaded files (if you store locally in 'public' or 'uploads')
 // Adjust if you store in cloud (S3/Cloudinary) instead
@@ -134,73 +203,75 @@ if (fs.existsSync(publicPath)) {
 }
 
 // ----------------- Health / Basic routes -----------------
-// Health check root
+// Health check root (safe for production - no config leakage)
 app.get('/', (req, res) => {
   res.json({
     ok: true,
     service: 'backend',
-    time: new Date().toISOString(),
-    env: {
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-      hasMongoUri: !!process.env.MONGO_URI,
-      hasJwtSecret: !!process.env.JWT_SECRET,
-      nodeEnv: process.env.NODE_ENV || 'not set',
-      isVercel: !!process.env.VERCEL,
-      // Don't expose actual values, just check if they exist
-      envVarCount: Object.keys(process.env).filter(key =>
-        key.includes('DATABASE') ||
-        key.includes('MONGO') ||
-        key.includes('JWT') ||
-        key.includes('CLOUDINARY')
-      ).length
-    }
+    time: new Date().toISOString()
   });
 });
 
-// Test Postgres connection
-app.get('/test-db', async (req, res) => {
-  try {
-    const result = await dbUtils.testConnection();
-    if (result.success) {
-      res.json({
-        message: 'Postgres connected successfully!',
-        timestamp: result.timestamp
-      });
-    } else {
-      res.status(500).json({ error: 'Postgres connection failed', details: result.error });
+// Test Postgres connection - only available in development with strict authentication
+if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
+  app.get('/test-db', authMiddleware.verifyToken, authMiddleware.requireRole(['Principal']), async (req, res) => {
+    try {
+      const result = await dbUtils.testConnection();
+      if (result.success) {
+        res.json({
+          message: 'Postgres connected successfully!',
+          timestamp: result.timestamp
+        });
+      } else {
+        res.status(500).json({ error: 'Postgres connection failed', details: result.error });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Postgres connection failed', details: error.message });
     }
-  } catch (error) {
-    res.status(500).json({ error: 'Postgres connection failed', details: error.message });
-  }
-});
+  });
+}
 
-// Get all users (Postgres) - Protected route
-app.get('/api/users', authMiddleware.verifyToken, async (req, res) => {
-  try {
-    const users = await dbUtils.getAllUsers();
-    res.json({ users });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get users', details: error.message });
+// Get all users (Postgres) - Protected route, restricted to admin roles
+app.get('/api/users',
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(['Principal', 'HOD', 'Accounts']),
+  async (req, res) => {
+    try {
+      const users = await dbUtils.getAllUsers();
+      res.json({ users });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get users' });
+    }
   }
-});
-
-// Debug endpoint (Postgres)
-app.get('/api/debug/user/:moodleId', async (req, res) => {
-  try {
-    const { moodleId } = req.params;
-    const user = await dbUtils.getUserForLogin(moodleId);
-    res.json({
-      moodleId,
-      userFound: !!user,
-      user: user
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Debug failed', details: error.message });
-  }
-});
+);
 
 // ----------------- API Routes -----------------
-// Auth
+// Cache-Control middleware for read-only GET endpoints
+// Short cache to reduce redundant DB hits while keeping data fresh
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') {
+    // Cache for 60 seconds, allow stale response for 30s while revalidating
+    res.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=30');
+  } else {
+    // No caching for mutations
+    res.set('Cache-Control', 'no-store');
+  }
+  next();
+});
+
+// ============================================
+// CSRF Protection Configuration
+// ============================================
+// CSRF protection for state-changing operations
+const csrfProtection = csrf({
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+  }
+});
+
+// Auth routes (CSRF exempt for login, but protected for logout)
 app.use('/api/auth', authRoutes);
 
 // Uploads (local or specific upload route)
@@ -209,16 +280,41 @@ app.use('/api/uploads', uploadRoutes);
 // Cloudinary / user upload controller (keeps the same path used in your second file)
 app.use('/api/users', uploadRoute);
 
-// Forms (MongoDB)
-app.use('/api/forms', formRoutes);
+// Forms (MongoDB) - Apply CSRF protection to state-changing routes
+app.use('/api/forms', csrfProtection, formRoutes);
 
-// Student forms (MongoDB)
-app.use('/api/student-forms', studentFormRoutes);
+// Student forms (MongoDB) - Apply CSRF protection to state-changing routes
+app.use('/api/student-forms', csrfProtection, studentFormRoutes);
+
+// CSRF token endpoint for frontend
+app.get('/api/csrf-token', csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 // ----------------- Error handler -----------------
 // Centralized error handling (keeps the improved handling from your first version)
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  // Log error with request context for debugging (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error:', {
+      message: err.message,
+      path: req.path,
+      method: req.method,
+      requestId: req.id,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Remove potentially sensitive headers
+  res.removeHeader('X-Powered-By');
+
+  // Handle CSRF errors
+  if (err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({
+      error: 'Invalid CSRF token',
+      message: 'Form submission failed security validation. Please refresh the page and try again.'
+    });
+  }
 
   // Handle specific error types
   if (err.name === 'ValidationError') {
@@ -248,14 +344,14 @@ app.use((err, req, res, next) => {
   // Default error response (more info in development)
   res.status(500).json({
     error: 'Something went wrong!',
-    message: err.message, // Temporarily show error message in production for debugging
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
 // ----------------- Server bootstrap -----------------
 // In serverless / test environments we export the app and let the platform
-// handle the HTTP server. 
+// handle the HTTP server.
 // IMPORTANT: In serverless, we should NOT connect to databases on module load
 // because: 1) It slows down cold starts, 2) Connections might fail and crash the function
 // Instead, connect lazily when routes are actually called (lazy initialization)

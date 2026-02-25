@@ -170,26 +170,13 @@ const RequestStatus = () => {
   // Handle delete
   const handleDelete = async (item) => {
     try {
-      const token = localStorage.getItem('token')
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_BASE_URL}/forms/${item.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        toast.success('Request deleted successfully')
-        setDeleteItem(null)
-        fetchRequests() // Refresh the list
-      } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to delete request')
-      }
+      // SECURITY: Use centralized API service with httpOnly cookies
+      await facultyFormsAPI.deleteById(item.id);
+      toast.success('Request deleted successfully')
+      setDeleteItem(null)
+      fetchRequests() // Refresh the list
     } catch (error) {
-      console.error('Error deleting request:', error)
-      toast.error('Failed to delete request. Please try again.')
+      toast.error(error.error || 'Failed to delete request')
     }
   }
 
@@ -317,10 +304,19 @@ const RequestStatus = () => {
                         className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors disabled:opacity-50"
                         onClick={() => {
                           const docUrl = r.documents?.[0]?.url
-                          if (docUrl) window.open(docUrl, '_blank')
+                          // SECURITY: Validate URL before opening
+                          if (docUrl) {
+                            const isValidUrl = docUrl.startsWith('https://') || docUrl.startsWith('http://');
+                            const isTrustedDomain = docUrl.includes('cloudinary.com') || docUrl.includes('res.cloudinary.com');
+                            if (isValidUrl && isTrustedDomain) {
+                              window.open(docUrl, '_blank', 'noopener,noreferrer');
+                            } else {
+                              toast.error('Invalid document URL');
+                            }
+                          }
                         }}
                         disabled={!r.documents?.[0]?.url}
-                        title={r.documents?.[0]?.url ? 'Download Document' : 'No Document'}
+                        title={r.documents?.[0]?.url ? 'Download NPTEL Result' : 'No Document'}
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -334,17 +330,19 @@ const RequestStatus = () => {
                       </button>
                       {/* Edit */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
-                        title="Edit"
+                        title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
+                        disabled={r.status !== 'Under Principal'}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       {/* Delete */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setDeleteItem(r)}
-                        title="Delete"
+                        title={r.status !== 'Under Principal' ? 'Cannot delete — form has been acted upon' : 'Delete'}
+                        disabled={r.status !== 'Under Principal'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

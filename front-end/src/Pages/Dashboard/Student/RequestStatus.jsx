@@ -236,9 +236,9 @@ export default function RequestStatus() {
             onDelete={async (deletedId) => {
               try {
                 await studentFormsAPI.deleteById(deletedId);
+                toast.success('Form deleted successfully!');
                 await refetch();
               } catch (error) {
-                console.error('Error deleting form:', error);
                 toast.error('Failed to delete form. ' + (error.error || 'Please try again.'));
               }
             }}

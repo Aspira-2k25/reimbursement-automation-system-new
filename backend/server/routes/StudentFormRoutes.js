@@ -7,9 +7,28 @@ const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
+const { validateUploadedFiles } = require("../middleware/multer");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationServise');
 const dbUtils = require('../utils/database');
+
+// Input sanitization helpers
+const sanitizeString = (str) => {
+  if (typeof str !== 'string') return '';
+  // Remove MongoDB operators and other dangerous characters
+  return str.replace(/[${}<>]/g, '').trim();
+};
+
+const sanitizeApplicationId = (id) => {
+  if (typeof id !== 'string') return '';
+  // Only allow alphanumeric, hyphens, and underscores
+  return id.replace(/[^a-zA-Z0-9\-_]/g, '');
+};
+
+// Validate MongoDB ObjectId format
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
+};
 
 
 // POST /api/student-forms/submit
@@ -20,43 +39,40 @@ router.post(
     { name: "nptelResult", maxCount: 1 },
     { name: "idCard", maxCount: 1 },
   ]),
+  validateUploadedFiles, //<<- validate file content using magic numbers
   async (req, res) => {
     try {
-      // Log the incoming request data
-      console.log('Form submission received for user:', req.user?.email || req.user?.userId);
-
       const userId = req.user.userId || req.user.email;
 
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
 
-      // Upload received files to Cloudinary (if present)
-      // Use memory buffer (serverless) or file path (local dev)
-      let nptelResultUpload = null;
-      let idCardUpload = null;
-
+      // Upload received files to Cloudinary in parallel (if present)
+      const uploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        nptelResultUpload = await uploadFile(
-          req.files.nptelResult[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
-
       if (req.files?.idCard?.[0]) {
-        idCardUpload = await uploadFile(
-          req.files.idCard[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Student_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
+      const [nptelResultUpload, idCardUpload] = await Promise.all(uploadPromises);
 
       // Validate required fields before saving
       const requiredFields = ['name', 'studentId', 'division', 'email'];
@@ -82,8 +98,6 @@ router.post(
         department: req.body.department
       }, StudentForm);
 
-      console.log('Generated Application ID:', applicationId);
-
       const newStudentForm = new StudentForm({
         ...req.body,
         amount, // Use parsed numeric value
@@ -100,9 +114,6 @@ router.post(
             : null,
         ].filter(Boolean),
       });
-
-      console.log('Attempting to save form:', newStudentForm);
-      console.log('Form Application ID:', newStudentForm.applicationId);
 
       await newStudentForm.save();
 
@@ -268,7 +279,6 @@ router.get(
         status: "Under Principal"
       }).sort({ updatedAt: -1 });
 
-      console.log('Student forms for Principal found:', forms.length);
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching principal forms:", err);
@@ -302,7 +312,6 @@ router.get(
         ]
       }).sort({ updatedAt: -1 });
 
-      console.log('Student forms for Accounts found:', forms.length);
       return res.json({ forms });
     } catch (err) {
       console.error("Error fetching accounts forms:", err);
@@ -325,7 +334,6 @@ router.get(
 
       // Get HOD's department for filtering
       const hodDepartment = req.user.department;
-      console.log('Student Forms - HOD Department:', hodDepartment);
 
       // Build query
       let query = { status: "Under HOD" };
@@ -347,9 +355,7 @@ router.get(
         };
       }
 
-      console.log('Fetching student forms with query:', JSON.stringify(query));
       const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
-      console.log('Student forms for HOD found:', forms.length);
 
       return res.json({ forms });
     } catch (err) {
@@ -359,36 +365,96 @@ router.get(
   }
 );
 
-// GET /api/student-forms/debug - Debug endpoint to see all forms (for troubleshooting)
-router.get(
-  "/debug",
+// DEBUG ENDPOINT REMOVED - Security vulnerability
+// Previous debug endpoint exposed sensitive form data
+// If troubleshooting is needed, use proper logging and monitoring instead
+
+// POST /api/student-forms/:id/documents - upload new documents for an existing form (for edit flow)
+router.post(
+  "/:id/documents",
   authMiddleware.verifyToken,
+  upload.fields([
+    { name: "nptelResult", maxCount: 1 },
+    { name: "idCard", maxCount: 1 },
+  ]),
+  validateUploadedFiles, //<<- validate file content using magic numbers
   async (req, res) => {
     try {
+      // Sanitize the ID parameter to prevent NoSQL injection
+      const rawId = req.params.id;
+
+      // Reject IDs that contain MongoDB operators
+      if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      let form = null;
+      const sanitizedAppId = sanitizeApplicationId(rawId);
+
+      if (isValidObjectId(rawId)) {
+        form = await StudentForm.findById(rawId);
+      }
+      if (!form && sanitizedAppId) {
+        form = await StudentForm.findOne({ applicationId: sanitizedAppId });
+      }
+      if (!form) {
+        return res.status(404).json({ error: "Form not found" });
+      }
+
       const userId = req.user.userId || req.user.email || req.user.id;
+      const userRole = req.user.role?.toLowerCase();
+      const isOwner = String(form.userId) === String(userId);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
 
-      // Get all forms (limited to 10 for debugging)
-      const allForms = await StudentForm.find().limit(10).select('userId applicationId name createdAt');
+      // Only owner can update documents when form is Pending
+      if (form.status !== 'Pending' && !isAdmin) {
+        return res.status(403).json({ error: "Cannot update documents for this form status" });
+      }
 
-      // Get forms for current user
-      const userForms = await StudentForm.find({
-        $or: [
-          { userId: String(userId) },
-          { userId: userId },
-          { userId: Number(userId) }
-        ]
-      }).limit(10).select('userId applicationId name createdAt');
+      let nptelResultUpload = null;
+      let idCardUpload = null;
+      const docUploadPromises = [];
+      if (req.files?.nptelResult?.[0]) {
+        docUploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
+            folder: "reimbursement-Forms/Student_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false,
+          })
+        );
+      } else {
+        docUploadPromises.push(Promise.resolve(null));
+      }
+      if (req.files?.idCard?.[0]) {
+        docUploadPromises.push(
+          uploadFile(req.files.idCard[0], {
+            folder: "reimbursement-Forms/Student_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false,
+          })
+        );
+      } else {
+        docUploadPromises.push(Promise.resolve(null));
+      }
+      [nptelResultUpload, idCardUpload] = await Promise.all(docUploadPromises);
 
-      return res.json({
-        currentUserId: userId,
-        userObject: req.user,
-        allFormsSample: allForms,
-        userForms: userForms,
-        userFormsCount: userForms.length
-      });
+      const documents = [...(form.documents || [])];
+      if (nptelResultUpload) {
+        documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
+      }
+      if (idCardUpload) {
+        documents[1] = { url: idCardUpload.secure_url, publicId: idCardUpload.public_id };
+      }
+
+      return res.json({ documents });
     } catch (err) {
-      console.error("Error in debug endpoint:", err);
-      res.status(500).json({ error: "Debug endpoint error", details: err.message });
+      console.error("Error uploading documents for student form:", err);
+      res.status(500).json({ error: "Failed to upload documents", details: err.message });
     }
   }
 );
@@ -399,29 +465,37 @@ router.get(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first (if valid), then by applicationId
+      // Sanitize the ID parameter to prevent NoSQL injection
+      const rawId = req.params.id;
+
+      // Reject IDs that contain MongoDB operators
+      if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
       let form = null;
-      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-        form = await StudentForm.findById(req.params.id);
+      const sanitizedAppId = sanitizeApplicationId(rawId);
+
+      if (isValidObjectId(rawId)) {
+        form = await StudentForm.findById(rawId);
       }
 
       // If not found by _id, try applicationId
-      if (!form) {
-        form = await StudentForm.findOne({ applicationId: req.params.id });
+      if (!form && sanitizedAppId) {
+        form = await StudentForm.findOne({ applicationId: sanitizedAppId });
       }
 
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
       }
 
-      // Check access permissions
+      // Check access permissions (userId may be number in JWT; form.userId may be string or email)
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
-
-      // Allow access if:
-      // 1. User is the owner of the form
-      // 2. User is a coordinator, HOD, principal, or accounts (they need to view requests)
-      const isOwner = form.userId === userId;
+      const isOwner =
+        String(form.userId) === String(userId) ||
+        (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
       const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
@@ -442,15 +516,29 @@ router.put(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first (if valid), then by applicationId
+      // Sanitize the ID parameter to prevent NoSQL injection
+      const rawId = req.params.id;
+
+      // Reject IDs that contain MongoDB operators
+      if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      console.log(`[DEBUG] PUT /student-forms/${rawId}`);
+      console.log(`[DEBUG] User:`, req.user);
+      console.log(`[DEBUG] Body:`, req.body);
+
+      // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
       let form = null;
-      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-        form = await StudentForm.findById(req.params.id);
+      const sanitizedAppId = sanitizeApplicationId(rawId);
+
+      if (isValidObjectId(rawId)) {
+        form = await StudentForm.findById(rawId);
       }
 
       // If not found by _id, try applicationId
-      if (!form) {
-        form = await StudentForm.findOne({ applicationId: req.params.id });
+      if (!form && sanitizedAppId) {
+        form = await StudentForm.findOne({ applicationId: sanitizedAppId });
       }
 
       if (!form) {
@@ -461,30 +549,37 @@ router.put(
       const formId = form._id;
 
       const userId = req.user.userId || req.user.email || req.user.id;
-      const isOwner = form.userId === userId;
       const userRole = req.user.role?.toLowerCase();
+      // Match owner by userId or email (forms may store either from submit)
+      const isOwner =
+        String(form.userId) === String(userId) ||
+        (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
       const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
-        return res.status(403).json({ error: "Forbidden" });
+        return res.status(403).json({ error: "Forbidden", message: "You can only edit your own applications." });
       }
 
       // Determine allowed fields based on user role and form status
       let allowedUpdates = [];
 
-      if (isOwner && form.status === 'Pending') {
-        // Students can update their own pending forms (all editable fields)
-        allowedUpdates = [
-          'name', 'studentId', 'division', 'email', 'academicYear',
-          'amount', 'accountName', 'ifscCode', 'accountNumber',
-          'remarks', 'documents'
-        ];
-      } else if (isOwner) {
-        // Students can only update remarks for non-pending forms
-        allowedUpdates = ['remarks'];
-      }
-
-      if (userRole === 'coordinator') {
+      if (isOwner && !req.body.status) {
+        // Owners can only edit their form while status is still "Pending"
+        // (before Coordinator takes any action). Once approved/rejected, editing is locked.
+        if (form.status === 'Pending') {
+          allowedUpdates = [
+            'name', 'studentId', 'division', 'department', 'email', 'academicYear',
+            'amount', 'accountName', 'ifscCode', 'accountNumber',
+            'courseName', 'marks',
+            'remarks', 'documents', 'reimbursementType'
+          ];
+        } else {
+          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
+        }
+      } else if (isOwner && req.body.status) {
+        // Owners cannot change the status of their own forms
+        return res.status(403).json({ error: 'Cannot change the status of your own form' });
+      } else if (userRole === 'coordinator') {
         // Coordinators can approve/reject pending requests and update status to "Under HOD" or "Rejected"
         if (form.status === 'Pending') {
           allowedUpdates = ['status', 'remarks'];
@@ -543,6 +638,8 @@ router.put(
         }
       });
 
+      console.log(`[DEBUG] Updates constructed:`, updates);
+
       // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
       if (req.body.status === 'Rejected') {
         const roleMap = {
@@ -564,7 +661,10 @@ router.put(
 
       // Check if there are any updates to apply
       if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: "No valid fields to update or insufficient permissions" });
+        const hint = isOwner && form.status !== 'Pending'
+          ? "You can only edit applications that are still Pending. After submission, only remarks can be updated."
+          : "No valid fields to update or insufficient permissions.";
+        return res.status(400).json({ error: "No valid fields to update", details: hint });
       }
 
       // Update updatedAt timestamp
@@ -616,20 +716,27 @@ router.put(
         }
 
         // Create notification
-        await notificationService.createNotification({
-          userId: form.userId,
-          applicationId: form.applicationId,
-          type: notificationType,
-          title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
-          message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
-          phase: phase,
-          status: newStatus,
-          userEmail: userEmail,
-          userName: userName,
-          studentId: form.studentId,
-          amount: form.amount,
-          remarks: updates.remarks || form.remarks,
-        }, true); // Send email notification
+        try {
+          console.log('[DEBUG] Creating notification for status:', newStatus);
+          await notificationService.createNotification({
+            userId: form.userId,
+            applicationId: form.applicationId,
+            type: notificationType,
+            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            phase: phase,
+            status: newStatus,
+            userEmail: userEmail,
+            userName: userName,
+            studentId: form.studentId,
+            amount: form.amount,
+            remarks: updates.remarks || form.remarks,
+          }, true); // Send email notification
+          console.log('[DEBUG] Notification created successfully');
+        } catch (notifError) {
+          // Log but don't fail the request if notification fails
+          console.error('[ERROR] Failed to create notification:', notifError);
+        }
       }
 
       return res.json({ form: updatedForm });
@@ -646,21 +753,36 @@ router.delete(
   authMiddleware.verifyToken,
   async (req, res) => {
     try {
-      // Try to find by MongoDB _id first (if valid), then by applicationId
-      let form = null;
-      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-        form = await StudentForm.findById(req.params.id);
+      // Sanitize the ID parameter to prevent NoSQL injection
+      const rawId = req.params.id;
+
+      // Reject IDs that contain MongoDB operators
+      if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      if (!form) {
-        form = await StudentForm.findOne({ applicationId: req.params.id });
+      // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
+      let form = null;
+      const sanitizedAppId = sanitizeApplicationId(rawId);
+
+      if (isValidObjectId(rawId)) {
+        form = await StudentForm.findById(rawId);
+      }
+
+      if (!form && sanitizedAppId) {
+        form = await StudentForm.findOne({ applicationId: sanitizedAppId });
       }
       if (!form) return res.status(404).json({ error: "Form not found" });
 
-      const userId = req.user.userId || req.user.email || req.user.id;
+      const userId = String(req.user.userId || req.user.email || req.user.id);
       const userRole = req.user.role?.toLowerCase();
-      if (form.userId !== userId && !['coordinator', 'hod', 'principal'].includes(userRole)) {
-        return res.status(403).json({ error: "Forbidden" });
+      const formUserId = String(form.userId);
+
+      const isOwner = formUserId === userId;
+      const isAuthorizedRole = ['coordinator', 'hod', 'principal'].includes(userRole);
+
+      if (!isOwner && !isAuthorizedRole) {
+        return res.status(403).json({ error: "Forbidden: Not authorized to delete this form" });
       }
 
       // Delete associated files from Cloudinary

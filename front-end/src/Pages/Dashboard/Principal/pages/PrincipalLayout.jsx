@@ -74,8 +74,6 @@ const PrincipalLayout = ({ children }) => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
-      console.log('Principal Dashboard - User data:', user)
-
       // Build email: prefer stored email, otherwise construct from username
       let userEmail = user.email
       if (!userEmail && user.username) {
@@ -123,6 +121,8 @@ const PrincipalLayout = ({ children }) => {
       email: f.email,
       division: f.division,
       studentId: f.studentId,
+      facultyId: f.facultyId,
+      jobTitle: f.jobTitle,
       name: f.name,
       remarks: f.remarks,
       academicYear: f.academicYear,
@@ -171,15 +171,8 @@ const PrincipalLayout = ({ children }) => {
       // Map backend data to dashboard format
       const mappedRequests = allForms.map(mapFormToRequest)
 
-      console.log('Fetched Principal requests - Total:', mappedRequests.length)
-      console.log('By status:', {
-        'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
-        'Approved': mappedRequests.filter(r => r.status === 'Approved').length
-      })
-
       setAllRequests(mappedRequests)
     } catch (error) {
-      console.error('Error fetching Principal requests:', error)
       toast.error(error?.error || 'Failed to fetch requests')
       setAllRequests([])
     } finally {
