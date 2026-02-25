@@ -13,7 +13,7 @@ router.get(
       const { limit, unreadOnly } = req.query;
 
       const notifications = await notificationService.getUserNotifications(userId, {
-        limit: limit ? parseInt(limit) : 50,
+        limit: Math.min(Math.max(parseInt(limit) || 50, 1), 100),
         unreadOnly: unreadOnly === 'true',
       });
 

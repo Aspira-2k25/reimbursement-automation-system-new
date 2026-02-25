@@ -31,7 +31,7 @@ const securityHeaders = (req, res, next) => {
     // For production, consider using CSP hashes or moving styles to external files
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+        "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: https: blob:",

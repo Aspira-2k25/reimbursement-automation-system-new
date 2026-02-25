@@ -23,14 +23,14 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       // Fetch CSRF token for security
       await fetchCsrfToken();
-      
+
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
       }
       setLoading(false);
     };
-    
+
     initAuth();
   }, []);
 
@@ -58,6 +58,9 @@ export const AuthProvider = ({ children }) => {
       // Store only user data (token is in httpOnly cookie)
       localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
+
+      // Refresh CSRF token after login since session changed
+      await fetchCsrfToken();
 
       return data;
     } catch (error) {

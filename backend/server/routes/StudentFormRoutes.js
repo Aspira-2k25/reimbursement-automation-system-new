@@ -382,7 +382,7 @@ router.post(
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
-      
+
       // Reject IDs that contain MongoDB operators
       if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
         return res.status(400).json({ error: "Invalid ID format" });
@@ -390,7 +390,7 @@ router.post(
 
       let form = null;
       const sanitizedAppId = sanitizeApplicationId(rawId);
-      
+
       if (isValidObjectId(rawId)) {
         form = await StudentForm.findById(rawId);
       }
@@ -467,7 +467,7 @@ router.get(
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
-      
+
       // Reject IDs that contain MongoDB operators
       if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
         return res.status(400).json({ error: "Invalid ID format" });
@@ -476,7 +476,7 @@ router.get(
       // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
       let form = null;
       const sanitizedAppId = sanitizeApplicationId(rawId);
-      
+
       if (isValidObjectId(rawId)) {
         form = await StudentForm.findById(rawId);
       }
@@ -518,7 +518,7 @@ router.put(
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
-      
+
       // Reject IDs that contain MongoDB operators
       if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
         return res.status(400).json({ error: "Invalid ID format" });
@@ -527,11 +527,11 @@ router.put(
       console.log(`[DEBUG] PUT /student-forms/${rawId}`);
       console.log(`[DEBUG] User:`, req.user);
       console.log(`[DEBUG] Body:`, req.body);
-      
+
       // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
       let form = null;
       const sanitizedAppId = sanitizeApplicationId(rawId);
-      
+
       if (isValidObjectId(rawId)) {
         form = await StudentForm.findById(rawId);
       }
@@ -755,7 +755,7 @@ router.delete(
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
-      
+
       // Reject IDs that contain MongoDB operators
       if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
         return res.status(400).json({ error: "Invalid ID format" });
@@ -764,7 +764,7 @@ router.delete(
       // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
       let form = null;
       const sanitizedAppId = sanitizeApplicationId(rawId);
-      
+
       if (isValidObjectId(rawId)) {
         form = await StudentForm.findById(rawId);
       }
@@ -777,10 +777,10 @@ router.delete(
       const userId = String(req.user.userId || req.user.email || req.user.id);
       const userRole = req.user.role?.toLowerCase();
       const formUserId = String(form.userId);
-      
+
       const isOwner = formUserId === userId;
       const isAuthorizedRole = ['coordinator', 'hod', 'principal'].includes(userRole);
-      
+
       if (!isOwner && !isAuthorizedRole) {
         return res.status(403).json({ error: "Forbidden: Not authorized to delete this form" });
       }
