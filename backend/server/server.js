@@ -78,6 +78,10 @@ const { validateInputLength, sanitizeInput } = require('./middleware/requestVali
 
 const app = express();
 
+// Trust first proxy (required for Render, Railway, Heroku, etc.)
+// This ensures express-rate-limit and secure cookies work correctly behind reverse proxies
+app.set('trust proxy', 1);
+
 // Add request ID tracking early in the middleware chain
 app.use(requestContext);
 
@@ -272,7 +276,7 @@ const csrfProtection = csrf({
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   }
 });
 
