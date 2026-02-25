@@ -1,11 +1,10 @@
 const multer = require('multer');
-const fileType = require('file-type');
 
 // Use memory storage for serverless environments (Vercel, AWS Lambda, etc.)
 // Disk storage doesn't work because filesystem is read-only
 const storage = multer.memoryStorage();
 
-// Magic numbers for file type validation
+// Magic numbers for file type validation (fallback when file-type library unavailable)
 const FILE_SIGNATURES = {
   'image/jpeg': ['ffd8ff'],
   'image/png': ['89504e47'],
@@ -14,7 +13,7 @@ const FILE_SIGNATURES = {
 
 // File type validation - only allow images and PDFs
 // Validates both MIME type and file content (magic numbers)
-const fileFilter = async (req, file, cb) => {
+const fileFilter = (req, file, cb) => {
   try {
     const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
@@ -48,26 +47,42 @@ const fileFilter = async (req, file, cb) => {
 };
 
 // Validate file content using magic numbers
+// file-type v21+ is ESM-only, so we use dynamic import
 const validateFileContent = async (buffer, expectedMimeType) => {
   try {
-    // Use file-type library to detect actual file type
-    const type = await fileType.fromBuffer(buffer);
+    // Try using file-type library via dynamic import (ESM-only in v17+)
+    try {
+      const fileType = await import('file-type');
+      const type = await fileType.fileTypeFromBuffer(buffer);
 
-    if (!type) {
-      return { valid: false, error: 'Could not determine file type' };
+      if (!type) {
+        return { valid: false, error: 'Could not determine file type' };
+      }
+
+      if (type.mime !== expectedMimeType) {
+        return {
+          valid: false,
+          error: `File content (${type.mime}) does not match expected type (${expectedMimeType})`
+        };
+      }
+
+      return { valid: true };
+    } catch (importError) {
+      // Fallback: validate using magic numbers if file-type library fails
+      console.warn('file-type library unavailable, using magic number fallback:', importError.message);
+      const signatures = FILE_SIGNATURES[expectedMimeType];
+      if (!signatures) {
+        return { valid: false, error: `Unknown MIME type: ${expectedMimeType}` };
+      }
+
+      const header = buffer.slice(0, 4).toString('hex');
+      const matches = signatures.some(sig => header.startsWith(sig));
+      if (!matches) {
+        return { valid: false, error: 'File content does not match expected type (magic number check)' };
+      }
+
+      return { valid: true };
     }
-
-    // Map file-type results to MIME types
-    const detectedMime = type.mime;
-
-    if (detectedMime !== expectedMimeType) {
-      return {
-        valid: false,
-        error: `File content (${detectedMime}) does not match expected type (${expectedMimeType})`
-      };
-    }
-
-    return { valid: true };
   } catch (error) {
     return { valid: false, error: 'File content validation failed' };
   }
@@ -80,7 +95,7 @@ const MAX_TOTAL_SIZE = 1 * 1024 * 1024; // 1MB total for all files
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: MAX_FILE_SIZE // 1MB per file
   },
   fileFilter: fileFilter
 });

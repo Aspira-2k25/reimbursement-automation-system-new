@@ -38,13 +38,11 @@ export default function ProfileSettings() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Update profile in context
+      // Update profile in context (persists to localStorage)
       updateProfile({
         name: name,
-        department: dept
+        department: dept,
+        nameCustomized: true // Flag to preserve custom name across re-logins
       })
 
       // Show success message

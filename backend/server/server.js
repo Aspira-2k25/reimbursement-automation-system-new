@@ -43,7 +43,7 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   // Development mode - warn but allow
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < JWT_MIN_LENGTH ||
-      KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
+    KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
     console.warn('⚠️  JWT_SECRET is weak or using default value. This is OK for development only.');
     console.warn('   For production, generate a secure 64+ character secret.');
   } else {
@@ -100,7 +100,6 @@ const corsOptions = {
     if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
 
     // In development, allow any localhost/127.0.0.1 (any port)
     if (process.env.NODE_ENV !== 'production') {
@@ -115,7 +114,7 @@ const corsOptions = {
   },
   credentials: true, // Important: allow cookies to be sent
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token'],
   exposedHeaders: ['X-Request-ID'], // Headers clients can access
   optionsSuccessStatus: 200
 };
@@ -164,7 +163,6 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/google', authLimiter);
 
 // Form submission rate limiting
@@ -183,8 +181,12 @@ app.use('/api/forms/submit', formSubmitLimiter);
 app.use('/api/student-forms/submit', formSubmitLimiter);
 
 // ----------------- Body parsing -----------------
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// Input sanitization & validation (after body parsing, before routes)
+app.use(sanitizeInput);
+app.use(validateInputLength);
 
 // Optional: serve static uploaded files (if you store locally in 'public' or 'uploads')
 // Adjust if you store in cloud (S3/Cloudinary) instead
@@ -265,7 +267,7 @@ const csrfProtection = csrf({
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
   }
 });
 
@@ -342,7 +344,7 @@ app.use((err, req, res, next) => {
   // Default error response (more info in development)
   res.status(500).json({
     error: 'Something went wrong!',
-    message: err.message, // Temporarily show error message in production for debugging
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
