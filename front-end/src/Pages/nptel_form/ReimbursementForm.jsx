@@ -1,15 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 1 * 1024 * 1024; // 1MB
+
+  if (!file) return { valid: true };
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 1MB' };
+  }
+
+  return { valid: true };
+};
 
 const ReimbursementForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    id: '',
+    facultyId: '',
     jobTitle: '',
     email: '',
     amount: '',
@@ -24,6 +51,10 @@ const ReimbursementForm = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // SECURITY: Use refs for file inputs instead of direct DOM access
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -34,9 +65,9 @@ const ReimbursementForm = () => {
       newErrors.name = 'Name must be at least 2 characters long';
     }
 
-    // ID validation
-    if (!formData.id.trim()) {
-      newErrors.id = 'ID is required';
+    // Faculty ID validation
+    if (!formData.facultyId.trim()) {
+      newErrors.facultyId = 'Faculty ID is required';
     }
 
     // Job Title validation
@@ -112,13 +143,28 @@ const ReimbursementForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  //handle input change
+  //handle input change - SECURITY: Sanitize inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // SECURITY: Sanitize text inputs
+    let sanitizedValue = value;
+    if (name !== 'amount' && name !== 'marks') {
+      sanitizedValue = sanitizeInput(value);
+    }
+
     //for amount field
     if (name === "amount") {
-      if (value === "" || (value > 0 && value <= 1500)) {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else if (name === "marks") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -127,11 +173,11 @@ const ReimbursementForm = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: sanitizedValue,
       });
     }
 
-    //clear errors when user sttarts typing
+    //clear errors when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -144,10 +190,10 @@ const ReimbursementForm = () => {
   //handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Prevent duplicate submissions
     if (isSubmitting) return;
-    
+
     if (!validateForm()) return;
 
     // Disable button immediately
@@ -156,9 +202,9 @@ const ReimbursementForm = () => {
     try {
       const formDataToSend = new FormData();
 
-      //append all text fields
+      //append all text fields - SECURITY: Sanitize before sending
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key]);
+        formDataToSend.append(key, sanitizeInput(formData[key]));
       });
 
       // Set applicantType based on user role
@@ -170,21 +216,38 @@ const ReimbursementForm = () => {
         formDataToSend.append('department', user.department);
       }
 
-      //append files
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-      if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
 
-      //get jwt tocken from login
-      const token = localStorage.getItem("token");
+      // SECURITY: Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
+      }
+
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
+
+      // SECURITY: Token is now in httpOnly cookie, no need to manually add
+      // The browser will automatically send the cookie with credentials: 'include'
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
       const res = await fetch(`${API_BASE_URL}/forms/submit`, {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,  // add tocken for authorization
-        },
+        credentials: 'include', // SECURITY: Include cookies for authentication
         body: formDataToSend,
       });
 
@@ -272,26 +335,26 @@ const ReimbursementForm = () => {
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
 
-              {/* ID Field */}
+              {/* Faculty ID Field */}
               <div>
-                <label htmlFor="id" className="block text-sm font-medium text-gray-700 mb-1">
-                  ID *
+                <label htmlFor="facultyId" className="block text-sm font-medium text-gray-700 mb-1">
+                  Faculty ID *
                 </label>
                 <input
                   type="text"
-                  id="id"
-                  name="id"
-                  value={formData.id}
+                  id="facultyId"
+                  name="facultyId"
+                  value={formData.facultyId}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.id
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.facultyId
                     ? 'border-red-500'
-                    : formData.id.trim()
+                    : formData.facultyId.trim()
                       ? 'border-teal-500 bg-teal-50'
                       : 'border-gray-300'
                     }`}
                 />
-                {errors.id && <p className="text-red-500 text-xs mt-1">{errors.id}</p>}
+                {errors.facultyId && <p className="text-red-500 text-xs mt-1">{errors.facultyId}</p>}
               </div>
 
               <div>
@@ -305,7 +368,7 @@ const ReimbursementForm = () => {
                   value={formData.jobTitle}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.id ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.jobTitle ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
                 {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
@@ -370,6 +433,7 @@ const ReimbursementForm = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   min="1"
                   max="1500"
                   step="1"
@@ -493,6 +557,7 @@ const ReimbursementForm = () => {
               name="marks"
               value={formData.marks}
               onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
               min="0"
               max="100"
               step="0.01"
@@ -529,14 +594,26 @@ const ReimbursementForm = () => {
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
+                  ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`NPTEL Result: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
 
@@ -552,14 +629,26 @@ const ReimbursementForm = () => {
                   type="file"
                   id="idCard"
                   name="idCard"
+                  ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`Faculty ID Card: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
             </div>
@@ -571,8 +660,8 @@ const ReimbursementForm = () => {
               type="submit"
               disabled={isSubmitting}
               className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
-                ${isSubmitting 
-                  ? 'bg-teal-400 cursor-not-allowed text-white' 
+                ${isSubmitting
+                  ? 'bg-teal-400 cursor-not-allowed text-white'
                   : 'bg-teal-600 hover:bg-teal-700 text-white'
                 }`}
             >

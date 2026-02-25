@@ -4,14 +4,20 @@
  * No external dependencies required
  */
 
+const crypto = require('crypto');
+
 const securityHeaders = (req, res, next) => {
+    // Generate nonce for this request
+    const nonce = crypto.randomBytes(16).toString('base64');
+    res.locals.nonce = nonce;
+
     // Prevent clickjacking - disallow embedding in iframes
     res.setHeader('X-Frame-Options', 'DENY');
 
     // Prevent MIME type sniffing
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
-    // Enable XSS filter in browsers
+    // Enable XSS filter in browsers (legacy, CSP is primary defense)
     res.setHeader('X-XSS-Protection', '1; mode=block');
 
     // Control referrer information sent with requests
@@ -20,22 +26,33 @@ const securityHeaders = (req, res, next) => {
     // Restrict permissions/features the browser can use
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
-    // Content Security Policy - allows your app to work while blocking common attacks
+    // Content Security Policy with nonce-based script execution
+    // Note: 'unsafe-inline' is removed for scripts, kept for styles (needed by some UI libs)
+    // For production, consider using CSP hashes or moving styles to external files
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+        "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: https: blob:",
         "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://*.vercel.app http://localhost:*",
         "frame-src https://accounts.google.com",
         "object-src 'none'",
-        "base-uri 'self'"
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "upgrade-insecure-requests"
     ].join('; '));
+
+    // Additional security headers
+    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
     // Force HTTPS in production (Strict Transport Security)
     if (process.env.NODE_ENV === 'production') {
-        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
 
     next();

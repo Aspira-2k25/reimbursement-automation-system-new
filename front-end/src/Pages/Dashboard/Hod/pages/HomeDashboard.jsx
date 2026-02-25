@@ -50,10 +50,10 @@ const HomeDashboard = () => {
 
       let data
       // Use Faculty API for Faculty/Coordinator, Student API for Students
-      if (request.applicantType === 'Faculty' || request.applicantType === 'Coordinator') {
-        data = await facultyFormsAPI.getById(formId)
-      } else {
+      if (request.applicantType === 'Student') {
         data = await studentFormsAPI.getById(formId)
+      } else {
+        data = await facultyFormsAPI.getById(formId)
       }
 
       const formData = data?.form || data
@@ -469,9 +469,9 @@ const HomeDashboard = () => {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">
-                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Student ID' : 'Employee ID'}
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Student ID' : 'Faculty ID'}
                       </label>
-                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.facultyId || requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Course Name</label>
@@ -533,20 +533,39 @@ const HomeDashboard = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-2 block">Documents</label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {requestDetails.documents.map((doc, index) => (
-                          <a
-                            key={index}
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                          >
-                            <FileText className="w-5 h-5 text-green-600" />
-                            <span className="text-sm text-green-600 hover:underline">
-                              Document {index + 1}
-                            </span>
-                          </a>
-                        ))}
+                        {requestDetails.documents.map((doc, index) => {
+                          // SECURITY: Validate URL before rendering to prevent XSS
+                          const isValidUrl = doc.url && (
+                            doc.url.startsWith('https://') || 
+                            doc.url.startsWith('http://')
+                          );
+                          
+                          // Only allow Cloudinary URLs (trusted domain)
+                          const isTrustedDomain = doc.url && (
+                            doc.url.includes('cloudinary.com') ||
+                            doc.url.includes('res.cloudinary.com')
+                          );
+                          
+                          if (!isValidUrl || !isTrustedDomain) {
+                            console.warn('Blocked potentially unsafe document URL:', doc.url);
+                            return null;
+                          }
+                          
+                          return (
+                            <a
+                              key={index}
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              <FileText className="w-5 h-5 text-green-600" />
+                              <span className="text-sm text-green-600 hover:underline">
+                                {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
+                              </span>
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

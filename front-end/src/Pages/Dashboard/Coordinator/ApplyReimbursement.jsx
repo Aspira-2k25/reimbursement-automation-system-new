@@ -212,7 +212,6 @@ export default function ApplyReimbursement() {
 
       setRequests(mappedRequests)
     } catch (error) {
-      console.error('Error fetching requests:', error)
       toast.error(error?.error || 'Failed to fetch your requests')
       setRequests([])
     } finally {
@@ -244,7 +243,6 @@ export default function ApplyReimbursement() {
       setDeleteItem(null)
       fetchRequests() // Refresh the list
     } catch (error) {
-      console.error('Error deleting request:', error)
       toast.error(error?.error || 'Failed to delete request')
     }
   }, [deleteItem, fetchRequests])
@@ -427,10 +425,19 @@ export default function ApplyReimbursement() {
                               className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors disabled:opacity-50"
                               onClick={() => {
                                 const docUrl = r.documents?.[0]?.url
-                                if (docUrl) window.open(docUrl, '_blank')
+                                // SECURITY: Validate URL before opening
+                                if (docUrl) {
+                                  const isValidUrl = docUrl.startsWith('https://') || docUrl.startsWith('http://');
+                                  const isTrustedDomain = docUrl.includes('cloudinary.com') || docUrl.includes('res.cloudinary.com');
+                                  if (isValidUrl && isTrustedDomain) {
+                                    window.open(docUrl, '_blank', 'noopener,noreferrer');
+                                  } else {
+                                    toast.error('Invalid document URL');
+                                  }
+                                }
                               }}
                               disabled={!r.documents?.[0]?.url}
-                              title={r.documents?.[0]?.url ? "Download Document" : "No Document"}
+                              title={r.documents?.[0]?.url ? "Download NPTEL Result" : "No Document"}
                             >
                               <Download className="h-4 w-4 text-slate-600" />
                             </button>
@@ -444,17 +451,19 @@ export default function ApplyReimbursement() {
                             </button>
                             {/* Edit button */}
                             <button
-                              className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
-                              title="Edit"
+                              title={r.status !== 'Under HOD' ? 'Editing locked — form has been acted upon' : 'Edit'}
+                              disabled={r.status !== 'Under HOD'}
                             >
                               <Pencil className="h-4 w-4 text-slate-600" />
                             </button>
                             {/* Delete button */}
                             <button
-                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => setDeleteItem(r)}
-                              title="Delete"
+                              title={r.status !== 'Under HOD' ? 'Cannot delete — form has been acted upon' : 'Delete'}
+                              disabled={r.status !== 'Under HOD'}
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </button>

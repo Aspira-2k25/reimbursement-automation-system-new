@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { fetchCsrfToken } from '../services/api';
 
 // Use env var for API URL - same as api.js
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -15,35 +16,34 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Check if user is logged in on app start
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const initAuth = async () => {
+      // Fetch CSRF token for security
+      await fetchCsrfToken();
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+      setLoading(false);
+    };
 
-    setLoading(false);
+    initAuth();
   }, []);
 
   // Login function
   const login = async (username, email, password) => {
     try {
-      // Debug: Log API URL in development
-      if (import.meta.env.DEV) {
-        console.log('🔍 Login API URL:', `${API_BASE_URL}/auth/login`);
-      }
 
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Important: include cookies
         body: JSON.stringify({ username, email, password }),
       });
 
@@ -55,22 +55,17 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
 
-      // Store token and user data
-      localStorage.setItem('token', data.token);
+      // Store only user data (token is in httpOnly cookie)
       localStorage.setItem('user', JSON.stringify(data.user));
-
-      setToken(data.token);
       setUser(data.user);
+
+      // Refresh CSRF token after login since session changed
+      await fetchCsrfToken();
 
       return data;
     } catch (error) {
       // Enhanced error handling
       if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-        console.error('❌ Network Error:', {
-          apiUrl: `${API_BASE_URL}/auth/login`,
-          error: 'Cannot reach backend server. Check VITE_API_BASE_URL environment variable.',
-          hint: 'Make sure VITE_API_BASE_URL is set in Vercel environment variables'
-        });
         throw new Error('Cannot connect to server. Please check your internet connection and try again.');
       }
       throw error;
@@ -78,24 +73,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-  };
+  const logout = useCallback(async () => {
+    try {
+      // Call backend logout to clear httpOnly cookie
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Silently handle logout errors - user is logged out locally anyway
+    } finally {
+      // Clear local storage
+      localStorage.removeItem('user');
+      setUser(null);
+    }
+  }, []);
 
   // Google login function
   const loginWithGoogle = async (credential) => {
     try {
-      // Debug: Log API URL in development
-      if (import.meta.env.DEV) {
-        console.log('🔍 Google Login API URL:', `${API_BASE_URL}/auth/google`);
-      }
-
       const response = await fetch(`${API_BASE_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Important: include cookies
         body: JSON.stringify({ credential })
       });
 
@@ -105,19 +105,13 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.token);
+      // Store only user data (token is in httpOnly cookie)
       localStorage.setItem('user', JSON.stringify(data.user));
-      setToken(data.token);
       setUser(data.user);
       return data;
     } catch (error) {
       // Enhanced error handling
       if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-        console.error('❌ Network Error:', {
-          apiUrl: `${API_BASE_URL}/auth/google`,
-          error: 'Cannot reach backend server. Check VITE_API_BASE_URL environment variable.',
-          hint: 'Make sure VITE_API_BASE_URL is set in Vercel environment variables'
-        });
         throw new Error('Cannot connect to server. Please check your internet connection and try again.');
       }
       throw error;
@@ -125,13 +119,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Check if user is authenticated
-  const isAuthenticated = () => {
-    return !!token && !!user;
-  };
+  const isAuthenticated = useCallback(() => {
+    return !!user;
+  }, [user]);
 
   const value = {
     user,
-    token,
     loading,
     login,
     loginWithGoogle,

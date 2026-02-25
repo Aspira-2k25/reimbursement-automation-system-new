@@ -3,9 +3,32 @@ const router = express.Router();
 const Form = require("../models/Form");
 const authMiddleware = require("../middleware/auth");
 const upload = require("../middleware/multer");  // <-- multer setup
+const { validateUploadedFiles } = require("../middleware/multer");  // <-- file content validation
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const notificationService = require('../utils/notificationServise');
+const dbUtils = require('../utils/database');
+const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
+
+// Input sanitization helpers
+const sanitizeString = (str) => {
+  if (typeof str !== 'string') return '';
+  // Remove MongoDB operators and other dangerous characters
+  return str.replace(/[${}<>]/g, '').trim();
+};
+
+const sanitizeApplicationId = (id) => {
+  if (typeof id !== 'string') return '';
+  // Only allow alphanumeric, hyphens, and underscores
+  return id.replace(/[^a-zA-Z0-9\-_]/g, '');
+};
+
+// Validate MongoDB ObjectId format
+const isValidObjectId = (id) => {
+  const mongoose = require('mongoose');
+  return mongoose.Types.ObjectId.isValid(id);
+};
 
 // POST /api/forms/submit
 router.post(
@@ -15,18 +38,15 @@ router.post(
     { name: "nptelResult", maxCount: 1 },
     { name: "idCard", maxCount: 1 }
   ]), //<<- multer handles file upload
+  validateUploadedFiles, //<<- validate file content using magic numbers
 
   async (req, res) => {
     try {
       let userId = req.user.userId; // <-- get the logged-in user's ID from JWT
 
-      // Debug logging
-      console.log('User from JWT (ID):', userId);
-
       // Fallback: if userId is null, use email as userId (for old JWT tokens)
       if (!userId && req.user.email) {
         userId = req.user.email;
-        console.log('Using email as fallback userId:', userId);
       }
 
       // Validate userId is present
@@ -34,51 +54,45 @@ router.post(
         return res.status(400).json({ error: 'User ID not found in token' });
       }
 
-      // Upload received files to Cloudinary (if present)
-      // Use memory buffer (serverless) or file path (local dev)
-      let nptelResultUpload = null;
-      let idCardUpload = null;
-
+      // Upload received files to Cloudinary in parallel (if present)
+      const uploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        nptelResultUpload = await uploadFile(
-          req.files.nptelResult[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
-
       if (req.files?.idCard?.[0]) {
-        idCardUpload = await uploadFile(
-          req.files.idCard[0],
-          {
+        uploadPromises.push(
+          uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Faculty_Form",
             resource_type: "image",
             use_filename: true,
             unique_filename: false
-          }
+          })
         );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
       }
+      const [nptelResultUpload, idCardUpload] = await Promise.all(uploadPromises);
 
       // Determine initial status based on applicant type
       // HOD applications go directly to Principal (skip HOD review)
       let initialStatus = "Under HOD"; // Default for Faculty/Coordinator
-      const applicantType = req.body.applicantType || 'Faculty';
-
-      console.log('=== FORM SUBMISSION DEBUG ===');
-      console.log('Applicant Type:', applicantType);
-      console.log('User Role from JWT:', req.user.role);
+      const rawApplicantType = req.body.applicantType || 'Faculty';
+      // Normalize applicantType to match enum: Faculty, Coordinator, HOD
+      const applicantTypeMap = { 'faculty': 'Faculty', 'coordinator': 'Coordinator', 'hod': 'HOD' };
+      const applicantType = applicantTypeMap[rawApplicantType.toLowerCase()] || 'Faculty';
 
       if (applicantType === 'HOD') {
         initialStatus = "Under Principal"; // HOD forms bypass HOD review
-        console.log('HOD detected! Setting status to Under Principal');
-      } else {
-        console.log('Not HOD. Status will be:', initialStatus);
       }
-      console.log('Final status being set:', initialStatus);
 
       // Generate meaningful application ID
       // Format: F-NPT-2026-IT-001 (Faculty NPTEL 2026 IT Dept Sequence 1)
@@ -89,7 +103,7 @@ router.post(
         department: req.body.department || req.user.department
       }, Form);
 
-      console.log('Generated Application ID:', applicationId);
+
 
       // Parse numeric fields
       const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
@@ -101,6 +115,7 @@ router.post(
         marks, // Use parsed numeric value
         applicationId, // Use generated ID
         userId, // attach it to the form
+        applicantType, // Use normalized value (overrides req.body.applicantType)
         status: initialStatus, // Set based on applicant type (this should override model default)
         documents: [
           nptelResultUpload
@@ -113,10 +128,26 @@ router.post(
       });
 
       await newForm.save();
-      console.log('Form saved with status:', newForm.status);
-      console.log('Form saved with applicantType:', newForm.applicantType);
-      console.log('Form saved with applicationId:', newForm.applicationId);
-      console.log('============================');
+
+      // Send email notification for submission
+      try {
+        await notificationService.createNotification({
+          userId: userId,
+          applicationId: newForm.applicationId,
+          type: 'submission',
+          title: 'Application Submitted',
+          message: `Your reimbursement application ${newForm.applicationId} has been submitted successfully.`,
+          phase: applicantType,
+          status: initialStatus,
+          userEmail: req.body.email || req.user.email,
+          userName: req.body.name,
+          amount: req.body.amount,
+        }, true); // Send email notification
+      } catch (notifErr) {
+        console.error('Error sending submission notification:', notifErr);
+        // Don't fail the form submission if notification fails
+      }
+
       res.status(201).json({ message: "Form saved successfully!", form: newForm });
     } catch (err) {
       console.error("Error saving form:", err);
@@ -124,7 +155,7 @@ router.post(
     }
   });
 
-// GET /api/forms/mine - Get all forms for logged-in user
+// GET /api/forms/mine - Get all forms for logged-in user (paginated)
 router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
   try {
     let userId = req.user.userId;
@@ -137,8 +168,21 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'User ID not found' });
     }
 
-    const forms = await Form.find({ userId }).sort({ createdAt: -1 });
-    res.json(forms);
+    // Parse pagination parameters
+    const pagination = parsePaginationParams(req.query, { defaultLimit: 20, maxLimit: 100 });
+    
+    // Execute paginated query
+    const result = await paginateQuery(
+      Form,
+      { userId: String(userId) },
+      { sort: { createdAt: -1 } },
+      pagination
+    );
+
+    res.json({
+      forms: result.data,
+      pagination: result.pagination
+    });
   } catch (err) {
     console.error("Error fetching user forms:", err);
     res.status(500).json({ error: "Error retrieving forms" });
@@ -157,7 +201,6 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
 
     // Get HOD's department for filtering
     const hodDepartment = req.user.department;
-    console.log('HOD Department:', hodDepartment);
 
     // Build query: status "Under HOD" OR no status (old forms)
     let query = {
@@ -184,9 +227,7 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
       delete query.$or;
     }
 
-    console.log('Fetching faculty forms with query:', JSON.stringify(query));
     const forms = await Form.find(query).sort({ updatedAt: -1 });
-    console.log('HOD Faculty forms found:', forms.length);
 
     return res.json({ forms });
   } catch (err) {
@@ -199,13 +240,37 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
 router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
   try {
     const userRole = req.user.role?.toLowerCase();
+    const userDepartment = req.user.department;
+    const userId = req.user.userId || req.user.email;
+
     if (!['hod', 'principal', 'coordinator', 'faculty'].includes(userRole)) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const forms = await Form.find({
-      status: { $in: ["Under Principal", "Approved"] }
-    }).sort({ updatedAt: -1 });
+    let query = { status: { $in: ["Under Principal", "Approved"] } };
+
+    // Faculty/Coordinator: only see their own forms
+    if (['faculty', 'coordinator'].includes(userRole)) {
+      query.userId = String(userId);
+    }
+    // HOD: only see forms from their department
+    else if (userRole === 'hod' && userDepartment) {
+      query.$and = [
+        { status: { $in: ["Under Principal", "Approved"] } },
+        {
+          $or: [
+            { department: userDepartment },
+            { department: { $exists: false } },
+            { department: null },
+            { department: "" }
+          ]
+        }
+      ];
+      delete query.status; // Remove duplicate
+    }
+    // Principal: sees all (no additional filter)
+
+    const forms = await Form.find(query).sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -266,8 +331,6 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
     const forms = await Form.find({
       status: "Under Principal"
     }).sort({ updatedAt: -1 });
-
-    console.log('Faculty forms for Principal found:', forms.length);
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching principal forms:", err);
@@ -296,8 +359,6 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
         { status: "Rejected", rejectedBy: "Accounts" }
       ]
     }).sort({ updatedAt: -1 });
-
-    console.log('Faculty forms for Accounts found:', forms.length);
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching accounts forms:", err);
@@ -310,12 +371,26 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
     const mongoose = require('mongoose');
 
-    // Try to find by applicationId first, then by MongoDB _id
-    let form = await Form.findOne({ applicationId: req.params.id });
+    // Sanitize the ID parameter to prevent NoSQL injection
+    const rawId = req.params.id;
+    
+    // Reject IDs that contain MongoDB operators
+    if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+      return res.status(400).json({ error: "Invalid ID format" });
+    }
+
+    // Try to find by applicationId first (sanitized), then by MongoDB _id
+    const sanitizedAppId = sanitizeApplicationId(rawId);
+    let form = null;
+    
+    if (sanitizedAppId) {
+      form = await Form.findOne({ applicationId: sanitizedAppId });
+    }
+    
     if (!form) {
       // Only try findById if it's a valid ObjectId format
-      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-        form = await Form.findById(req.params.id);
+      if (isValidObjectId(rawId)) {
+        form = await Form.findById(rawId);
       }
     }
     if (!form) {
@@ -326,9 +401,9 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     const formUserId = form.userId;
     const userRole = req.user.role?.toLowerCase();
 
-    // Allow access if: owner OR HOD/Principal/Accounts (they can view all forms)
+    // Allow access if: owner OR Coordinator/HOD/Principal/Accounts (they can view all forms)
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
+    const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
@@ -348,12 +423,27 @@ router.put(
     { name: "nptelResult", maxCount: 1 },
     { name: "idCard", maxCount: 1 }
   ]),
+  validateUploadedFiles, //<<- validate file content using magic numbers
   async (req, res) => {
     try {
-      // Try to find by applicationId first, then by MongoDB _id
-      let form = await Form.findOne({ applicationId: req.params.id });
-      if (!form) {
-        form = await Form.findById(req.params.id);
+      // Sanitize the ID parameter to prevent NoSQL injection
+      const rawId = req.params.id;
+      
+      // Reject IDs that contain MongoDB operators
+      if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      // Try to find by applicationId first (sanitized), then by MongoDB _id
+      const sanitizedAppId = sanitizeApplicationId(rawId);
+      let form = null;
+      
+      if (sanitizedAppId) {
+        form = await Form.findOne({ applicationId: sanitizedAppId });
+      }
+      
+      if (!form && isValidObjectId(rawId)) {
+        form = await Form.findById(rawId);
       }
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
@@ -365,48 +455,49 @@ router.put(
 
       // Allow update if: owner OR HOD/Principal/Accounts (they can update status)
       const isOwner = String(formUserId) === String(tokenUserId);
-      const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
+      const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAuthorizedRole) {
         return res.status(403).json({ error: "Not authorized to edit this form" });
       }
 
-      // Upload new files if provided
-      // Use memory buffer (serverless) or file path (local dev)
-      let nptelResultUpload = null;
-      let idCardUpload = null;
-
+      // Upload new files if provided (parallel with old file cleanup)
+      const updateUploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
-        // Delete old file from Cloudinary if exists
-        if (form.documents?.[0]?.publicId) {
-          await cloudinary.uploader.destroy(form.documents[0].publicId);
-        }
-        nptelResultUpload = await uploadFile(
-          req.files.nptelResult[0],
-          {
-            folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false
-          }
+        updateUploadPromises.push(
+          (async () => {
+            if (form.documents?.[0]?.publicId) {
+              await cloudinary.uploader.destroy(form.documents[0].publicId);
+            }
+            return uploadFile(req.files.nptelResult[0], {
+              folder: "reimbursement-Forms/Faculty_Form",
+              resource_type: "image",
+              use_filename: true,
+              unique_filename: false
+            });
+          })()
         );
+      } else {
+        updateUploadPromises.push(Promise.resolve(null));
       }
-
       if (req.files?.idCard?.[0]) {
-        // Delete old file from Cloudinary if exists
-        if (form.documents?.[1]?.publicId) {
-          await cloudinary.uploader.destroy(form.documents[1].publicId);
-        }
-        idCardUpload = await uploadFile(
-          req.files.idCard[0],
-          {
-            folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false
-          }
+        updateUploadPromises.push(
+          (async () => {
+            if (form.documents?.[1]?.publicId) {
+              await cloudinary.uploader.destroy(form.documents[1].publicId);
+            }
+            return uploadFile(req.files.idCard[0], {
+              folder: "reimbursement-Forms/Faculty_Form",
+              resource_type: "image",
+              use_filename: true,
+              unique_filename: false
+            });
+          })()
         );
+      } else {
+        updateUploadPromises.push(Promise.resolve(null));
       }
+      const [nptelResultUpload, idCardUpload] = await Promise.all(updateUploadPromises);
 
       // Determine allowed updates based on user role and form status
       // Faculty/Coordinator/HOD (owners) can only edit their own pending/under-review forms
@@ -415,51 +506,53 @@ router.put(
       let allowedUpdates = [];
       let statusValidation = null;
 
-      if (isOwner) {
-        // Owners can update form details only if status allows it
-        if (['Under HOD', 'Under Principal'].includes(form.status)) {
-          // Form is under review - owner can only update remarks
-          allowedUpdates = ['remark'];
-        } else if (form.status === 'Pending') {
-          // Should not happen for faculty forms (they start at Under HOD), but handle it
-          allowedUpdates = ['name', 'email', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'remark'];
-        }
-        // Owners cannot change status of their own forms
-      }
-
-      if (userRole === 'hod') {
-        // HOD can approve/reject "Under HOD" forms (not their own)
-        if (form.status === 'Under HOD' && !isOwner) {
-          allowedUpdates = ['status', 'remark'];
-          statusValidation = ['Under Principal', 'Rejected'];
-        } else if (form.status === 'Under HOD' && isOwner) {
-          // HOD's own form is Under HOD - they can't approve their own form
-          // This shouldn't happen since HOD forms go directly to Principal
-          return res.status(403).json({ error: 'Cannot modify your own form while under review' });
-        }
-      }
-
-      if (userRole === 'principal') {
-        // Principal can approve/reject "Under Principal" forms
-        if (form.status === 'Under Principal') {
-          allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
-          statusValidation = ['Approved', 'Rejected'];
+      if (isOwner && !req.body.status) {
+        // Owners can update form details ONLY while the form is at its initial status
+        // (i.e., before the first approver has taken any action).
+        // Faculty/Coordinator forms start at "Under HOD", HOD forms start at "Under Principal".
+        const initialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
+        if (form.status === initialStatus) {
+          allowedUpdates = ['name', 'email', 'facultyId', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
         } else {
-          return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
+          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
         }
-      }
-
-      if (userRole === 'accounts') {
-        // Accounts can mark approved forms as reimbursed or rejected
-        if (form.status === 'Approved') {
-          allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
-          statusValidation = ['Reimbursed', 'Rejected'];
-        } else if (form.status === 'Reimbursed') {
-          return res.status(400).json({ error: 'This form has already been reimbursed' });
-        } else if (form.status === 'Disbursed') {
-          return res.status(400).json({ error: 'This form has already been processed' });
-        } else {
-          return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+      } else if (isOwner && req.body.status) {
+        // Owners cannot change the status of their own forms
+        return res.status(403).json({ error: 'Cannot change the status of your own form' });
+      } else if (!isOwner) {
+        // Non-owner authorized roles can only change status (approve/reject/reimburse)
+        if (userRole === 'coordinator') {
+          if (form.status === 'Under HOD') {
+            allowedUpdates = ['status', 'remark'];
+            statusValidation = ['Under Principal', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'Coordinator can only approve/reject forms with status "Under HOD"' });
+          }
+        } else if (userRole === 'hod') {
+          if (form.status === 'Under HOD') {
+            allowedUpdates = ['status', 'remark'];
+            statusValidation = ['Under Principal', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'HOD can only approve/reject forms with status "Under HOD"' });
+          }
+        } else if (userRole === 'principal') {
+          if (form.status === 'Under Principal') {
+            allowedUpdates = ['status', 'remark', 'reviewedBy', 'reviewedAt'];
+            statusValidation = ['Approved', 'Rejected'];
+          } else {
+            return res.status(403).json({ error: 'Principal can only approve/reject forms with status "Under Principal"' });
+          }
+        } else if (userRole === 'accounts') {
+          if (form.status === 'Approved') {
+            allowedUpdates = ['status', 'accountsComments', 'accountsRemarks'];
+            statusValidation = ['Reimbursed', 'Rejected'];
+          } else if (form.status === 'Reimbursed') {
+            return res.status(400).json({ error: 'This form has already been reimbursed' });
+          } else if (form.status === 'Disbursed') {
+            return res.status(400).json({ error: 'This form has already been processed' });
+          } else {
+            return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
+          }
         }
       }
 
@@ -480,8 +573,9 @@ router.put(
         }
       });
 
-      // Handle document updates for owners
-      if (isOwner && form.status === 'Pending') {
+      // Handle document updates for owners (only at initial status)
+      const editableInitialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
+      if (isOwner && form.status === editableInitialStatus) {
         if (nptelResultUpload) {
           updates.documents = updates.documents || [...(form.documents || [])];
           updates.documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
@@ -522,6 +616,66 @@ router.put(
         { new: true, runValidators: true }
       );
 
+      // Send email notification for status changes
+      if (updates.status && updates.status !== form.status) {
+        try {
+          const newStatus = updates.status;
+
+          // Determine phase based on who made the change
+          let phase = '';
+          if (userRole === 'hod') {
+            phase = 'HOD';
+          } else if (userRole === 'principal') {
+            phase = 'Principal';
+          } else if (userRole === 'accounts') {
+            phase = 'Accounts';
+          }
+
+          // Determine notification type
+          let notificationType = 'status_change';
+          if (newStatus === 'Rejected') {
+            notificationType = 'rejection';
+          } else if (['Under Principal', 'Approved'].includes(newStatus)) {
+            notificationType = 'approval';
+          }
+
+          // Get user email from form or lookup
+          let userEmail = form.email;
+          let userName = form.name;
+
+          // Try to get email from database if userId is numeric
+          try {
+            if (form.userId && !isNaN(form.userId)) {
+              const staffUser = await dbUtils.getStaffProfile(form.userId);
+              if (staffUser && staffUser.email) {
+                userEmail = staffUser.email;
+                userName = staffUser.name || userName;
+              }
+            }
+          } catch (dbError) {
+            console.error('Error fetching user details:', dbError);
+          }
+
+          // Create notification
+          await notificationService.createNotification({
+            userId: form.userId,
+            applicationId: form.applicationId,
+            type: notificationType,
+            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            phase: phase,
+            status: newStatus,
+            userEmail: userEmail,
+            userName: userName,
+            amount: form.amount,
+            remarks: updates.remark || form.remark,
+          }, true); // Send email notification
+        } catch (notifErr) {
+          console.error('Error sending status notification:', notifErr);
+          // Don't fail the update if notification fails
+        }
+      }
+
       res.json({ message: "Form updated successfully!", form: updatedForm });
     } catch (err) {
       console.error("Error updating form:", err);
@@ -533,10 +687,24 @@ router.put(
 // DELETE /api/forms/:id - Delete a form
 router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
-    // Try to find by applicationId first, then by MongoDB _id
-    let form = await Form.findOne({ applicationId: req.params.id });
-    if (!form) {
-      form = await Form.findById(req.params.id);
+    // Sanitize the ID parameter to prevent NoSQL injection
+    const rawId = req.params.id;
+    
+    // Reject IDs that contain MongoDB operators
+    if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
+      return res.status(400).json({ error: "Invalid ID format" });
+    }
+
+    // Try to find by applicationId first (sanitized), then by MongoDB _id
+    const sanitizedAppId = sanitizeApplicationId(rawId);
+    let form = null;
+    
+    if (sanitizedAppId) {
+      form = await Form.findOne({ applicationId: sanitizedAppId });
+    }
+    
+    if (!form && isValidObjectId(rawId)) {
+      form = await Form.findById(rawId);
     }
     if (!form) {
       return res.status(404).json({ error: "Form not found" });

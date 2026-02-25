@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { getCsrfToken } from '../../services/api';
 
 // Department options
 const DEPARTMENTS = [
@@ -12,6 +13,33 @@ const DEPARTMENTS = [
   "Civil Engineering",
   "Mechanical Engineering"
 ];
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 1 * 1024 * 1024; // 1MB
+
+  if (!file) return { valid: true };
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 1MB' };
+  }
+
+  return { valid: true };
+};
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
@@ -32,6 +60,8 @@ const StudentNptelForm = () => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
 
   const validateForm = () => {
     const newErrors = {};
@@ -118,8 +148,23 @@ const StudentNptelForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // SECURITY: Sanitize text inputs
+    let sanitizedValue = value;
+    if (name !== 'amount' && name !== 'marks') {
+      sanitizedValue = sanitizeInput(value);
+    }
+
     if (name === "amount") {
-      if (value === "" || (value > 0 && value <= 1500)) {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else if (name === "marks") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -128,7 +173,7 @@ const StudentNptelForm = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: sanitizedValue,
       });
     }
 
@@ -142,10 +187,10 @@ const StudentNptelForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Prevent duplicate submissions
     if (isSubmitting) return;
-    
+
     if (!validateForm()) return;
 
     // Disable button immediately
@@ -153,31 +198,53 @@ const StudentNptelForm = () => {
 
     try {
       const formDataToSend = new FormData();
+
+      // SECURITY: Sanitize all text fields before sending
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key]);
+        formDataToSend.append(key, sanitizeInput(formData[key]));
       });
 
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-      if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
+
+      // Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
+      }
+
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
 
       formDataToSend.append("reimbursementType", "NPTEL");
-      const token = localStorage.getItem("token");
+
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
+      // SECURITY: Use httpOnly cookies instead of localStorage token
+      const csrfToken = getCsrfToken();
       const res = await fetch(`${API_BASE_URL}/student-forms/submit`, {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-        },
+        credentials: 'include', // Important: include cookies for auth
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
         body: formDataToSend,
       });
 
       const data = await res.json();
       if (res.ok) {
         toast.success("Application submitted successfully! Your request is now under review.");
-        console.log(data);
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
       } else {
@@ -186,7 +253,6 @@ const StudentNptelForm = () => {
         setIsSubmitting(false);
       }
     } catch (err) {
-      console.error("Error submitting form:", err);
       toast.error("Form submission failed. Please try again.");
       // Re-enable button on error so user can retry
       setIsSubmitting(false);
@@ -355,6 +421,7 @@ const StudentNptelForm = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   min="1"
                   max="1500"
                   step="1"
@@ -473,6 +540,7 @@ const StudentNptelForm = () => {
               name="marks"
               value={formData.marks}
               onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
               min="0"
               max="100"
               step="0.01"
@@ -503,14 +571,26 @@ const StudentNptelForm = () => {
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
+                  ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`NPTEL Result: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
                              file:bg-teal-50 file:text-teal-700
                              hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 1MB</p>
               </div>
 
               <div>
@@ -521,14 +601,26 @@ const StudentNptelForm = () => {
                   type="file"
                   id="idCard"
                   name="idCard"
+                  ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`Student ID Card: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
                              file:bg-teal-50 file:text-teal-700
                              hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 1MB</p>
               </div>
             </div>
           </div>
@@ -538,8 +630,8 @@ const StudentNptelForm = () => {
               type="submit"
               disabled={isSubmitting}
               className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
-                ${isSubmitting 
-                  ? 'bg-teal-400 cursor-not-allowed text-white' 
+                ${isSubmitting
+                  ? 'bg-teal-400 cursor-not-allowed text-white'
                   : 'bg-teal-600 hover:bg-teal-700 text-white'
                 }`}
             >

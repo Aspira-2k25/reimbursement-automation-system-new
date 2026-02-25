@@ -1,5 +1,11 @@
 const nodemailer = require('nodemailer');
+const he = require('he'); // HTML entity encoder for XSS prevention
 
+// HTML sanitization helper
+const sanitizeHtml = (str) => {
+  if (str === null || str === undefined) return '';
+  return he.encode(String(str));
+};
 
 //create transporter
 
@@ -14,7 +20,9 @@ const createTransporter = () => {
       pass: pass,
     },
     tls: {
-      rejectUnauthorized: false // Helps in some environments
+      // Always reject unauthorized certificates in production
+      // Only allow insecure connections in development for testing
+      rejectUnauthorized: process.env.NODE_ENV !== 'development'
     }
   });
 };
@@ -23,7 +31,7 @@ const createTransporter = () => {
 
 const emailTemplates = {
   approved: (formData, phase) => ({
-    subject: `Reimbursement Application Approved - ${formData.applicationId}`,
+    subject: `Reimbursement Application Approved - ${sanitizeHtml(formData.applicationId)}`,
     html: `
         <!DOCTYPE html>
         <html>
@@ -45,15 +53,15 @@ const emailTemplates = {
           <h2>Application Approved</h2>
           </div>
           <div class="content">
-            <p>Dear ${formData.name},</p>
-            <p>Your reimbursement application has been <span class="status-badge">APPROVED</span> at the ${phase} phase.</p>
+            <p>Dear ${sanitizeHtml(formData.name)},</p>
+            <p>Your reimbursement application has been <span class="status-badge">APPROVED</span> at the ${sanitizeHtml(phase)} phase.</p>
             
             <div class="details">
-              <div class="detail-row"><strong>Application ID:</strong> ${formData.applicationId}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${formData.studentId}</div>
-              <div class="detail-row"><strong>Amount:</strong> ₹${formData.amount || 'N/A'}</div>
-              <div class="detail-row"><strong>Current Status:</strong> ${formData.status}</div>
-              ${formData.remarks ? `<div class="detail-row"><strong>Remarks:</strong> ${formData.remarks}</div>` : ''}
+              <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
+              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
+              <div class="detail-row"><strong>Current Status:</strong> ${sanitizeHtml(formData.status)}</div>
+              ${formData.remarks ? `<div class="detail-row"><strong>Remarks:</strong> ${sanitizeHtml(formData.remarks)}</div>` : ''}
             </div>
             
             <p>Your application will proceed to the next phase of review.</p>
@@ -70,7 +78,7 @@ const emailTemplates = {
   }),
 
   rejected: (formData, phase, remarks) => ({
-    subject: `Reimbursement Application Rejected - ${formData.applicationId}`,
+    subject: `Reimbursement Application Rejected - ${sanitizeHtml(formData.applicationId)}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -93,20 +101,20 @@ const emailTemplates = {
             <h2>Application Rejected</h2>
           </div>
           <div class="content">
-            <p>Dear ${formData.name},</p>
-            <p>We regret to inform you that your reimbursement application has been <span class="status-badge">REJECTED</span> at the ${phase} phase.</p>
+            <p>Dear ${sanitizeHtml(formData.name)},</p>
+            <p>We regret to inform you that your reimbursement application has been <span class="status-badge">REJECTED</span> at the ${sanitizeHtml(phase)} phase.</p>
             
             <div class="details">
-              <div class="detail-row"><strong>Application ID:</strong> ${formData.applicationId}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${formData.studentId}</div>
-              <div class="detail-row"><strong>Amount:</strong> ₹${formData.amount || 'N/A'}</div>
-              <div class="detail-row"><strong>Status:</strong> ${formData.status}</div>
+              <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
+              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
+              <div class="detail-row"><strong>Status:</strong> ${sanitizeHtml(formData.status)}</div>
             </div>
             
             ${remarks ? `
               <div class="remarks-box">
                 <strong>Reason for Rejection:</strong>
-                <p>${remarks}</p>
+                <p>${sanitizeHtml(remarks)}</p>
               </div>
             ` : ''}
             <p>If you have any questions or concerns, please contact your coordinator.</p>
@@ -123,7 +131,7 @@ const emailTemplates = {
   }),
 
   submission: (formData) => ({
-    subject: `Reimbursement Application Submitted - ${formData.applicationId}`,
+    subject: `Reimbursement Application Submitted - ${sanitizeHtml(formData.applicationId)}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -145,13 +153,13 @@ const emailTemplates = {
             <h2>Application Submitted</h2>
           </div>
           <div class="content">
-            <p>Dear ${formData.name},</p>
+            <p>Dear ${sanitizeHtml(formData.name)},</p>
             <p>Your reimbursement application has been <span class="status-badge">SUBMITTED</span> successfully.</p>
             
             <div class="details">
-              <div class="detail-row"><strong>Application ID:</strong> ${formData.applicationId}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${formData.studentId}</div>
-              <div class="detail-row"><strong>Amount:</strong> ₹${formData.amount || 'N/A'}</div>
+              <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
+              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Status:</strong> Pending</div>
             </div>
             
