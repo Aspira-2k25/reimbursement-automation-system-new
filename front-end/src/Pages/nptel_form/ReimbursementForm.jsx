@@ -17,17 +17,17 @@ const sanitizeInput = (input) => {
 const validateFile = (file) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
   const maxSize = 1 * 1024 * 1024; // 1MB
-  
+
   if (!file) return { valid: true };
-  
+
   if (!allowedTypes.includes(file.type)) {
     return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
   }
-  
+
   if (file.size > maxSize) {
     return { valid: false, error: 'File size must be less than 1MB' };
   }
-  
+
   return { valid: true };
 };
 
@@ -50,7 +50,7 @@ const ReimbursementForm = () => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // SECURITY: Use refs for file inputs instead of direct DOM access
   const nptelFileRef = useRef(null);
   const idCardFileRef = useRef(null);
@@ -146,7 +146,7 @@ const ReimbursementForm = () => {
   //handle input change - SECURITY: Sanitize inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // SECURITY: Sanitize text inputs
     let sanitizedValue = value;
     if (name !== 'amount' && name !== 'marks') {
@@ -219,7 +219,7 @@ const ReimbursementForm = () => {
       // SECURITY: Use refs instead of direct DOM access
       const nptelFile = nptelFileRef.current?.files[0];
       const idCardFile = idCardFileRef.current?.files[0];
-      
+
       // SECURITY: Validate files before appending
       if (nptelFile) {
         const validation = validateFile(nptelFile);
@@ -230,7 +230,7 @@ const ReimbursementForm = () => {
         }
         formDataToSend.append("nptelResult", nptelFile);
       }
-      
+
       if (idCardFile) {
         const validation = validateFile(idCardFile);
         if (!validation.valid) {
@@ -597,12 +597,23 @@ const ReimbursementForm = () => {
                   ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`NPTEL Result: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
 
@@ -621,12 +632,23 @@ const ReimbursementForm = () => {
                   ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`Faculty ID Card: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
             </div>

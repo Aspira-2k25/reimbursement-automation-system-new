@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
+const { addToBlacklist } = require('../utils/tokenBlacklist');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -24,16 +25,19 @@ const authController = {
 
       // Generate JWT token with short expiry
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, email: user.email },
+        { userId: user.id, username: user.username, role: user.role, email: user.email, department: user.department },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
       // Set httpOnly cookie for security
+      // sameSite: 'lax' is required for cross-origin requests between different ports
+      // (e.g., frontend on :5173 and backend on :5000 in development)
+      // 'strict' blocks cookies on all cross-origin requests, causing 401 errors
       res.cookie('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: 15 * 60 * 1000 // 15 minutes
       });
 
@@ -108,12 +112,20 @@ const authController = {
       const userId = staff?.id || email;
 
       const token = jwt.sign(
-        { userId, email, role, name },
+        { userId, email, role, name, department: staff?.department || null },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      return res.json({ token, user: { id: userId, email, name, role } });
+      // Set httpOnly cookie for security (consistent with regular login)
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+
+      return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
     } catch (error) {
       console.error('Google login error:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -200,7 +212,7 @@ const authController = {
       res.cookie('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours for new registrations
       });
 
@@ -286,11 +298,31 @@ const authController = {
     }
   },
 
-  // Logout function (client-side token removal)
+  // Logout function — blacklist the token so it can't be reused
   logout: async (req, res) => {
     try {
-      // In a real application, you might want to blacklist the token
-      // For now, we'll just return a success message
+      // Extract the raw token from the Authorization header or httpOnly cookie
+      const authHeader = req.headers.authorization;
+      const token = (authHeader && authHeader.split(' ')[1]) || (req.cookies && req.cookies.auth_token);
+
+      if (token) {
+        // Decode to find expiry so we only store until it naturally expires
+        const decoded = jwt.decode(token);
+        if (decoded && decoded.exp) {
+          const remainingTTL = decoded.exp - Math.floor(Date.now() / 1000);
+          if (remainingTTL > 0) {
+            await addToBlacklist(token, remainingTTL);
+          }
+        }
+      }
+
+      // Clear the httpOnly cookie as well
+      res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      });
+
       res.json({ message: 'Logout successful' });
     } catch (error) {
       console.error('Logout error:', error);

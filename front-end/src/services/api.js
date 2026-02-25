@@ -43,12 +43,12 @@ api.interceptors.request.use(
   (config) => {
     // Add request timestamp for debugging
     config.metadata = { startTime: new Date().getTime() };
-    
+
     // Add CSRF token for state-changing operations
     if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase())) {
       config.headers['X-CSRF-Token'] = csrfToken;
     }
-    
+
     return config;
   },
   (error) => {
@@ -66,12 +66,12 @@ api.interceptors.response.use(
   },
   async (error) => {
     const config = error.config;
-    
+
     // Handle timeout errors
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
       return Promise.reject({ error: 'Request timed out. Please try again.' });
     }
-    
+
     // Handle 401 Unauthorized - clear user data and redirect
     if (error.response?.status === 401) {
       // Clear user data
@@ -82,33 +82,49 @@ api.interceptors.response.use(
       }
       return Promise.reject({ error: 'Session expired. Please login again.' });
     }
-    
+
     // Handle 403 Forbidden
     if (error.response?.status === 403) {
-      return Promise.reject({ error: 'You do not have permission to perform this action.' });
+      const errorData = error.response?.data;
+
+      // If CSRF token is invalid, refresh it and retry the request once
+      if (errorData?.error === 'Invalid CSRF token' && !config.__csrfRetried) {
+        config.__csrfRetried = true;
+        try {
+          await fetchCsrfToken();
+          // Update the header with the new token
+          config.headers['X-CSRF-Token'] = csrfToken;
+          return api(config);
+        } catch {
+          return Promise.reject({ error: 'Session expired. Please refresh the page and try again.' });
+        }
+      }
+
+      // Preserve the original error message from the backend
+      return Promise.reject(errorData || { error: 'You do not have permission to perform this action.' });
     }
-    
+
     // Handle 429 Rate Limit
     if (error.response?.status === 429) {
       return Promise.reject({ error: 'Too many requests. Please wait a moment.' });
     }
-    
+
     // Retry logic for network errors (but not for 4xx client errors)
     if (!error.response && config && !config.__retryCount) {
       config.__retryCount = config.__retryCount || 0;
-      
+
       if (config.__retryCount < MAX_RETRIES) {
         config.__retryCount += 1;
         await sleep(RETRY_DELAY * config.__retryCount);
         return api(config);
       }
     }
-    
+
     // Better error handling for network errors
     if (!error.response) {
       return Promise.reject({ error: 'Network error. Please check your connection.' });
     }
-    
+
     return Promise.reject(error);
   }
 );

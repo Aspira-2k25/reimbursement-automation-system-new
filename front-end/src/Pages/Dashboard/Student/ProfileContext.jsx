@@ -54,9 +54,15 @@ export function ProfileProvider({ children }) {
         const savedDept = prev.departmentSet ? prev.department : (user.department || "")
         const isDeptSet = prev.departmentSet || (user.department && user.department !== "")
 
+        // If user previously customized their name, keep it
+        // Otherwise use the Google/auth name
+        const savedName = prev.nameCustomized
+          ? prev.name
+          : (user.name || user.username || prev.name || "User")
+
         return {
           ...prev,
-          name: user.name || user.username || prev.name || "User",
+          name: savedName,
           department: savedDept,
           role: user.role || prev.role || "Student",
           email: user.email || null,
@@ -70,13 +76,15 @@ export function ProfileProvider({ children }) {
   useEffect(() => {
     try {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({
+        name: profile.name,
+        nameCustomized: profile.nameCustomized || false,
         department: profile.department,
         departmentSet: profile.departmentSet
       }))
     } catch {
       // Silently handle localStorage errors
     }
-  }, [profile.department, profile.departmentSet])
+  }, [profile.name, profile.nameCustomized, profile.department, profile.departmentSet])
 
   /**
    * Update profile information

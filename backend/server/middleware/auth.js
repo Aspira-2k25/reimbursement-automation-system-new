@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { isBlacklisted } = require('../utils/tokenBlacklist');
 
 // Extract token from Authorization header or httpOnly cookie
 const extractToken = (req) => {
@@ -21,19 +22,7 @@ const extractToken = (req) => {
 
 const authMiddleware = {
   // Verify JWT token
-  verifyToken: (req, res, next) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Access token required' });
-    }
-
-    const token = authHeader.split(' ')[1]; // Bearer TOKEN
-
-    if (!token) {
-      return res.status(401).json({ error: 'Invalid token format' });
-    }
-
+  verifyToken: async (req, res, next) => {
     try {
       const token = extractToken(req);
 
@@ -107,19 +96,7 @@ const authMiddleware = {
   },
 
   // Optional authentication (doesn't fail if no token)
-  optionalAuth: (req, res, next) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-      return next(); // Continue without authentication
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    if (!token) {
-      return next(); // Continue without authentication
-    }
-
+  optionalAuth: async (req, res, next) => {
     try {
       const token = extractToken(req);
 
