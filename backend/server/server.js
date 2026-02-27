@@ -79,42 +79,56 @@ const { validateInputLength, sanitizeInput } = require('./middleware/requestVali
 const app = express();
 
 // Trust proxies (required for Render, Railway, Heroku, etc.)
-// 'true' trusts all proxies in the chain — needed because Render uses multiple proxy layers
-// This ensures express-rate-limit and secure cookies work correctly behind reverse proxies
-app.set('trust proxy', true);
+// Use '1' to trust exactly one reverse proxy hop (Render's load balancer),
+// which keeps IP-based rate limiting safe while still honoring X-Forwarded-For.
+app.set('trust proxy', 1);
 
 // Add request ID tracking early in the middleware chain
 app.use(requestContext);
 
 // ----------------- CORS (must be first so preflight/OPTIONS gets headers) -----------------
+const isProd = process.env.NODE_ENV === 'production';
+
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, health checks)
     if (!origin) return callback(null, true);
 
-    // Allow ANY .vercel.app deployment (preview & production URLs)
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    const allowedOrigins = [];
 
-    const allowedOrigins = [
-      'https://reimbursement-automation-system-new-nu.vercel.app',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:5174',
-      'http://localhost:5000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5174',
-      'http://127.0.0.1:5000'
-    ];
-    if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
+    // Canonical production frontend (Render <-> Vercel)
+    if (process.env.FRONTEND_URL) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
+    }
+    if (process.env.FRONTEND_URL_PREVIEW) {
+      allowedOrigins.push(process.env.FRONTEND_URL_PREVIEW);
+    }
 
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Local development origins
+    if (!isProd) {
+      allowedOrigins.push(
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:5174',
+        'http://localhost:5000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5000'
+      );
+    }
 
-    // In development, allow any localhost/127.0.0.1 (any port)
-    if (process.env.NODE_ENV !== 'production') {
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // In non-production, allow any localhost/127.0.0.1 (any port) as a safety net
+    if (!isProd) {
       try {
         const u = new URL(origin);
-        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return callback(null, true);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          return callback(null, true);
+        }
       } catch (_) { }
     }
 
@@ -127,6 +141,8 @@ const corsOptions = {
   exposedHeaders: ['X-Request-ID'], // Headers clients can access
   optionsSuccessStatus: 200
 };
+
+// Apply CORS to all routes (Express 5 + cors handles OPTIONS internally)
 app.use(cors(corsOptions));
 
 // Cookie parser middleware (required for httpOnly cookies)
@@ -144,18 +160,17 @@ app.use(securityHeaders);
 
 // General API rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100, // 100 requests per window
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100, // 100 requests per window
   message: {
     error: 'Too many requests',
     message: 'Please try again later.',
-    retryAfter: Math.ceil((parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000) / 1000)
+    retryAfter: Math.ceil((parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000) / 1000)
   },
   standardHeaders: true,
   legacyHeaders: false,
   // Skip rate limiting for health checks
-  skip: (req) => req.path === '/' && req.method === 'GET',
-  validate: { xForwardedForHeader: false } // trust proxy handles this
+  skip: (req) => req.path === '/' && req.method === 'GET'
 });
 app.use('/api/', limiter);
 
@@ -170,8 +185,7 @@ const authLimiter = rateLimit({
   },
   skipSuccessfulRequests: true,
   standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false }
+  legacyHeaders: false
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/google', authLimiter);
@@ -186,8 +200,7 @@ const formSubmitLimiter = rateLimit({
     retryAfter: 3600
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false }
+  legacyHeaders: false
 });
 app.use('/api/forms/submit', formSubmitLimiter);
 app.use('/api/student-forms/submit', formSubmitLimiter);
