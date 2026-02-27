@@ -524,9 +524,7 @@ router.put(
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      console.log(`[DEBUG] PUT /student-forms/${rawId}`);
-      console.log(`[DEBUG] User:`, req.user);
-      console.log(`[DEBUG] Body:`, req.body);
+
 
       // Try to find by MongoDB _id first (if valid), then by applicationId (sanitized)
       let form = null;
@@ -638,7 +636,7 @@ router.put(
         }
       });
 
-      console.log(`[DEBUG] Updates constructed:`, updates);
+
 
       // WORKFLOW: When rejecting, set rejectedBy to track which level rejected
       if (req.body.status === 'Rejected') {
@@ -717,7 +715,7 @@ router.put(
 
         // Create notification
         try {
-          console.log('[DEBUG] Creating notification for status:', newStatus);
+
           await notificationService.createNotification({
             userId: form.userId,
             applicationId: form.applicationId,
@@ -732,7 +730,7 @@ router.put(
             amount: form.amount,
             remarks: updates.remarks || form.remarks,
           }, true); // Send email notification
-          console.log('[DEBUG] Notification created successfully');
+
         } catch (notifError) {
           // Log but don't fail the request if notification fails
           console.error('[ERROR] Failed to create notification:', notifError);
