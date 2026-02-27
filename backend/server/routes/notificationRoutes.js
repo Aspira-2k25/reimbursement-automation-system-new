@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/auth');
 const notificationService = require('../utils/notificationServise');
 
@@ -48,6 +49,12 @@ router.put(
   async (req, res) => {
     try {
       const userId = req.user.userId || req.user.email || req.user.id;
+
+      // Validate ObjectId format
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid notification ID format' });
+      }
+
       const notification = await notificationService.markAsRead(req.params.id, userId);
 
       if (!notification) {
