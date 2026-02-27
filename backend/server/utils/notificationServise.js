@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const emailService = require('./emailService');
+const he = require('he');
 
 // Create notification and send email
 const createNotification = async (notificationData, sendEmailNotification = true) => {
@@ -69,7 +70,7 @@ const createNotification = async (notificationData, sendEmailNotification = true
           emailResult = await emailService.sendEmail(
             notificationData.userEmail,
             notificationData.title || `Application Update: ${notificationData.applicationId}`,
-            `<p>Dear ${notificationData.userName || 'User'},</p><p>${notificationData.message}</p><p>Status: ${notificationData.status}</p>`
+            `<p>Dear ${he.encode(notificationData.userName || 'User')},</p><p>${he.encode(notificationData.message || '')}</p><p>Status: ${he.encode(notificationData.status || '')}</p>`
           );
         }
 

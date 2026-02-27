@@ -9,20 +9,20 @@ const mongoose = require('mongoose');
 
 // Token Blacklist Schema
 const TokenBlacklistSchema = new mongoose.Schema({
-  token: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    index: true 
-  },
-  expiresAt: { 
-    type: Date, 
+  token: {
+    type: String,
     required: true,
-    index: true 
+    unique: true,
+    index: true
   },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  expiresAt: {
+    type: Date,
+    required: true
+    // index is created by the TTL index below (line 30), not here
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
@@ -41,15 +41,15 @@ async function addToBlacklist(token, expiresInSeconds) {
     // Hash the token for storage (don't store raw tokens)
     const crypto = require('crypto');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    
+
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
-    
+
     await TokenBlacklist.findOneAndUpdate(
       { token: tokenHash },
       { token: tokenHash, expiresAt },
       { upsert: true, new: true }
     );
-    
+
     return true;
   } catch (error) {
     console.error('Error adding token to blacklist:', error);
@@ -68,18 +68,18 @@ async function isBlacklisted(token) {
     // Hash the token for lookup
     const crypto = require('crypto');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    
+
     const entry = await TokenBlacklist.findOne({ token: tokenHash });
-    
+
     if (!entry) return false;
-    
+
     // Check if expired
     if (entry.expiresAt <= new Date()) {
       // Document will be auto-deleted by TTL, but clean up now
       await TokenBlacklist.deleteOne({ token: tokenHash });
       return false;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error checking token blacklist:', error);
@@ -105,8 +105,8 @@ async function cleanupExpiredTokens() {
   }
 }
 
-module.exports = { 
-  addToBlacklist, 
+module.exports = {
+  addToBlacklist,
   isBlacklisted,
   cleanupExpiredTokens,
   TokenBlacklist

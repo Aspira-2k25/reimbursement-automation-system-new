@@ -78,9 +78,10 @@ const { validateInputLength, sanitizeInput } = require('./middleware/requestVali
 
 const app = express();
 
-// Trust first proxy (required for Render, Railway, Heroku, etc.)
+// Trust proxies (required for Render, Railway, Heroku, etc.)
+// 'true' trusts all proxies in the chain — needed because Render uses multiple proxy layers
 // This ensures express-rate-limit and secure cookies work correctly behind reverse proxies
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 // Add request ID tracking early in the middleware chain
 app.use(requestContext);
@@ -88,7 +89,11 @@ app.use(requestContext);
 // ----------------- CORS (must be first so preflight/OPTIONS gets headers) -----------------
 const corsOptions = {
   origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, health checks)
     if (!origin) return callback(null, true);
+
+    // Allow ANY .vercel.app deployment (preview & production URLs)
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
 
     const allowedOrigins = [
       'https://reimbursement-automation-system-new-nu.vercel.app',
@@ -149,7 +154,8 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Skip rate limiting for health checks
-  skip: (req) => req.path === '/' && req.method === 'GET'
+  skip: (req) => req.path === '/' && req.method === 'GET',
+  validate: { xForwardedForHeader: false } // trust proxy handles this
 });
 app.use('/api/', limiter);
 
@@ -164,7 +170,8 @@ const authLimiter = rateLimit({
   },
   skipSuccessfulRequests: true,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/google', authLimiter);
@@ -179,10 +186,27 @@ const formSubmitLimiter = rateLimit({
     retryAfter: 3600
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
 });
 app.use('/api/forms/submit', formSubmitLimiter);
 app.use('/api/student-forms/submit', formSubmitLimiter);
+
+// ----------------- Health / Basic routes -----------------
+// IMPORTANT: These must be BEFORE body parsing so HEAD/GET health checks
+// never encounter undefined req.body issues
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'backend',
+    time: new Date().toISOString()
+  });
+});
+
+// HEAD requests for health checks (Render, uptime monitors)
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
 
 // ----------------- Body parsing -----------------
 app.use(express.json({ limit: '100kb' }));
@@ -205,21 +229,6 @@ if (fs.existsSync(uploadsPath)) {
 if (fs.existsSync(publicPath)) {
   app.use('/public', express.static(publicPath));
 }
-
-// ----------------- Health / Basic routes -----------------
-// Health check root (safe for production - no config leakage)
-app.get('/', (req, res) => {
-  res.json({
-    ok: true,
-    service: 'backend',
-    time: new Date().toISOString()
-  });
-});
-
-// HEAD requests for health checks (Vercel, uptime monitors)
-app.head('/', (req, res) => {
-  res.status(200).end();
-});
 
 // Test Postgres connection - only available in development with strict authentication
 if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
