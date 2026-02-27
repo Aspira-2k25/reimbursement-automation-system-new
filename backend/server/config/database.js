@@ -14,18 +14,23 @@ const { Pool } = require('pg');
 // Get the connection string from available environment variables
 const getDatabaseUrl = () => {
   // Priority order for pg Pool (needs postgres:// protocol, NOT prisma+postgres://):
+  // 1) DATABASE_URL           -> primary for Render/production
+  // 2) DB_POSTGRES_URL        -> direct Postgres (used by Prisma, safe here if postgres://)
+  // 3) POSTGRES_URL           -> generic Postgres URL (e.g. managed providers)
+  // 4) POSTGRES_URL_NON_POOLING
+  // 5) POSTGRES_PRISMA_URL    -> only if it's a plain postgres:// URL (not prisma+postgres://)
   const candidates = [
-    process.env.POSTGRES_URL,
-    process.env.DB_POSTGRES_URL,
-    process.env.POSTGRES_URL_NON_POOLING,
     process.env.DATABASE_URL,
+    process.env.DB_POSTGRES_URL,
+    process.env.POSTGRES_URL,
+    process.env.POSTGRES_URL_NON_POOLING,
     process.env.POSTGRES_PRISMA_URL
   ];
 
   // Find the first valid Postgres connection string (starts with postgres:// or postgresql://)
   // We MUST skip 'prisma+postgres://' as it is not supported by the 'pg' library
-  const validUrl = candidates.find(url =>
-    url && (url.startsWith('postgres://') || url.startsWith('postgresql://'))
+  const validUrl = candidates.find(
+    (url) => url && (url.startsWith('postgres://') || url.startsWith('postgresql://'))
   );
 
   return validUrl || null;
@@ -37,11 +42,15 @@ const connectionString = getDatabaseUrl();
 
 // Log which environment variable is being used (helpful for debugging)
 if (connectionString) {
-  const varName = process.env.DATABASE_URL ? 'DATABASE_URL'
-    : process.env.DB_POSTGRES_URL ? 'DB_POSTGRES_URL'
-      : process.env.POSTGRES_URL ? 'POSTGRES_URL'
-        : process.env.POSTGRES_PRISMA_URL ? 'POSTGRES_PRISMA_URL'
-          : 'POSTGRES_URL_NON_POOLING';
+  const varName = process.env.DATABASE_URL
+    ? 'DATABASE_URL'
+    : process.env.DB_POSTGRES_URL
+      ? 'DB_POSTGRES_URL'
+      : process.env.POSTGRES_URL
+        ? 'POSTGRES_URL'
+        : process.env.POSTGRES_URL_NON_POOLING
+          ? 'POSTGRES_URL_NON_POOLING'
+          : 'POSTGRES_PRISMA_URL';
   console.log(`✅ Using PostgreSQL connection from ${varName}`);
 }
 
@@ -51,14 +60,18 @@ if (connectionString) {
   // Use connection string if available (Vercel/Prisma Postgres)
   try {
     poolConfig = {
-      connectionString: connectionString,
-      max: 5, // Keep low for serverless (each invocation can create its own pool)
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
+      connectionString,
+      max: parseInt(process.env.PG_POOL_MAX, 10) || 5, // keep low for small Render instances
+      idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10) || 30000, // 30 seconds
+      // Allow extra time for cold Postgres start on Render / external providers
+      connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10) || 10000, // 10 seconds
       keepAlive: true, // Prevent Render from dropping idle TCP connections
-      ssl: connectionString.includes('sslmode=require') || connectionString.includes('ssl=true')
-        ? { rejectUnauthorized: false }
-        : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
+      ssl:
+        connectionString.includes('sslmode=require') || connectionString.includes('ssl=true')
+          ? { rejectUnauthorized: false }
+          : process.env.NODE_ENV === 'production'
+            ? { rejectUnauthorized: false }
+            : false
     };
     pool = new Pool(poolConfig);
   } catch (error) {
@@ -74,9 +87,9 @@ if (connectionString) {
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      max: 5,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 2000,
+      max: parseInt(process.env.PG_POOL_MAX, 10) || 5,
+      idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10) || 10000,
+      connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10) || 10000,
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     };
     pool = new Pool(poolConfig);
