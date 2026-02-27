@@ -159,12 +159,6 @@ const validationMiddleware = {
 
     next();
   },
-
-  // Email validation helper
-  isValidEmail: (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
 };
 
 // Helper function
