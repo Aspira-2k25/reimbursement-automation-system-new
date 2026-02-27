@@ -53,8 +53,9 @@ if (connectionString) {
     poolConfig = {
       connectionString: connectionString,
       max: 5, // Keep low for serverless (each invocation can create its own pool)
-      idleTimeoutMillis: 10000, // Close idle clients after 10 seconds (serverless functions are short-lived)
-      connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+      connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
+      keepAlive: true, // Prevent Render from dropping idle TCP connections
       ssl: connectionString.includes('sslmode=require') || connectionString.includes('ssl=true')
         ? { rejectUnauthorized: false }
         : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
