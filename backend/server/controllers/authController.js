@@ -8,6 +8,16 @@ const { addToBlacklist } = require('../utils/tokenBlacklist');
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const isProd = process.env.NODE_ENV === 'production';
+
+const buildAuthCookieOptions = (maxAgeMs) => ({
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax',
+  maxAge: maxAgeMs,
+  path: '/'
+});
+
 const authController = {
   // Login function
   login: async (req, res, next) => {
@@ -30,16 +40,8 @@ const authController = {
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      // Set httpOnly cookie for security
-      // sameSite: 'lax' is required for cross-origin requests between different ports
-      // (e.g., frontend on :5173 and backend on :5000 in development)
-      // 'strict' blocks cookies on all cross-origin requests, causing 401 errors
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
+      // Set httpOnly cookie for security (centralized options)
+      res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
 
       // Return user data (without sensitive information or token)
       res.json({
@@ -118,12 +120,7 @@ const authController = {
       );
 
       // Set httpOnly cookie for security (consistent with regular login)
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
+      res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
 
       return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
     } catch (error) {
@@ -209,12 +206,7 @@ const authController = {
       );
 
       // Set httpOnly cookie (consistent with login)
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours for new registrations
-      });
+      res.cookie('auth_token', token, buildAuthCookieOptions(24 * 60 * 60 * 1000)); // 24 hours
 
       res.status(201).json({
         message: 'User created successfully',
@@ -316,12 +308,9 @@ const authController = {
         }
       }
 
-      // Clear the httpOnly cookie as well
-      res.clearCookie('auth_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-      });
+      // Clear the httpOnly cookie as well (same options as when setting)
+      const clearOpts = buildAuthCookieOptions(0);
+      res.clearCookie('auth_token', clearOpts);
 
       res.json({ message: 'Logout successful' });
     } catch (error) {

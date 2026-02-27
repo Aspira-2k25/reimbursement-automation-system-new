@@ -18,7 +18,8 @@ const TokenBlacklistSchema = new mongoose.Schema({
   expiresAt: {
     type: Date,
     required: true
-    // index is created by the TTL index below (line 30), not here
+    // NOTE: Do NOT add `index: true` here.
+    // A single TTL index is created below to avoid duplicate index warnings.
   },
   createdAt: {
     type: Date,
