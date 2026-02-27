@@ -281,8 +281,17 @@ app.get('/api/users',
 // Short cache to reduce redundant DB hits while keeping data fresh
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET') {
-    // Cache for 60 seconds, allow stale response for 30s while revalidating
-    res.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=30');
+    // IMPORTANT:
+    // - Any request that includes cookies or Authorization is user-specific. Never cache it.
+    // - Public GETs (no auth) can be cached briefly to reduce DB load.
+    const hasAuthHeader = Boolean(req.headers.authorization);
+    const hasCookies = Boolean(req.headers.cookie);
+    if (hasAuthHeader || hasCookies) {
+      res.set('Cache-Control', 'no-store');
+    } else {
+      // Cache for 60 seconds, allow stale response for 30s while revalidating
+      res.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=30');
+    }
   } else {
     // No caching for mutations
     res.set('Cache-Control', 'no-store');
