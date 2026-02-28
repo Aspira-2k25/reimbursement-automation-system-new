@@ -170,7 +170,7 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
 
     // Parse pagination parameters
     const pagination = parsePaginationParams(req.query, { defaultLimit: 20, maxLimit: 100 });
-    
+
     // Execute paginated query
     const result = await paginateQuery(
       Form,
@@ -188,6 +188,35 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
     res.status(500).json({ error: "Error retrieving forms" });
   }
 });
+
+// Department aliases for flexible matching between short codes and full names
+const DEPARTMENT_ALIASES = {
+  'IT': 'Information Technology',
+  'CE': 'Computer Engineering',
+  'AIML': 'CSE AI and ML',
+  'DS': 'CSE Data Science',
+  'CIVIL': 'Civil Engineering',
+  'MECH': 'Mechanical Engineering',
+};
+
+// Get all possible department name variants for a given department value
+const getDepartmentVariants = (department) => {
+  if (!department) return [];
+  const variants = [department];
+  const upperDept = department.toUpperCase().trim();
+
+  if (DEPARTMENT_ALIASES[upperDept]) {
+    variants.push(DEPARTMENT_ALIASES[upperDept]);
+  }
+
+  for (const [alias, fullName] of Object.entries(DEPARTMENT_ALIASES)) {
+    if (fullName.toLowerCase() === department.toLowerCase().trim()) {
+      variants.push(alias);
+    }
+  }
+
+  return [...new Set(variants)];
+};
 
 // GET /api/forms/for-hod - Get faculty forms for HOD (status: Under HOD)
 // IMPORTANT: Must be BEFORE /:id route to avoid being caught as a param
@@ -212,12 +241,20 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
     };
 
     // If HOD has a department, filter by it OR forms without department (Principal sees all)
+    // Uses alias mapping so "IT" matches "Information Technology" and vice versa
     if (hodDepartment && userRole === 'hod') {
+      const deptVariants = getDepartmentVariants(hodDepartment);
+      const deptPattern = deptVariants
+        .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('|');
+      const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+
       query.$and = [
         query.$or ? { $or: query.$or } : {},
         {
           $or: [
-            { department: hodDepartment },
+            { department: { $in: deptVariants } },
+            { department: { $regex: deptRegex } },
             { department: { $exists: false } },
             { department: null },
             { department: "" }
@@ -373,7 +410,7 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
 
     // Sanitize the ID parameter to prevent NoSQL injection
     const rawId = req.params.id;
-    
+
     // Reject IDs that contain MongoDB operators
     if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
       return res.status(400).json({ error: "Invalid ID format" });
@@ -382,11 +419,11 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     // Try to find by applicationId first (sanitized), then by MongoDB _id
     const sanitizedAppId = sanitizeApplicationId(rawId);
     let form = null;
-    
+
     if (sanitizedAppId) {
       form = await Form.findOne({ applicationId: sanitizedAppId });
     }
-    
+
     if (!form) {
       // Only try findById if it's a valid ObjectId format
       if (isValidObjectId(rawId)) {
@@ -428,7 +465,7 @@ router.put(
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
-      
+
       // Reject IDs that contain MongoDB operators
       if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
         return res.status(400).json({ error: "Invalid ID format" });
@@ -437,11 +474,11 @@ router.put(
       // Try to find by applicationId first (sanitized), then by MongoDB _id
       const sanitizedAppId = sanitizeApplicationId(rawId);
       let form = null;
-      
+
       if (sanitizedAppId) {
         form = await Form.findOne({ applicationId: sanitizedAppId });
       }
-      
+
       if (!form && isValidObjectId(rawId)) {
         form = await Form.findById(rawId);
       }
@@ -689,7 +726,7 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
   try {
     // Sanitize the ID parameter to prevent NoSQL injection
     const rawId = req.params.id;
-    
+
     // Reject IDs that contain MongoDB operators
     if (typeof rawId === 'string' && /[${}]/.test(rawId)) {
       return res.status(400).json({ error: "Invalid ID format" });
@@ -698,11 +735,11 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
     // Try to find by applicationId first (sanitized), then by MongoDB _id
     const sanitizedAppId = sanitizeApplicationId(rawId);
     let form = null;
-    
+
     if (sanitizedAppId) {
       form = await Form.findOne({ applicationId: sanitizedAppId });
     }
-    
+
     if (!form && isValidObjectId(rawId)) {
       form = await Form.findById(rawId);
     }
