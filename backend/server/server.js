@@ -57,7 +57,7 @@ const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
-const csrf = require('csurf');
+const { csrfProtection } = require('./middleware/csrf');
 
 // Database/connectors
 const connectMongoDB = require('./config/mongo');
@@ -297,18 +297,6 @@ app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
   }
   next();
-});
-
-// ============================================
-// CSRF Protection Configuration
-// ============================================
-// CSRF protection for state-changing operations
-const csrfProtection = csrf({
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-  }
 });
 
 // Auth routes (CSRF exempt for login, but protected for logout)
