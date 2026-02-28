@@ -23,8 +23,18 @@ const createTransporter = () => {
       // Always reject unauthorized certificates in production
       // Only allow insecure connections in development for testing
       rejectUnauthorized: process.env.NODE_ENV !== 'development'
-    }
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
   });
+};
+
+/** Returns true if SMTP is configured enough to attempt sending. */
+const isSmtpConfigured = () => {
+  const user = (process.env.SMTP_USER || '').trim();
+  const pass = (process.env.SMTP_PASS || '').trim();
+  return Boolean(user && pass);
 };
 
 //email template
@@ -181,6 +191,10 @@ const emailTemplates = {
 // send email function 
 
 const sendEmail = async (to, subject, html) => {
+  if (!isSmtpConfigured()) {
+    console.warn('Email not sent: SMTP_USER or SMTP_PASS not set. Set both in Render env to enable email.');
+    return { success: false, error: 'SMTP not configured' };
+  }
   try {
     const transporter = createTransporter();
 
@@ -195,7 +209,9 @@ const sendEmail = async (to, subject, html) => {
     console.log('Email sent successfully:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email:', error);
+    // Gmail SMTP from Render often fails (connection timeout): cloud IPs can be blocked by Google.
+    // Use a transactional provider (SendGrid, Resend, Mailgun) for reliable delivery from production.
+    console.error('Error sending email:', error.message || error);
     return { success: false, error: error.message };
   }
 };
@@ -224,4 +240,5 @@ module.exports = {
   sendApprovalEmail,
   sendRejectionEmail,
   sendSubmissionEmail,
+  isSmtpConfigured,
 };
