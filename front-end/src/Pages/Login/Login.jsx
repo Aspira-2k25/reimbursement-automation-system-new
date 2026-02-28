@@ -118,6 +118,8 @@ export default function LoginPage() {
                 <input
                   type="text"
                   placeholder="Username"
+                  name="username"
+                  autoComplete="username"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   onFocus={() => setFocusedField('name')}
@@ -133,6 +135,8 @@ export default function LoginPage() {
                 <input
                   type="email"
                   placeholder="Email"
+                  name="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onFocus={() => setFocusedField('email')}
@@ -148,6 +152,8 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
+                  name="password"
+                  autoComplete="current-password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   onFocus={() => setFocusedField('password')}
