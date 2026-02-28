@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { getCsrfToken, fetchCsrfToken } from '../../services/api';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -241,17 +242,44 @@ const ReimbursementForm = () => {
         formDataToSend.append("idCard", idCardFile);
       }
 
-      // SECURITY: Token is now in httpOnly cookie, no need to manually add
-      // The browser will automatically send the cookie with credentials: 'include'
+      // CSRF: ensure token is available before submit
+      if (!getCsrfToken()) {
+        await fetchCsrfToken();
+      }
+      const headers = {};
+      if (getCsrfToken()) {
+        headers['X-CSRF-Token'] = getCsrfToken();
+      }
+
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await fetch(`${API_BASE_URL}/forms/submit`, {
-        method: "POST",
-        credentials: 'include', // SECURITY: Include cookies for authentication
-        body: formDataToSend,
-      });
+      const doSubmit = () =>
+        fetch(`${API_BASE_URL}/forms/submit`, {
+          method: "POST",
+          credentials: 'include',
+          headers,
+          body: formDataToSend,
+        });
 
-      const data = await res.json();
+      let res = await doSubmit();
+      let data = await res.json();
+
+      // On 403 Invalid CSRF token, refresh token and retry once
+      if (res.status === 403 && data?.error === 'Invalid CSRF token') {
+        await fetchCsrfToken();
+        const newToken = getCsrfToken();
+        if (newToken) {
+          const retryHeaders = { ...headers, 'X-CSRF-Token': newToken };
+          res = await fetch(`${API_BASE_URL}/forms/submit`, {
+            method: "POST",
+            credentials: 'include',
+            headers: retryHeaders,
+            body: formDataToSend,
+          });
+          data = await res.json();
+        }
+      }
+
       if (res.ok) {
         toast.success("Application submitted successfully! Your request is now under review.");
         console.log(data);
@@ -267,8 +295,11 @@ const ReimbursementForm = () => {
           navigate('/dashboard/faculty/requests');
         }
       } else {
-        toast.error("Error: " + data.error);
-        // Re-enable button on error so user can retry
+        const message =
+          res.status === 403 && data?.error === 'Invalid CSRF token'
+            ? 'Invalid CSRF token. Please refresh the page and try again.'
+            : (data?.error && `Error: ${data.error}`) || 'Something went wrong.';
+        toast.error(message);
         setIsSubmitting(false);
       }
     } catch (err) {

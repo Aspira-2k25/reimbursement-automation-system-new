@@ -2,23 +2,24 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { csrfProtection } = require('../middleware/csrf');
 const { validateLogin, validateRegister } = require('../middleware/validation');
 
 // Public routes (no authentication required)
 router.post('/login', validateLogin, authController.login);
 // /register removed — user creation is restricted to Principal via /create-user
 router.post('/google', authController.googleLogin);
-router.post('/logout', verifyToken, authController.logout);
+router.post('/logout', verifyToken, csrfProtection, authController.logout);
 
 
 // Protected routes (authentication required)
 router.get('/profile', verifyToken, authController.getProfile);
-router.put('/profile', verifyToken, authController.updateProfile);
+router.put('/profile', verifyToken, csrfProtection, authController.updateProfile);
 router.get('/staff', verifyToken, authController.getAllStaff);
 router.get('/staff/department/:department', verifyToken, authController.getStaffByDepartment);
 
 // Create user endpoint (can be protected with admin role check if needed)
-router.post('/create-user', verifyToken, requireRole(['Principal']), validateRegister, authController.createUser);
+router.post('/create-user', verifyToken, csrfProtection, requireRole(['Principal']), validateRegister, authController.createUser);
 
 
 // Test route for checking authentication
