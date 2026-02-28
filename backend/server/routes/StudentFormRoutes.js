@@ -339,13 +339,17 @@ router.get(
       let query = { status: "Under HOD" };
 
       // If HOD has a department, filter by it OR forms without department (Principal sees all)
+      // Use case-insensitive match so "IT" / "it" / "Information Technology" match consistently
       if (hodDepartment && userRole === 'hod') {
+        const escaped = String(hodDepartment).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const deptRegex = new RegExp(`^${escaped}$`, 'i');
         query = {
           $and: [
             { status: "Under HOD" },
             {
               $or: [
                 { department: hodDepartment },
+                { department: { $regex: deptRegex } },
                 { department: { $exists: false } },
                 { department: null },
                 { department: "" }
