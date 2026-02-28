@@ -171,10 +171,23 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
     // Parse pagination parameters
     const pagination = parsePaginationParams(req.query, { defaultLimit: 20, maxLimit: 100 });
 
+    // Try multiple query patterns to handle different userId formats
+    // Convert userId to string for comparison since MongoDB might store it as string
+    const userIdStr = String(userId);
+
+    // Try multiple query patterns to handle different userId formats
+    const query = {
+      $or: [
+        { userId: userIdStr },
+        { userId: userId },
+        { userId: Number(userId) }
+      ]
+    };
+
     // Execute paginated query
     const result = await paginateQuery(
       Form,
-      { userId: String(userId) },
+      query,
       { sort: { createdAt: -1 } },
       pagination
     );
@@ -284,7 +297,7 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    let query = { status: { $in: ["Under Principal", "Approved"] } };
+    let query = { status: { $in: ["Under Principal", "Approved", "Reimbursed", "Disbursed"] } };
 
     // Faculty/Coordinator: only see their own forms
     if (['faculty', 'coordinator'].includes(userRole)) {
@@ -293,7 +306,7 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
     // HOD: only see forms from their department
     else if (userRole === 'hod' && userDepartment) {
       query.$and = [
-        { status: { $in: ["Under Principal", "Approved"] } },
+        { status: { $in: ["Under Principal", "Approved", "Reimbursed", "Disbursed"] } },
         {
           $or: [
             { department: userDepartment },
