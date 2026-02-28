@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { fetchCsrfToken } from '../services/api';
+import { fetchCsrfToken, getCsrfToken } from '../services/api';
 
 // Use env var for API URL - same as api.js
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -75,10 +75,17 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = useCallback(async () => {
     try {
+      // CSRF: ensure token is available for cookie-authenticated logout
+      if (!getCsrfToken()) {
+        await fetchCsrfToken();
+      }
+      const csrfToken = getCsrfToken();
+
       // Call backend logout to clear httpOnly cookie
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
       });
     } catch {
       // Silently handle logout errors - user is logged out locally anyway

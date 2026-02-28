@@ -320,6 +320,37 @@ router.get(
   }
 );
 
+// Department aliases for flexible matching between short codes and full names
+const DEPARTMENT_ALIASES = {
+  'IT': 'Information Technology',
+  'CE': 'Computer Engineering',
+  'AIML': 'CSE AI and ML',
+  'DS': 'CSE Data Science',
+  'CIVIL': 'Civil Engineering',
+  'MECH': 'Mechanical Engineering',
+};
+
+// Get all possible department name variants for a given department value
+const getDepartmentVariants = (department) => {
+  if (!department) return [];
+  const variants = [department];
+  const upperDept = department.toUpperCase().trim();
+
+  // If department is a short alias, add its full name
+  if (DEPARTMENT_ALIASES[upperDept]) {
+    variants.push(DEPARTMENT_ALIASES[upperDept]);
+  }
+
+  // If department is a full name, add the short alias
+  for (const [alias, fullName] of Object.entries(DEPARTMENT_ALIASES)) {
+    if (fullName.toLowerCase() === department.toLowerCase().trim()) {
+      variants.push(alias);
+    }
+  }
+
+  return [...new Set(variants)]; // deduplicate
+};
+
 // GET /api/student-forms/for-hod - Get requests approved by coordinator (status: Under HOD)
 router.get(
   "/for-hod",
@@ -339,16 +370,21 @@ router.get(
       let query = { status: "Under HOD" };
 
       // If HOD has a department, filter by it OR forms without department (Principal sees all)
-      // Use case-insensitive match so "IT" / "it" / "Information Technology" match consistently
+      // Uses alias mapping so "IT" matches "Information Technology" and vice versa
       if (hodDepartment && userRole === 'hod') {
-        const escaped = String(hodDepartment).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const deptRegex = new RegExp(`^${escaped}$`, 'i');
+        const deptVariants = getDepartmentVariants(hodDepartment);
+        // Build a case-insensitive regex that matches any variant
+        const deptPattern = deptVariants
+          .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('|');
+        const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+
         query = {
           $and: [
             { status: "Under HOD" },
             {
               $or: [
-                { department: hodDepartment },
+                { department: { $in: deptVariants } },
                 { department: { $regex: deptRegex } },
                 { department: { $exists: false } },
                 { department: null },
