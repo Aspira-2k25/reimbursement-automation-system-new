@@ -207,9 +207,9 @@ router.get(
         return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
       }
 
-      // Fetch forms with status "Under HOD", "Under Principal", or "Approved"
+      // Fetch forms with status "Under HOD", "Under Principal", "Approved", "Reimbursed", or "Disbursed"
       const forms = await StudentForm.find({
-        status: { $in: ["Under HOD", "Under Principal", "Approved"] }
+        status: { $in: ["Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed"] }
       }).sort({ updatedAt: -1 });
 
       return res.json({ forms });
