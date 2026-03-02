@@ -30,6 +30,8 @@ import PrincipalDashboard from "./Principal/PrincipalDashboard"
 
 import AccountsDashboard from "./Accounts/AccountsDashboard"
 
+import AdminDashboard from "./Admin/AdminDashboard"
+
 export default function Dashboard() {
   const location = useLocation()
   const { user } = useAuth()
@@ -159,6 +161,19 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #F59E0B 15%, white) 0%, white 40%)'}}>
         <AccountsDashboard />
+        <Toaster {...toastConfig} />
+      </div>
+    )
+  }
+
+  if (location.pathname.startsWith("/dashboard/admin")) {
+    // prevent direct access without login or non-admin users
+    if (!user || user.role !== 'Admin') {
+      return <Navigate to="/login" replace />
+    }
+    return (
+        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #8B5CF6 15%, white) 0%, white 40%)'}}>
+        <AdminDashboard />
         <Toaster {...toastConfig} />
       </div>
     )
