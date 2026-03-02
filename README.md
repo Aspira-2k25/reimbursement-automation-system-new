@@ -1,72 +1,109 @@
 <div align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=00B4D8&height=250&section=header&text=Reimbursement%20Automation&fontSize=60&fontAlignY=35&desc=A%20Seamless%20Digital%20Queue%20Experience&descAlignY=55" alt="Cinematic Hero Banner" />
+</div>
+
+<div align="center">
+  <a href="https://reimbursement-automation-system-new-nu.vercel.app">
+    <img src="https://img.shields.io/badge/Live_Testing_Portal-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Testing Portal" />
+  </a>
+</div>
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=600&size=24&pause=1000&color=00E5FF&center=true&vCenter=true&width=800&lines=The+Paper-Trail+Ends+Here...;Empowering+Students,+Faculty,+%26+Accounts;Welcome+to+the+Future+of+Campus+Administration" alt="Typing Showcase" />
+</p>
+
+---
+
+## 🎬 Prologue: The Problem
+
+> *For years, college administration has battled an invisible enemy: **The Paper Trail**. Lost receipts, untracked approvals, and endless queues at the Accounts Desk. The reimbursement process was slow, frustrating, and lacked transparency. Stakeholders were left in the dark. It was time for a change.*
+
+---
+
+## 🌟 The Hero: Our Digital Gateway
+
+<img align="right" width="300" src="https://media.giphy.com/media/LmNwrBhejkK9EFP504/giphy.gif" alt="Rocket Launching" />
+
+Enter the **Reimbursement Automation System**. Engineered for speed, transparency, and accountability, this high-performance platform completely digitizes the expense claim lifecycle.
+
+By replacing physical desks with **Role-Based Digital Portals**, we've created a seamless, unbroken chain of command. When a student submits an NPTEL receipt, it doesn't vanish into a folder—it instantly appears on the HOD's dashboard. Upon approval, it flies to the Principal, and finally, directly into the Accounts ledger.
+
+**No lost papers. No manual tracking. Just pure digital throughput.**
+
+<br />
+
+---
+
+## ⚡ Power & Performance: Key Features
+
+<div align="center">
+  <img src="https://capsule-render.vercel.app/api?type=rect&color=timeGradient&height=80&text=Unlocking%20Campus%20Efficiency&fontSize=30&fontAlignY=50" alt="Features Banner" />
+</div>
+
+| Feature | Description |
+| :--- | :--- |
+| 🛡️ **Role-Based Portals** | Dedicated, secure UI views tailored specifically for **Students, Faculty, HOD, Coordinator, Principal, and Accounts**. Every user sees only what they need to see. |
+| 🔀 **Smart Queue Logistics** | Requests progress systematically down the administrative approval chain. Final Principal approvals trigger immediate auto-queueing for the Accounts department. |
+| 📊 **Real-Time Analytics** | The Principal & HOD dashboards burst into life with high-level organizational metrics, pending task loads, and historical budget utilization charts. |
+| 🔔 **Notification Matrix** | In-app, color-coded toast alerts ensure ultra-fast communication between administrative tiers, notifying users of approvals or requested changes instantly. |
+| 📂 **Secure Vault** | Attach, encrypt, and render digital receipts, fee structures, and ID cards within contextual boundaries. Receipts are stored securely via the cloud. |
+
+---
+
+## 🌌 The Engine Room: Architecture Workflow
+
+Behind the beautiful UI lies a robust, enterprise-grade architecture. Our engine is built to handle the highest volumes of campus traffic with absolute data integrity.
+
+```mermaid
+graph TD
+    %% Colors and Styles
+    classDef user fill:#00b4d8,stroke:#03045e,stroke-width:2px,color:#fff;
+    classDef logic fill:#90e0ef,stroke:#03045e,stroke-width:2px,color:#000;
+    classDef db fill:#023e8a,stroke:#00b4d8,stroke-width:3px,color:#fff;
+    classDef fail fill:#ef233c,stroke:#8d0801,stroke-width:2px,color:#fff;
+
+    A[🎓 Applicant] -->|Uploads Receipt & Form| B[(MongoDB Cloud Store)]
+    B --> C{👔 HOD / Coordinator}
+    
+    C -->|Approved| D{👑 Principal Review}
+    C -->|Rejected| E[Return to Applicant Alert]
+    
+    D -->|Approved| F[💹 Accounts Financial Queue]
+    D -->|Rejected| E
+    
+    F -->|Reimbursed| G[Final Ledger Recorded]
+    
+    H[(Postgres Administrative Auth)] -.->|Token Verifies| C
+    H -.->|Token Verifies| D
+    H -.->|Token Verifies| F
+
+    %% Appling Classes
+    class A,G user;
+    class C,D,F logic;
+    class B,H db;
+    class E fail;
+```
+
+---
+
+## 🛠️ The Arsenal: Tech Stack
+
+We armed ourselves with the most modern, blistering-fast technologies available.
+
+<div align="center">
   
-  <img src="https://img.shields.io/badge/A_P_S_I_T-Reimbursement_Portal-00E5FF?style=for-the-badge&logoColor=white" alt="Project Badge" />
-  
-  <br />
-  <br />
-
-  # 🎓 Reimbursement Automation System
-
-  **A modern, high-performance digital gateway designed to automate, track, and manage expense claims seamlessly. This intelligent system bridges the gap between Students, Faculty, HODs, Coordinators, Principals, and the Accounts Department.**
-
-  <p align="center">
-    <a href="#-about-the-system">About</a> •
-    <a href="#-key-features">Features</a> •
-    <a href="#-technology-infrastructure">Architecture</a> •
-    <a href="#-the-development-team">Team</a>
-  </p>
-
   ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
   ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
   ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
   ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
   ![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
-
+  ![Framer Motion](https://img.shields.io/badge/Framer_Motion-black?style=for-the-badge&logo=framer&logoColor=blue)
+  
 </div>
 
 ---
 
-## 🏛️ About the System
-
-The **Reimbursement Automation System** is a proprietary, closed-source digital platform developed exclusively for college administration and direct student utility. Built to be deployed directly on the institution's servers, this portal completely eliminates the slow, paper-based reimbursement process. 
-
-From the initial submission by a student or faculty member, to the final ledger payout by Accounts, every stakeholder forms part of a secure, seamless, and transparent digital queue.
-
----
-
-## ✨ Key Capabilities
-
-| Feature | Description |
-| :--- | :--- |
-| 🛡️ **Role-Based Portals** | Dedicated, secure UI views tailored specifically for Students, Faculty, HOD, Coordinator, Principal, and Accounts personnel. |
-| 🔀 **Smart Queue Logistics** | Requests progress systematically down the administrative approval chain. Final Principal approvals auto-queue for the Accounts department. |
-| 📊 **Real-Time Analytics** | The Principal & HOD dashboards offer high-level organizational metrics, pending task loads, and historical budget trackers. |
-| 🔔 **Notification Matrix** | In-app alerts ensure ultra-fast communication between administrative tiers, notifying users of approvals, rejections, or required changes. |
-| 📂 **Secure Vault** | Capability to attach, encrypt, and process digital receipts, fee structures, and ID cards within contextual form boundaries. |
-| 🔍 **Advanced Filtering** | Administration can isolate queries by form status, constituent departments, reimbursement type, and direct chronological text search. |
-
----
-
-## 🏗️ Technology Infrastructure
-
-Our system is engineered using state-of-the-art Web and Cloud technologies prioritizing security, speed, and reliability.
-
-### 🎨 Client Architecture (Frontend)
-- **Framework**: React 19 driven by Vite.
-- **Design System**: Tailwind CSS & Mantine UI components.
-- **Interactions**: Framer Motion for liquid-smooth transitions.
-- **Data Visualization**: Recharts for dynamic analytical reporting.
-
-### ⚙️ Server Architecture (Backend)
-- **Engine**: Node.js utilizing the Express framework for RESTful APIs.
-- **Document Store**: MongoDB via Mongoose handles dynamic JSON payloads and forms.
-- **Relational Integrity**: PostgreSQL via Prisma manages core administrative identity mapping.
-- **Security Protocols**: Role-Based JWT tokens, bcrypt hashed passwords, and verified Google Auth.
-- **Asset Processing**: Cloudinary integration for handling high-volume receipt image uploads.
-
----
-
-## �‍�💻 The Development Team
+## 🎬 The Cast: Meet Our Developers
 
 This system was proudly engineered, designed, and deployed by our institution's own computer science developers to solve a critical campus workflow issue.
 
@@ -74,31 +111,27 @@ This system was proudly engineered, designed, and deployed by our institution's 
 
 <div align="center">
   
-| 🧑‍💻 Developer | 🔗 GitHub Profile |
-| :---: | :--- |
-| **Alok** | [@FutureAlok1445](https://github.com/FutureAlok1445) |
-| **Apoorva** | [@Oriacgz](https://github.com/Oriacgz) |
-| **Nirmala** | [@Nirmala1914](https://github.com/Nirmala1914) |
-| **Vaibhavi** | [@Vai-15](https://github.com/Vai-15) |
+| <img src="https://github.com/FutureAlok1445.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Alok" /> | <img src="https://github.com/Oriacgz.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Apoorva" /> | <img src="https://github.com/Nirmala1914.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Nirmala" /> | <img src="https://github.com/Vai-15.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Vaibhavi" /> |
+| :---: | :---: | :---: | :---: |
+| **[Alok](https://github.com/FutureAlok1445)** | **[Apoorva](https://github.com/Oriacgz)** | **[Nirmala](https://github.com/Nirmala1914)** | **[Vaibhavi](https://github.com/Vai-15)** |
+| *Full-Stack Developer* | *Full-Stack Developer* | *Frontend/Design Specialist* | *Frontend/Design Specialist* |
 
 </div>
 
 ---
 
-## 🔐 Deployment Information
+## � Epilogue: Deployment
 
-This application is strictly for internal college deployment and execution on institutional infrastructure. 
+This platform is strictly an Enterprise-Ready closed-source system. 
 
-### Quick-Start for DevOps
-
-1. **Environment Configuration**: Set local `.env` values mapping database URIs (`MONGODB_URI`, `DB_PRISMA_DATABASE_URL`) and application secrets (`JWT_SECRET`, `CLOUDINARY_URL`).
-2. **Database Provisioning**: Install core schemas via `npm run prisma:generate` inside `./backend/server`.
-3. **Daemonization**: Spin up the backend via PM2 or Node (`npm run start`), exposing the API port.
-4. **Client Proxying**: Build the Vite frontend application using `npm run build` inside `./front-end` and map the static `/dist` artifacts to an NGINX or Apache proxy server mapping to the public domains.
+**Quick-Start for College IT Staff:**
+1. Populate local `.env` values mapping `MONGODB`, `POSTGRES`, and `CLOUDINARY` URIs.
+2. Initialize database dependencies via `npm run prisma:generate` inside `./backend/server`.
+3. Ignite the backend API on port `5000` (`npm run dev`).
+4. Build the Vite frontend payload (`npm run build`) in `./front-end` and map the static artifacts to NGINX on your local college servers.
 
 ---
 
 <div align="center">
-  <br />
-  <i>Engineered with precision for the future of academic administration.</i>
+  <img src="https://capsule-render.vercel.app/api?type=rect&color=00B4D8&height=60&text=Engineered%20for%20the%20Future&fontSize=20&fontAlignY=50" alt="Footer Banner" />
 </div>
