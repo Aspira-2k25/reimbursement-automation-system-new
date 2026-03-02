@@ -1,8 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { getCsrfToken, fetchCsrfToken } from '../../services/api';
+
+// Department options
+const DEPARTMENTS = [
+  "Computer Engineering",
+  "Information Technology",
+  "CSE AI and ML",
+  "CSE Data Science",
+  "Civil Engineering",
+  "Mechanical Engineering"
+];
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 1 * 1024 * 1024; // 1MB
+
+  if (!file) return { valid: true };
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 1MB' };
+  }
+
+  return { valid: true };
+};
 
 const ReimbursementForm = () => {
   const navigate = useNavigate();
@@ -11,6 +49,7 @@ const ReimbursementForm = () => {
     name: '',
     facultyId: '',
     jobTitle: '',
+    department: '',
     email: '',
     amount: '',
     accountName: '',
@@ -23,6 +62,10 @@ const ReimbursementForm = () => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // SECURITY: Use refs for file inputs instead of direct DOM access
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
 
   const validateForm = () => {
     const newErrors = {};
@@ -42,6 +85,11 @@ const ReimbursementForm = () => {
     // Job Title validation
     if (!formData.jobTitle.trim()) {
       newErrors.jobTitle = 'Job Title is required';
+    }
+
+    // Department validation
+    if (!formData.department) {
+      newErrors.department = 'Department is required';
     }
 
     // Email validation
@@ -112,9 +160,15 @@ const ReimbursementForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  //handle input change
+  //handle input change - SECURITY: Sanitize inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // SECURITY: Sanitize text inputs
+    let sanitizedValue = value;
+    if (name !== 'amount' && name !== 'marks') {
+      sanitizedValue = sanitizeInput(value);
+    }
 
     //for amount field
     if (name === "amount") {
@@ -136,11 +190,11 @@ const ReimbursementForm = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: sanitizedValue,
       });
     }
 
-    //clear errors when user sttarts typing
+    //clear errors when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -165,39 +219,78 @@ const ReimbursementForm = () => {
     try {
       const formDataToSend = new FormData();
 
-      //append all text fields
+      //append all text fields - SECURITY: Sanitize before sending
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key]);
+        formDataToSend.append(key, sanitizeInput(formData[key]));
       });
 
       // Set applicantType based on user role
       const userRole = user?.role || 'Faculty';
       formDataToSend.append('applicantType', userRole); // Will be HOD, Coordinator, or Faculty
 
-      // Add department from user profile
-      if (user?.department) {
-        formDataToSend.append('department', user.department);
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
+
+      // SECURITY: Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
       }
 
-      //append files
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-      if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
 
-      //get jwt tocken from login
-      const token = localStorage.getItem("token");
+      // CSRF: ensure token is available before submit
+      if (!getCsrfToken()) {
+        await fetchCsrfToken();
+      }
+      const headers = {};
+      if (getCsrfToken()) {
+        headers['X-CSRF-Token'] = getCsrfToken();
+      }
+
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await fetch(`${API_BASE_URL}/forms/submit`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,  // add tocken for authorization
-        },
-        body: formDataToSend,
-      });
+      const doSubmit = () =>
+        fetch(`${API_BASE_URL}/forms/submit`, {
+          method: "POST",
+          credentials: 'include',
+          headers,
+          body: formDataToSend,
+        });
 
-      const data = await res.json();
+      let res = await doSubmit();
+      let data = await res.json();
+
+      // On 403 Invalid CSRF token, refresh token and retry once
+      if (res.status === 403 && data?.error === 'Invalid CSRF token') {
+        await fetchCsrfToken();
+        const newToken = getCsrfToken();
+        if (newToken) {
+          const retryHeaders = { ...headers, 'X-CSRF-Token': newToken };
+          res = await fetch(`${API_BASE_URL}/forms/submit`, {
+            method: "POST",
+            credentials: 'include',
+            headers: retryHeaders,
+            body: formDataToSend,
+          });
+          data = await res.json();
+        }
+      }
+
       if (res.ok) {
         toast.success("Application submitted successfully! Your request is now under review.");
         console.log(data);
@@ -213,8 +306,11 @@ const ReimbursementForm = () => {
           navigate('/dashboard/faculty/requests');
         }
       } else {
-        toast.error("Error: " + data.error);
-        // Re-enable button on error so user can retry
+        const message =
+          res.status === 403 && data?.error === 'Invalid CSRF token'
+            ? 'Invalid CSRF token. Please refresh the page and try again.'
+            : (data?.error && `Error: ${data.error}`) || 'Something went wrong.';
+        toast.error(message);
         setIsSubmitting(false);
       }
     } catch (err) {
@@ -318,6 +414,30 @@ const ReimbursementForm = () => {
                     }`}
                 />
                 {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
+              </div>
+
+              {/* Department Field */}
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Department *
+                </label>
+                <select
+                  id="department"
+                  name="department"
+                  value={formData.department}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                >
+                  <option value="">Select Department</option>
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
               {/* Email Field */}
@@ -540,14 +660,26 @@ const ReimbursementForm = () => {
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
+                  ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`NPTEL Result: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
 
@@ -563,14 +695,26 @@ const ReimbursementForm = () => {
                   type="file"
                   id="idCard"
                   name="idCard"
+                  ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`Faculty ID Card: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
             </div>

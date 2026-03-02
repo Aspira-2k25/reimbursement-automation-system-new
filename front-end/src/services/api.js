@@ -4,21 +4,51 @@ import axios from 'axios';
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
+// SECURITY: Request timeout configuration
+const REQUEST_TIMEOUT = 30000; // 30 seconds
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
+
+// CSRF token storage
+let csrfToken = null;
+
 // Create axios instance with base configuration
+// credentials: 'include' is required for httpOnly cookies
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important: send/receive cookies
+  timeout: REQUEST_TIMEOUT,
 });
 
-// Add request interceptor to include auth token
+// Fetch CSRF token on app initialization
+export const fetchCsrfToken = async () => {
+  try {
+    const response = await api.get('/csrf-token');
+    csrfToken = response.data.csrfToken;
+    return csrfToken;
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    return null;
+  }
+};
+
+// Get current CSRF token
+export const getCsrfToken = () => csrfToken;
+
+// SECURITY: Request interceptor to add CSRF protection headers
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Add request timestamp for debugging
+    config.metadata = { startTime: new Date().getTime() };
+
+    // Add CSRF token for state-changing operations
+    if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase())) {
+      config.headers['X-CSRF-Token'] = csrfToken;
     }
+
     return config;
   },
   (error) => {
@@ -26,26 +56,75 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle errors
+// SECURITY: Retry logic for failed requests
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Add response interceptor to handle errors with retry logic
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+  (response) => {
+    return response;
+  },
+  async (error) => {
+    const config = error.config;
+
+    // Handle timeout errors
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return Promise.reject({ error: 'Request timed out. Please try again.' });
     }
-    
+
+    // Handle 401 Unauthorized - clear user data and redirect
+    if (error.response?.status === 401) {
+      // Clear user data
+      localStorage.removeItem('user');
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      return Promise.reject({ error: 'Session expired. Please login again.' });
+    }
+
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      const errorData = error.response?.data;
+
+      // If CSRF token is invalid, refresh it and retry the request once
+      if (errorData?.error === 'Invalid CSRF token' && !config.__csrfRetried) {
+        config.__csrfRetried = true;
+        try {
+          await fetchCsrfToken();
+          // Update the header with the new token
+          config.headers['X-CSRF-Token'] = csrfToken;
+          return api(config);
+        } catch {
+          return Promise.reject({ error: 'Session expired. Please refresh the page and try again.' });
+        }
+      }
+
+      // Preserve the original error message from the backend
+      return Promise.reject(errorData || { error: 'You do not have permission to perform this action.' });
+    }
+
+    // Handle 429 Rate Limit
+    if (error.response?.status === 429) {
+      return Promise.reject({ error: 'Too many requests. Please wait a moment.' });
+    }
+
+    // Retry logic for network errors (but not for 4xx client errors)
+    if (!error.response && config && !config.__retryCount) {
+      config.__retryCount = config.__retryCount || 0;
+
+      if (config.__retryCount < MAX_RETRIES) {
+        config.__retryCount += 1;
+        await sleep(RETRY_DELAY * config.__retryCount);
+        return api(config);
+      }
+    }
+
     // Better error handling for network errors
     if (!error.response) {
-      console.error('Network Error:', {
-        message: error.message,
-        apiUrl: error.config?.url,
-        baseURL: error.config?.baseURL,
-        hint: 'Check if backend is running and VITE_API_BASE_URL is correct'
-      });
+      return Promise.reject({ error: 'Network error. Please check your connection.' });
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -286,6 +365,59 @@ export const studentFormsAPI = {
   deleteById: async (id) => {
     try {
       const res = await api.delete(`/student-forms/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
+};
+
+// Admin API functions - for managing faculty and staff
+export const adminAPI = {
+  // Get all faculty members
+  getFacultyList: async () => {
+    try {
+      const res = await api.get('/auth/admin/faculty');
+      return res.data; // { staff: [...] }
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Get single staff member
+  getStaffById: async (id) => {
+    try {
+      const res = await api.get(`/auth/admin/faculty/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Create new faculty member
+  createFaculty: async (data) => {
+    try {
+      const res = await api.post('/auth/admin/faculty', data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Update faculty member
+  updateFaculty: async (id, data) => {
+    try {
+      const res = await api.put(`/auth/admin/faculty/${id}`, data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Delete (deactivate) faculty member
+  deleteFaculty: async (id) => {
+    try {
+      const res = await api.delete(`/auth/admin/faculty/${id}`);
       return res.data;
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };

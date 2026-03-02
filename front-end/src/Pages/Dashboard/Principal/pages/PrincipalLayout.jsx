@@ -33,7 +33,7 @@ const PrincipalLayout = ({ children }) => {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('Under Principal')
   const [departmentFilter, setDepartmentFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
 
@@ -74,8 +74,6 @@ const PrincipalLayout = ({ children }) => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
-      console.log('Principal Dashboard - User data:', user)
-
       // Build email: prefer stored email, otherwise construct from username
       let userEmail = user.email
       if (!userEmail && user.username) {
@@ -173,15 +171,8 @@ const PrincipalLayout = ({ children }) => {
       // Map backend data to dashboard format
       const mappedRequests = allForms.map(mapFormToRequest)
 
-      console.log('Fetched Principal requests - Total:', mappedRequests.length)
-      console.log('By status:', {
-        'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
-        'Approved': mappedRequests.filter(r => r.status === 'Approved').length
-      })
-
       setAllRequests(mappedRequests)
     } catch (error) {
-      console.error('Error fetching Principal requests:', error)
       toast.error(error?.error || 'Failed to fetch requests')
       setAllRequests([])
     } finally {
@@ -202,7 +193,7 @@ const PrincipalLayout = ({ children }) => {
     const rejected = allRequests.filter(r => r.status === 'Rejected').length
     const approvedAmount = allRequests
       .filter(r => r.status === 'Approved')
-      .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
+      .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
 
     const processedRequests = approved + rejected
     const approvalRate = processedRequests > 0 ? Math.round((approved / processedRequests) * 100) : 0
@@ -278,9 +269,9 @@ const PrincipalLayout = ({ children }) => {
     updateRequestStatus: useCallback(async (requestId, newStatus, comments = '') => {
       try {
         // Find the request to determine which API to use
-        const request = allRequests.find(req => 
-          req.id === requestId || 
-          req._id === requestId || 
+        const request = allRequests.find(req =>
+          req.id === requestId ||
+          req._id === requestId ||
           req.applicationId === requestId
         )
 
@@ -299,7 +290,7 @@ const PrincipalLayout = ({ children }) => {
         const formId = request._id || request.applicationId || request.id
 
         // Prepare update data
-        const updateData = { 
+        const updateData = {
           status: newStatus,
           reviewedBy: userProfile.fullName,
           reviewedAt: new Date().toISOString()
