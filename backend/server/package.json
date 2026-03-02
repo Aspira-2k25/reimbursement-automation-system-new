@@ -23,12 +23,16 @@
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.2.2",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
+    "file-type": "^21.3.0",
+    "google-auth-library": "^10.5.0",
+    "he": "^1.2.0",
     "jsonwebtoken": "^9.0.2",
-    "jspdf": "^4.1.0",
     "mongoose": "^8.19.0",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.13",
@@ -36,7 +40,7 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.14",
     "prisma": "^5.20.0"
   }
 }

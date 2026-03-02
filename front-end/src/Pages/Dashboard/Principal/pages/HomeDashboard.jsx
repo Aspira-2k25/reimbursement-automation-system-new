@@ -54,11 +54,7 @@ const HomeDashboard = () => {
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      updateRequestStatus(request.id, 'Approved', 'Approved by Principal')
-      toast.success(`Request ${request.id} approved for ${request.applicantName}`)
-    } catch (error) {
-      toast.error('Failed to approve request. Please try again.')
+      await updateRequestStatus(request.id, 'Approved', 'Approved by Principal')
     } finally {
       setIsLoading(false)
     }
@@ -183,13 +179,9 @@ const HomeDashboard = () => {
     if (rejectReason.trim()) {
       setIsLoading(true)
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
-        toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
+        await updateRequestStatus(rejectModal.request.id, 'Rejected', rejectReason)
         setRejectModal({ show: false, request: null })
         setRejectReason('')
-      } catch (error) {
-        toast.error('Failed to reject request. Please try again.')
       } finally {
         setIsLoading(false)
       }
@@ -389,6 +381,7 @@ const HomeDashboard = () => {
                 <option value="All">All Types</option>
                 <option value="Faculty">Faculty</option>
                 <option value="Student">Student</option>
+                <option value="Coordinator">Coordinator</option>
               </select>
             </div>
           </div>

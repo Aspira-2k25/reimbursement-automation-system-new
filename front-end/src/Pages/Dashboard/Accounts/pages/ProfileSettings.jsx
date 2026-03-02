@@ -46,7 +46,6 @@ const ProfileSettings = () => {
 
       toast.success('Profile updated successfully')
     } catch (error) {
-      console.error('Error updating profile:', error)
       toast.error(error?.error || 'Failed to update profile')
     } finally {
       setIsLoading(false)
