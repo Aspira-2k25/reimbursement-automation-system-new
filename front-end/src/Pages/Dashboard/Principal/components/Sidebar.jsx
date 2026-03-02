@@ -39,7 +39,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
 
   return (
     <motion.div
-      className="bg-white border-r border-gray-200 flex flex-col shadow-sm"
+      className="bg-white border-r border-gray-200 flex flex-col shadow-sm h-screen"
       initial={false}
       animate={{ width: isCollapsed ? 64 : 256 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
