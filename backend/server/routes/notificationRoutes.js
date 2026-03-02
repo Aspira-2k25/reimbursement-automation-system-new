@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/auth');
 const notificationService = require('../utils/notificationServise');
 
@@ -13,7 +14,7 @@ router.get(
       const { limit, unreadOnly } = req.query;
 
       const notifications = await notificationService.getUserNotifications(userId, {
-        limit: limit ? parseInt(limit) : 50,
+        limit: Math.min(Math.max(parseInt(limit) || 50, 1), 100),
         unreadOnly: unreadOnly === 'true',
       });
 
@@ -48,6 +49,12 @@ router.put(
   async (req, res) => {
     try {
       const userId = req.user.userId || req.user.email || req.user.id;
+
+      // Validate ObjectId format
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid notification ID format' });
+      }
+
       const notification = await notificationService.markAsRead(req.params.id, userId);
 
       if (!notification) {
