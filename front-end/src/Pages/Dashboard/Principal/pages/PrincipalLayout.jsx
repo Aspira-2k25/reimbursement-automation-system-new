@@ -33,7 +33,7 @@ const PrincipalLayout = ({ children }) => {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('Under Principal')
   const [departmentFilter, setDepartmentFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
 
@@ -269,9 +269,9 @@ const PrincipalLayout = ({ children }) => {
     updateRequestStatus: useCallback(async (requestId, newStatus, comments = '') => {
       try {
         // Find the request to determine which API to use
-        const request = allRequests.find(req => 
-          req.id === requestId || 
-          req._id === requestId || 
+        const request = allRequests.find(req =>
+          req.id === requestId ||
+          req._id === requestId ||
           req.applicationId === requestId
         )
 
@@ -290,7 +290,7 @@ const PrincipalLayout = ({ children }) => {
         const formId = request._id || request.applicationId || request.id
 
         // Prepare update data
-        const updateData = { 
+        const updateData = {
           status: newStatus,
           reviewedBy: userProfile.fullName,
           reviewedAt: new Date().toISOString()
