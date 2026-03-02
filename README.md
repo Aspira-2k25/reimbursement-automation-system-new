@@ -57,31 +57,54 @@ Behind the beautiful UI lies a robust, enterprise-grade architecture. Our engine
 ```mermaid
 graph TD
     %% Colors and Styles
-    classDef user fill:#00b4d8,stroke:#03045e,stroke-width:2px,color:#fff;
+    classDef student fill:#00b4d8,stroke:#03045e,stroke-width:2px,color:#fff;
+    classDef faculty fill:#7209b7,stroke:#3a0ca3,stroke-width:2px,color:#fff;
     classDef logic fill:#90e0ef,stroke:#03045e,stroke-width:2px,color:#000;
     classDef db fill:#023e8a,stroke:#00b4d8,stroke-width:3px,color:#fff;
+    classDef storage fill:#f4a261,stroke:#e76f51,stroke-width:3px,color:#fff;
     classDef fail fill:#ef233c,stroke:#8d0801,stroke-width:2px,color:#fff;
+    classDef success fill:#4ea94b,stroke:#0f5132,stroke-width:2px,color:#fff;
 
-    A[🎓 Applicant] -->|Uploads Receipt & Form| B[(MongoDB Cloud Store)]
-    B --> C{👔 HOD / Coordinator}
+    %% Data Entry Points
+    A[🎓 Students] -->|Submit via /student-forms| C[(MongoDB Database)]
+    B[👨‍🏫 Faculty/Staff] -->|Submit via /forms| C
     
-    C -->|Approved| D{👑 Principal Review}
-    C -->|Rejected| E[Return to Applicant Alert]
-    
-    D -->|Approved| F[💹 Accounts Financial Queue]
-    D -->|Rejected| E
-    
-    F -->|Reimbursed| G[Final Ledger Recorded]
-    
-    H[(Postgres Administrative Auth)] -.->|Token Verifies| C
-    H -.->|Token Verifies| D
-    H -.->|Token Verifies| F
+    A -.->|Receipts & ID Cards| CL[(Cloudinary Storage)]
+    B -.->|Receipts & ID Cards| CL
+
+    %% Student Workflow Pipeline
+    C -->|Student Path| D{👔 Coordinator Review}
+    D -->|Approved| E{🏢 HOD Review}
+    D -->|Rejected| R1[Return to Student Alert]
+
+    %% Faculty Workflow Pipeline (Bypasses Coordinator)
+    C -->|Faculty Path| E
+    C -->|HOD Path| F{👑 Principal Review}
+
+    %% Shared Review Pipeline
+    E -->|Approved| F
+    E -->|Rejected| R2[Return to Applicant Alert]
+
+    F -->|Approved| G[💹 Accounts Financial Queue]
+    F -->|Rejected| R2
+
+    G -->|Disbursed| H[✅ Final Ledger Recorded]
+    G -->|Rejected| R3[Return to Higher Authority Alert]
+
+    %% Authentication Layer
+    P[(PostgreSQL Staff Auth)] -.->|Issues JWT Token| D
+    P -.->|Issues JWT Token| E
+    P -.->|Issues JWT Token| F
+    P -.->|Issues JWT Token| G
 
     %% Appling Classes
-    class A,G user;
-    class C,D,F logic;
-    class B,H db;
-    class E fail;
+    class A student;
+    class B faculty;
+    class D,E,F logic;
+    class C,P db;
+    class CL storage;
+    class R1,R2,R3 fail;
+    class G,H success;
 ```
 
 ---
