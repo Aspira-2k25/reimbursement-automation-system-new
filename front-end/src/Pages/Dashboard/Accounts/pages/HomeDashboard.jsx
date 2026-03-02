@@ -193,13 +193,18 @@ const HomeDashboard = () => {
     }
   }, [setStatusFilter, setDepartmentFilter, setTypeFilter, setSearchQuery, setActiveTab])
 
-  // Get filtered requests - Queue only shows pending (Approved) items
+  // Get filtered requests - Queue only shows pending (Approved) items by default
   // Reimbursed items are shown in the dedicated Reimbursed List tab
+  // Rejected items only appear when explicitly filtered via "Rejected by Accounts"
   const filteredRequests = useMemo(() => {
     const allFiltered = getFilteredRequests()
-    // Exclude Reimbursed from queue - they have their own tab
+    // Always exclude Reimbursed from queue - they have their own tab
+    // When statusFilter is 'All' (All Pending), also exclude Rejected so only truly pending items show
+    if (statusFilter === 'All') {
+      return allFiltered.filter(r => r.status !== 'Reimbursed' && r.status !== 'Rejected')
+    }
     return allFiltered.filter(r => r.status !== 'Reimbursed')
-  }, [getFilteredRequests])
+  }, [getFilteredRequests, statusFilter])
 
   const handleExportToCSV = useCallback(() => {
     const headers = ['Application ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
