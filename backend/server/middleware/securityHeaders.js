@@ -47,7 +47,6 @@ const securityHeaders = (req, res, next) => {
     // Additional security headers
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
     // NOTE: COEP, COOP, and CORP headers removed — they block cross-origin
-    // API responses from being read by the Vercel frontend, causing 401 errors.
     // These are only needed for SharedArrayBuffer/cross-origin isolation, not APIs.
 
     // Force HTTPS in production (Strict Transport Security)
