@@ -24,6 +24,7 @@ SELECT * FROM staff;
 -- NOTE: These are plain text passwords for local development. 
 -- In production, passwords should be hashed using bcrypt via the application.
 INSERT INTO staff (username, password, email, role, name, department, is_active) VALUES
+('Admin', 'admin1234', 'admin@apsit.edu.in', 'Admin', 'Admin User', 'Administration', TRUE),
 ('Nirmala123', 'nimm1234', 'nimm@gmail.com', 'coordinator', 'Nirmala Patole', 'IT', TRUE),
 ('Apoorva', 'ap1234', 'app@gmail.com', 'HOD', 'Apoorva Puranik', 'IT', TRUE),
 ('Alok', 'alok1234', 'alok@gmail.com', 'Faculty', 'Alok Sahoo', 'IT', TRUE),

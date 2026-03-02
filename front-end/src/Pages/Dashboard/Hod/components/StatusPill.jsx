@@ -21,9 +21,9 @@ const StatusPill = ({ status, size = 'sm' }) => {
         }
       case 'Approved':
         return {
-          color: 'bg-green-100 text-green-800',
+          color: 'bg-teal-100 text-teal-800',
           icon: Check,
-          label: 'Approved'
+          label: 'Under Accounts'
         }
       case 'Rejected':
         return {

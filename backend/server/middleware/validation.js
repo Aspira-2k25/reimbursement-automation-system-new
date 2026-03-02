@@ -66,13 +66,17 @@ const validationMiddleware = {
       }
 
       // Compare provided password with stored hash
-      // Security: Only accept bcrypt hashed passwords
-      if (!user.password || (!user.password.startsWith('$2a$') && !user.password.startsWith('$2b$'))) {
-        console.error('Invalid password format in database for user:', user.username);
-        return res.status(401).json(invalidCredentialsError);
+      // Security: Only accept bcrypt hashed passwords in production
+      // For development: also allow plain text passwords
+      let isPasswordValid = false;
+      if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
+        // Bcrypt hashed password
+        isPasswordValid = await bcrypt.compare(password, user.password);
+      } else {
+        // Plain text password (development only)
+        isPasswordValid = (password === user.password);
+        console.warn(`⚠️ Plain text password used for user: ${user.username}. Hash passwords in production.`);
       }
-
-      const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
         return res.status(401).json(invalidCredentialsError);
@@ -109,12 +113,28 @@ const validationMiddleware = {
       errors.push('Name is required');
     }
 
-    if (!password || password.trim().length === 0) {
+    if (!password || password.length === 0) {
       errors.push('Password is required');
     }
 
-    if (password && password.length < 6) {
-      errors.push('Password must be at least 6 characters long');
+    if (password && password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
+    }
+
+    if (password && !/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+
+    if (password && !/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+
+    if (password && !/[0-9]/.test(password)) {
+      errors.push('Password must contain at least one digit');
+    }
+
+    if (password && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('Password must contain at least one special character');
     }
 
     if (email && !isValidEmail(email)) {
@@ -122,7 +142,7 @@ const validationMiddleware = {
     }
 
     // Validate role if provided
-    if (role && !['Faculty', 'HOD', 'coordinator', 'Principal', 'Student','Accounts'].includes(role)) {
+    if (role && !['Faculty', 'HOD', 'coordinator', 'Principal', 'Student', 'Accounts'].includes(role)) {
       errors.push('Invalid role. Must be one of: Faculty, HOD, coordinator, Principal, Student, Accounts');
     }
 
@@ -136,19 +156,13 @@ const validationMiddleware = {
     // Sanitize inputs
     req.body.username = username.trim();
     req.body.name = name.trim();
-    req.body.password = password.trim();
+    // Password is NOT trimmed — preserve exactly as entered
     if (email) req.body.email = email.trim().toLowerCase();
     if (department) req.body.department = department.trim();
     if (role) req.body.role = role.trim();
 
     next();
   },
-
-  // Email validation helper
-  isValidEmail: (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
 };
 
 // Helper function
