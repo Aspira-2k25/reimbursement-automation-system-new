@@ -233,6 +233,71 @@ const dbUtils = {
     }
   },
 
+  // Get single staff member by ID (admin use)
+  getStaffById: async (id) => {
+    try {
+      const query = `
+        SELECT
+          id,
+          username,
+          name,
+          department,
+          role,
+          email,
+          employee_id,
+          is_active,
+          created_at,
+          last_login
+        FROM staff
+        WHERE id = $1
+      `;
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [id]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error getting staff by ID:', error);
+      throw error;
+    }
+  },
+
+  // Update staff by ID (admin controlled)
+  updateStaffById: async (id, updates) => {
+    try {
+      const allowed = ['username', 'name', 'email', 'role', 'department', 'employee_id', 'is_active'];
+      const fields = allowed.filter((k) => updates[k] !== undefined);
+
+      if (fields.length === 0) {
+        return null;
+      }
+
+      const setClauses = fields.map((field, idx) => `${field} = $${idx + 2}`);
+      const values = fields.map((field) => updates[field]);
+
+      const query = `
+        UPDATE staff
+        SET ${setClauses.join(', ')}
+        WHERE id = $1
+        RETURNING
+          id,
+          username,
+          name,
+          department,
+          role,
+          email,
+          employee_id,
+          is_active,
+          created_at,
+          last_login
+      `;
+      const dbPool = ensurePool();
+      const result = await dbPool.query(query, [id, ...values]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error updating staff by ID:', error);
+      throw error;
+    }
+  },
+
   // Get staff count by role
   getStaffCountByRole: async () => {
     try {

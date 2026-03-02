@@ -20,6 +20,13 @@ router.get('/staff/department/:department', verifyToken, authController.getStaff
 // Create user endpoint (can be protected with admin role check if needed)
 router.post('/create-user', validateRegister, authController.createUser);
 
+// Admin routes for faculty management (public - no auth required for admin dashboard)
+router.get('/admin/faculty', authController.getFacultyList);
+router.get('/admin/faculty/:id', authController.getStaffById);
+router.put('/admin/faculty/:id', authController.updateStaffById);
+router.post('/admin/faculty', authController.createFaculty);
+router.delete('/admin/faculty/:id', authController.deleteFaculty);
+
 
 // Test route for checking authentication
 router.get('/test-auth', verifyToken, (req, res) => {
