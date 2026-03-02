@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const emailService = require('./emailService');
+const he = require('he');
 
 // Create notification and send email
 const createNotification = async (notificationData, sendEmailNotification = true) => {
@@ -25,64 +26,68 @@ const createNotification = async (notificationData, sendEmailNotification = true
 
     await notification.save();
 
-    // Send email if requested and email is available
+    // Send email in background so HTTP response is not blocked (avoids ~60s SMTP timeout delaying form submit/approve)
     if (sendEmailNotification && notificationData.userEmail) {
-      try {
-        let emailResult = { success: false };
+      if (!emailService.isSmtpConfigured()) {
+        console.warn('Notification saved but email skipped: SMTP_USER/SMTP_PASS not set on server.');
+      } else {
+      const sendEmailInBackground = async () => {
+        try {
+          let emailResult = { success: false };
 
-        if (notificationData.type === 'approval') {
-          emailResult = await emailService.sendApprovalEmail(
-            {
+          if (notificationData.type === 'approval') {
+            emailResult = await emailService.sendApprovalEmail(
+              {
+                name: notificationData.userName || 'User',
+                email: notificationData.userEmail,
+                applicationId: notificationData.applicationId,
+                studentId: notificationData.studentId,
+                amount: notificationData.amount,
+                status: notificationData.status,
+                remarks: notificationData.remarks,
+              },
+              notificationData.phase
+            );
+          } else if (notificationData.type === 'rejection') {
+            emailResult = await emailService.sendRejectionEmail(
+              {
+                name: notificationData.userName || 'User',
+                email: notificationData.userEmail,
+                applicationId: notificationData.applicationId,
+                studentId: notificationData.studentId,
+                amount: notificationData.amount,
+                status: notificationData.status,
+              },
+              notificationData.phase,
+              notificationData.remarks
+            );
+          } else if (notificationData.type === 'submission') {
+            emailResult = await emailService.sendSubmissionEmail({
               name: notificationData.userName || 'User',
               email: notificationData.userEmail,
               applicationId: notificationData.applicationId,
               studentId: notificationData.studentId,
               amount: notificationData.amount,
-              status: notificationData.status,
-              remarks: notificationData.remarks,
-            },
-            notificationData.phase
-          );
-        } else if (notificationData.type === 'rejection') {
-          emailResult = await emailService.sendRejectionEmail(
-            {
-              name: notificationData.userName || 'User',
-              email: notificationData.userEmail,
-              applicationId: notificationData.applicationId,
-              studentId: notificationData.studentId,
-              amount: notificationData.amount,
-              status: notificationData.status,
-            },
-            notificationData.phase,
-            notificationData.remarks
-          );
-        } else if (notificationData.type === 'submission') {
-          emailResult = await emailService.sendSubmissionEmail({
-            name: notificationData.userName || 'User',
-            email: notificationData.userEmail,
-            applicationId: notificationData.applicationId,
-            studentId: notificationData.studentId,
-            amount: notificationData.amount,
-          });
-        } else {
-          // generic status change or other notification type
-          emailResult = await emailService.sendEmail(
-            notificationData.userEmail,
-            notificationData.title || `Application Update: ${notificationData.applicationId}`,
-            `<p>Dear ${notificationData.userName || 'User'},</p><p>${notificationData.message}</p><p>Status: ${notificationData.status}</p>`
-          );
-        }
+            });
+          } else {
+            emailResult = await emailService.sendEmail(
+              notificationData.userEmail,
+              notificationData.title || `Application Update: ${notificationData.applicationId}`,
+              `<p>Dear ${he.encode(notificationData.userName || 'User')},</p><p>${he.encode(notificationData.message || '')}</p><p>Status: ${he.encode(notificationData.status || '')}</p>`
+            );
+          }
 
-        // Mark email as sent only if actually successful
-        if (emailResult && emailResult.success) {
-          notification.emailSent = true;
-          await notification.save();
-        } else {
-          console.warn('Notification created but email delivery failed:', emailResult?.error || 'Unknown error');
+          if (emailResult && emailResult.success) {
+            notification.emailSent = true;
+            await notification.save();
+          } else {
+            console.warn('Notification created but email delivery failed:', emailResult?.error || 'Unknown error');
+          }
+        } catch (emailError) {
+          console.error('Failed to send email notification:', emailError);
         }
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
-        // Don't fail the whole operation if email fails
+      };
+      sendEmailInBackground();
       }
     }
 

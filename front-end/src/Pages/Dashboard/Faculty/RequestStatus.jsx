@@ -60,8 +60,9 @@ export default function RequestStatus() {
         const data = await facultyFormsAPI.listMine()
 
         // Map backend data to frontend model
-        // Assuming backend returns array of forms
-        const mapped = Array.isArray(data) ? data.map(f => ({
+        // Handle both simple array response and paginated object response
+        const formsArray = Array.isArray(data) ? data : (data?.forms || [])
+        const mapped = formsArray.map(f => ({
           id: f.applicationId || f._id,
           _id: f._id,
           category: f.reimbursementType || "NPTEL",
@@ -73,7 +74,7 @@ export default function RequestStatus() {
           courseName: f.courseName || 'N/A',
           marks: f.marks ?? null,
           documents: f.documents || [],
-        })) : []
+        }))
 
         // Check for status changes and generate notifications
         if (previousRequests.length > 0) {
@@ -100,8 +101,7 @@ export default function RequestStatus() {
         setPreviousRequests(mapped)
         setRequests(mapped)
         setError(null)
-      } catch (err) {
-        console.error("Failed to load requests:", err)
+      } catch {
         setError("Failed to load your requests. Please try again.")
       } finally {
         setLoading(false)

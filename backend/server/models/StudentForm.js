@@ -21,10 +21,15 @@ const StudentFormSchema = new mongoose.Schema({
     courseName: { type: String, required: true }, // NPTEL Course Name for reimbursement
     marks: { type: Number, required: true }, // NPTEL course marks (0-100)
     reimbursementType: { type: String, default: "NPTEL" },
-    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Rejected"] },
+    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed", "Rejected"] },
     // Track which role rejected the application (for workflow visibility)
     rejectedBy: { type: String, enum: ["Coordinator", "HOD", "Principal", "Accounts", null], default: null },
     rejectionRemarks: { type: String }, // Reason for rejection
+    remarks: { type: String }, // Reviewer remarks
+    accountsComments: { type: String }, // Comments from Accounts department
+    accountsRemarks: { type: String }, // Remarks from Accounts department
+    reviewedBy: { type: String }, // Who reviewed
+    reviewedAt: { type: Date }, // When reviewed
     documents: [
         {
             // Support both local file fields and Cloudinary fields
@@ -36,5 +41,13 @@ const StudentFormSchema = new mongoose.Schema({
         },
     ],
 }, { timestamps: true });
+
+// Indexes for query performance on commonly filtered fields
+StudentFormSchema.index({ userId: 1 });
+StudentFormSchema.index({ status: 1 });
+StudentFormSchema.index({ department: 1 });
+StudentFormSchema.index({ status: 1, department: 1 }); // Compound: HOD queries filter by both
+StudentFormSchema.index({ status: 1, rejectedBy: 1 }); // Compound: rejected queries
+StudentFormSchema.index({ updatedAt: -1 }); // Sorting by latest update
 
 module.exports = mongoose.model("StudentForm", StudentFormSchema);

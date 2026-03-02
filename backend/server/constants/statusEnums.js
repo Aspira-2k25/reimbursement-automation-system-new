@@ -64,9 +64,9 @@ const DEPARTMENT_LIST = [
 
 // File upload constraints
 const FILE_CONSTRAINTS = {
-  MAX_SIZE: 10 * 1024 * 1024, // 10MB
-  ALLOWED_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf', 'image/webp'],
-  ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.webp']
+  MAX_SIZE: 1 * 1024 * 1024, // 1MB (matches multer.js)
+  ALLOWED_TYPES: ['image/jpeg', 'image/png', 'application/pdf'],
+  ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.pdf']
 };
 
 // Validation rules
