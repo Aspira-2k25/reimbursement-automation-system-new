@@ -383,5 +383,195 @@ authController.createUser = async (req, res) => {
   }
 };
 
+// ==================== ADMIN FACULTY MANAGEMENT ====================
+
+// Get all staff members (admin only)
+authController.getFacultyList = async (req, res) => {
+  try {
+    const staff = await dbUtils.getAllStaff();
+    // no filtering; return entire roster for admin
+    res.json({ staff });
+  } catch (error) {
+    console.error('getFacultyList error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get single staff member by ID
+authController.getStaffById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Staff ID required' });
+
+    const staff = await dbUtils.getStaffById(id);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    res.json({ staff });
+  } catch (error) {
+    console.error('getStaffById error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Update staff member by ID (admin action)
+authController.updateStaffById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, name, department, role, email, employee_id, is_active, password } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Staff ID required' });
+    }
+
+    // Basic validation
+    if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if username/email conflict with another record
+    if (username) {
+      const existing = await prisma.staff.findUnique({ where: { username } });
+      if (existing && existing.id !== parseInt(id)) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+    }
+    if (email) {
+      const existing = await prisma.staff.findUnique({ where: { email } });
+      if (existing && existing.id !== parseInt(id)) {
+        return res.status(409).json({ error: 'Email already taken' });
+      }
+    }
+
+    const updates = { username, name, department, role, email, employee_id, is_active };
+    if (password) {
+      updates.password = await bcrypt.hash(password, 10);
+    }
+
+    const updated = await dbUtils.updateStaffById(id, updates);
+    if (!updated) {
+      return res.status(400).json({ error: 'No fields to update or staff not found' });
+    }
+
+    res.json({ message: 'Staff updated successfully', staff: updated });
+  } catch (error) {
+    console.error('updateStaffById error:', error);
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Username or email already exists' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Create new faculty member (admin action)
+authController.createFaculty = async (req, res) => {
+  try {
+    const { username, name, department, email, password, employee_id } = req.body;
+
+    // Basic validation
+    if (!username || !name || !password) {
+      return res.status(400).json({
+        error: 'Username, name, and password are required'
+      });
+    }
+
+    // Validate email format
+    if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if user already exists by username
+    const existingUserByUsername = await prisma.staff.findUnique({
+      where: { username: username.toLowerCase().trim() }
+    });
+    if (existingUserByUsername) {
+      return res.status(409).json({
+        error: 'User with this username already exists'
+      });
+    }
+
+    // Check if email already exists
+    if (email) {
+      const existingUserByEmail = await prisma.staff.findUnique({
+        where: { email: email.toLowerCase().trim() }
+      });
+      if (existingUserByEmail) {
+        return res.status(409).json({
+          error: 'User with this email already exists'
+        });
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new faculty
+    const newFaculty = await prisma.staff.create({
+      data: {
+        username: username.toLowerCase().trim(),
+        name: name.trim(),
+        password: hashedPassword,
+        email: email ? email.toLowerCase().trim() : null,
+        department: department || null,
+        role: 'Faculty',
+        employee_id: employee_id || null,
+        is_active: true,
+      },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        department: true,
+        role: true,
+        email: true,
+        employee_id: true,
+        is_active: true,
+        created_at: true,
+      }
+    });
+
+    res.status(201).json({
+      message: 'Faculty member created successfully',
+      staff: newFaculty
+    });
+
+  } catch (error) {
+    console.error('createFaculty error:', error);
+
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'field';
+      return res.status(409).json({
+        error: `User with this ${field} already exists`
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Delete faculty member by ID (soft delete - set is_active to false)
+authController.deleteFaculty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Staff ID required' });
+    }
+
+    // Soft delete - set is_active to false
+    const updated = await dbUtils.updateStaffById(id, { is_active: false });
+    if (!updated) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    res.json({ message: 'Faculty member deleted successfully' });
+  } catch (error) {
+    console.error('deleteFaculty error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 module.exports = authController;

@@ -292,3 +292,56 @@ export const studentFormsAPI = {
     }
   }
 };
+
+// Admin API functions - for managing faculty and staff
+export const adminAPI = {
+  // Get all faculty members
+  getFacultyList: async () => {
+    try {
+      const res = await api.get('/auth/admin/faculty');
+      return res.data; // { staff: [...] }
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Get single staff member
+  getStaffById: async (id) => {
+    try {
+      const res = await api.get(`/auth/admin/faculty/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Create new faculty member
+  createFaculty: async (data) => {
+    try {
+      const res = await api.post('/auth/admin/faculty', data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Update faculty member
+  updateFaculty: async (id, data) => {
+    try {
+      const res = await api.put(`/auth/admin/faculty/${id}`, data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Delete (deactivate) faculty member
+  deleteFaculty: async (id) => {
+    try {
+      const res = await api.delete(`/auth/admin/faculty/${id}`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
+};
