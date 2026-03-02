@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users, Clock, BarChart3 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 // Simple 3D Avatar Component using Canvas
 const Avatar3D = () => {
@@ -80,6 +81,13 @@ const Avatar3D = () => {
 export default function LandingPage() {
   const [isHovered, setIsHovered] = useState(null);
   const navigate = useNavigate();
+  const { isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated()) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
 
   // Theme palette (Modernity in Full Bloom)
   const theme = {
@@ -252,17 +260,17 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e)=> e.currentTarget.style.color = theme.green} onMouseLeave={(e)=> e.currentTarget.style.color = '#6b7280'}>Features</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e)=> e.currentTarget.style.color = theme.green} onMouseLeave={(e)=> e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e)=> e.currentTarget.style.color = theme.green} onMouseLeave={(e)=> e.currentTarget.style.color = '#6b7280'}>Login</a></li>
+                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
+                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
+                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e)=> e.currentTarget.style.color = theme.green} onMouseLeave={(e)=> e.currentTarget.style.color = '#6b7280'}>Help Center</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e)=> e.currentTarget.style.color = theme.green} onMouseLeave={(e)=> e.currentTarget.style.color = '#6b7280'}>Documentation</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e)=> e.currentTarget.style.color = theme.green} onMouseLeave={(e)=> e.currentTarget.style.color = '#6b7280'}>Contact Admin</a></li>
+                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Help Center</a></li>
+                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Documentation</a></li>
+                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Contact Admin</a></li>
               </ul>
             </div>
           </div>

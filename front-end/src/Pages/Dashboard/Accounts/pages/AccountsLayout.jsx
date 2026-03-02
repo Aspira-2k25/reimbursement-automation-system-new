@@ -99,8 +99,6 @@ const AccountsLayout = () => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
-      console.log('Accounts Dashboard - User data:', user)
-
       // Build email: prefer stored email, otherwise construct from username
       let userEmail = user.email
       if (!userEmail && user.username) {
@@ -203,15 +201,8 @@ const AccountsLayout = () => {
       // Map backend data to dashboard format
       const mappedRequests = allForms.map(mapFormToRequest)
 
-      console.log('Fetched Accounts requests - Total:', mappedRequests.length)
-      console.log('By status:', {
-        'Approved': mappedRequests.filter(r => r.status === 'Approved').length,
-        'Reimbursed': mappedRequests.filter(r => r.status === 'Reimbursed').length
-      })
-
       setAllRequests(mappedRequests)
     } catch (error) {
-      console.error('Error fetching Accounts requests:', error)
       toast.error(error?.error || 'Failed to fetch requests')
       setAllRequests([])
     } finally {
@@ -267,8 +258,6 @@ const AccountsLayout = () => {
       const apiCall = isStudent ? studentFormsAPI : facultyFormsAPI
       const formId = request._id || request.id
 
-      console.log(`Accounts: Updating ${isStudent ? 'student' : 'faculty'} form ${formId} to ${newStatus}`)
-
       // Call the API to update the status with appropriate field
       const updateData = {
         status: newStatus,
@@ -297,7 +286,6 @@ const AccountsLayout = () => {
         toast.success(`Request marked as ${newStatus}`)
       }
     } catch (error) {
-      console.error('Error updating request status:', error)
       toast.error(error?.error || 'Failed to update request status')
     }
   }, [allRequests])

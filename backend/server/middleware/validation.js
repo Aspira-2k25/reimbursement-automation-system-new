@@ -113,12 +113,28 @@ const validationMiddleware = {
       errors.push('Name is required');
     }
 
-    if (!password || password.trim().length === 0) {
+    if (!password || password.length === 0) {
       errors.push('Password is required');
     }
 
-    if (password && password.length < 6) {
-      errors.push('Password must be at least 6 characters long');
+    if (password && password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
+    }
+
+    if (password && !/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+
+    if (password && !/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+
+    if (password && !/[0-9]/.test(password)) {
+      errors.push('Password must contain at least one digit');
+    }
+
+    if (password && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('Password must contain at least one special character');
     }
 
     if (email && !isValidEmail(email)) {
@@ -126,7 +142,7 @@ const validationMiddleware = {
     }
 
     // Validate role if provided
-    if (role && !['Faculty', 'HOD', 'coordinator', 'Principal', 'Student','Accounts'].includes(role)) {
+    if (role && !['Faculty', 'HOD', 'coordinator', 'Principal', 'Student', 'Accounts'].includes(role)) {
       errors.push('Invalid role. Must be one of: Faculty, HOD, coordinator, Principal, Student, Accounts');
     }
 
@@ -140,19 +156,13 @@ const validationMiddleware = {
     // Sanitize inputs
     req.body.username = username.trim();
     req.body.name = name.trim();
-    req.body.password = password.trim();
+    // Password is NOT trimmed — preserve exactly as entered
     if (email) req.body.email = email.trim().toLowerCase();
     if (department) req.body.department = department.trim();
     if (role) req.body.role = role.trim();
 
     next();
   },
-
-  // Email validation helper
-  isValidEmail: (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
 };
 
 // Helper function
