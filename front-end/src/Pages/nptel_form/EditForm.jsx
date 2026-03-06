@@ -22,8 +22,8 @@ export default function EditForm() {
     const fetchForm = async () => {
       try {
         // Detect form type from URL path first (for Accounts role viewing different form types)
-        // Also match /nptel-form/ paths since student NPTEL edit links use /nptel-form/edit/:id
-        const isStudent = location.pathname.includes('/student-form/') || location.pathname.includes('/nptel-form/');
+        // Only /student-form/ paths are student forms; /faculty-form/ and /nptel-form/ use role-based detection
+        const isStudent = location.pathname.includes('/student-form/');
         setIsStudentForm(isStudent);
 
         // Select API based on URL path or user role
