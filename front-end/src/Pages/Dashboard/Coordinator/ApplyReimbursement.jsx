@@ -444,7 +444,7 @@ export default function ApplyReimbursement() {
                             {/* View button */}
                             <button
                               className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors"
-                              onClick={() => navigate(`/nptel-form/view/${r.id}`)}
+                              onClick={() => navigate(`/faculty-form/view/${r.id}`)}
                               title="View"
                             >
                               <Eye className="h-4 w-4 text-slate-600" />
@@ -452,7 +452,7 @@ export default function ApplyReimbursement() {
                             {/* Edit button */}
                             <button
                               className="p-1.5 rounded-lg hover:bg-[#65CCB8]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
+                              onClick={() => navigate(`/faculty-form/edit/${r.id}`)}
                               title={r.status !== 'Under HOD' ? 'Editing locked — form has been acted upon' : 'Edit'}
                               disabled={r.status !== 'Under HOD'}
                             >
