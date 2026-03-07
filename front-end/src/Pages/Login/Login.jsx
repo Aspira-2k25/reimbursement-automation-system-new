@@ -4,7 +4,8 @@ import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useNavigate, useLocation } from 'react-router-dom'
-
+import apshahLogo from '../../assets/images/Apshah_logo.png'
+import websiteLogo from '../../assets/images/Website_logo.png'
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
@@ -63,6 +64,18 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Side - Welcome Section */}
       <motion.div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
+
+        {/* College Branding Top Left */}
+        <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+          <img
+            src={apshahLogo}
+            alt="A.P. Shah Institute of Technology Logo"
+            className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-sm"
+          />
+          <span className="font-bold text-white text-sm sm:text-base tracking-wide drop-shadow-md max-w-[200px] leading-tight">
+            PCT's A. P. Shah Institute of Technology
+          </span>
+        </div>
         {/* Decorative geometric shapes */}
         <div className="absolute inset-0">
           {/* Diamond shapes */}
@@ -100,7 +113,12 @@ export default function LoginPage() {
         <div className="w-full max-w-md px-4 sm:px-0">
           <motion.div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8" {...fadeInUp}>
             {/* Header */}
-            <div className="text-center mb-6 sm:mb-8">
+            <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
+              <img
+                src={websiteLogo}
+                alt="Reimbursement System Logo"
+                className="h-16 w-16 mb-4 object-contain drop-shadow-sm"
+              />
               <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>
                 Log In
               </h2>
