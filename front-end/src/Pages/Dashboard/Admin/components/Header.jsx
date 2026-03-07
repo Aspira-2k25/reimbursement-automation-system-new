@@ -2,28 +2,53 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { useAdminContext } from '../pages/AdminLayout'
 import { Menu, Bell } from 'lucide-react'
+import apshahLogo from '../../../../assets/images/Apshah_logo.png'
+import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const Header = ({ isCollapsed, setIsCollapsed }) => {
   // admin dashboard requires authenticated user with Admin role (checked at router level)
 
   return (
     <motion.div
-      className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between"
+      className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* College Logo */}
+          <div className="flex items-center gap-3 pr-0 sm:pr-4 border-r-0 sm:border-r border-gray-200">
+            <img
+              src={apshahLogo}
+              alt="A.P. Shah Logo"
+              className="h-12 w-12 sm:h-14 sm:w-14 rounded-sm object-contain drop-shadow-sm"
+            />
+            <span className="font-bold text-xs sm:text-sm tracking-wide max-w-[200px] leading-tight hidden lg:block text-gray-900">
+              PCT's A. P. Shah Institute of Technology
+            </span>
+          </div>
+
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 hidden sm:block">Admin</h1>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* System Logo */}
+        <div className="hidden sm:flex items-center gap-2 mr-2">
+          <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
+          <span className="font-semibold text-sm text-gray-900 hidden md:block">
+            Reimbursement Portal
+          </span>
+        </div>
+
         {/* Notifications */}
         <motion.button
           whileHover={{ scale: 1.1 }}
