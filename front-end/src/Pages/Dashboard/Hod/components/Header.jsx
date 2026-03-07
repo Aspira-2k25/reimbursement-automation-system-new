@@ -1,19 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Bell,
-  ChevronDown,
-  Settings,
-  LogOut,
-  Calendar,
-  Clock,
-  Check,
-  CheckCheck
-} from 'lucide-react'
+import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useHODContext } from '../pages/HODLayout'
 import { useAuth } from '../../../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import apshahLogo from '../../../../assets/images/Apshah_logo.png'
+import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   const { logout } = useAuth()
@@ -95,8 +88,19 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   return (
     <header className="px-6 py-4" style={{ backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)' }}>
       <div className="flex items-center justify-between">
-        {/* Left Section - Current Page & Time */}
-        <div className="flex items-center gap-6">
+        {/* Left Section - College Logo & Current Page */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 pr-0 sm:pr-6 border-b sm:border-b-0 sm:border-r border-gray-200 pb-2 sm:pb-0">
+            <img
+              src={apshahLogo}
+              alt="A.P. Shah Logo"
+              className="h-12 w-12 sm:h-14 sm:w-14 rounded-sm object-contain drop-shadow-sm"
+            />
+            <span className="font-bold text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block" style={{ color: 'var(--color-dark-gray)' }}>
+              PCT's A. P. Shah Institute of Technology
+            </span>
+          </div>
+
           <div>
             <h1 className="text-2xl font-semibold" style={{ color: 'var(--color-dark-gray)' }}>{currentPage}</h1>
             <div className="flex items-center gap-4 mt-1">
@@ -114,6 +118,14 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
         {/* Right Section - Notifications & Profile */}
         <div className="flex items-center gap-4">
+          {/* System Logo */}
+          <div className="hidden sm:flex items-center gap-2 mr-2">
+            <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
+            <span className="font-semibold text-sm" style={{ color: 'var(--color-dark-gray)' }}>
+              Reimbursement Portal
+            </span>
+          </div>
+
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
             <button
