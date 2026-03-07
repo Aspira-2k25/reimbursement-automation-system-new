@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
 const { addToBlacklist } = require('../utils/tokenBlacklist');
 
 // Initialize Google OAuth client
@@ -320,7 +321,7 @@ const authController = {
   }
 };
 
-// List all staff
+// List all staff (used by non-admin endpoints)
 authController.getAllStaff = async (req, res) => {
   try {
     const staff = await dbUtils.getAllStaff();
@@ -436,13 +437,26 @@ authController.createUser = async (req, res) => {
   }
 };
 
-// ==================== ADMIN FACULTY MANAGEMENT ====================
+// ==================== ADMIN STAFF MANAGEMENT ====================
 
-// Get all staff members (admin only)
+// Get all staff members (admin endpoint). Use Prisma directly for consistency.
 authController.getFacultyList = async (req, res) => {
   try {
-    const staff = await dbUtils.getAllStaff();
-    // no filtering; return entire roster for admin
+    const staff = await prisma.staff.findMany({
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        department: true,
+        role: true,
+        email: true,
+        employee_id: true,
+        is_active: true,
+        created_at: true,
+        last_login: true
+      },
+      orderBy: { id: 'asc' }
+    });
     res.json({ staff });
   } catch (error) {
     console.error('getFacultyList error:', error);
@@ -506,7 +520,7 @@ authController.updateStaffById = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ error: 'No fields to update or staff not found' });
     }
-
+    logger.info(`Staff record updated`, { id, updates });
     res.json({ message: 'Staff updated successfully', staff: updated });
   } catch (error) {
     console.error('updateStaffById error:', error);
@@ -584,6 +598,7 @@ authController.createFaculty = async (req, res) => {
       }
     });
 
+    logger.info(`New staff created`, { id: newFaculty.id, username: newFaculty.username });
     res.status(201).json({
       message: 'Faculty member created successfully',
       staff: newFaculty

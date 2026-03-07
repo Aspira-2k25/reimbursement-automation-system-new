@@ -137,7 +137,6 @@ This system was proudly engineered, designed, and deployed by our institution's 
 | <img src="https://github.com/FutureAlok1445.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Alok" /> | <img src="https://github.com/Oriacgz.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Apoorva" /> | <img src="https://github.com/Nirmala1914.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Nirmala" /> | <img src="https://github.com/Vai-15.png" width="90" style="border-radius:10%; border: 3px solid #00E5FF;" alt="Vaibhavi" /> |
 | :---: | :---: | :---: | :---: |
 | **[Alok](https://github.com/FutureAlok1445)** | **[Apoorva](https://github.com/Oriacgz)** | **[Nirmala](https://github.com/Nirmala1914)** | **[Vaibhavi](https://github.com/Vai-15)** |
-| *Full-Stack Developer* | *Full-Stack Developer* | *Frontend/Design Specialist* | *Frontend/Design Specialist* |
 
 </div>
 

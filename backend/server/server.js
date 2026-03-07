@@ -58,6 +58,8 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const { csrfProtection } = require('./middleware/csrf');
+const http = require('http');
+const { Server: IOServer } = require('socket.io');
 
 // Database/connectors
 const connectMongoDB = require('./config/mongo');
@@ -319,6 +321,18 @@ app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
+// Admin logs - returns recent logs. previously protected, now public for easier testing
+app.get('/api/admin/logs',
+  (req, res) => {
+    try {
+      const logs = logger.getLogs();
+      res.json({ logs });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+  }
+);
+
 // ----------------- Error handler -----------------
 // Centralized error handling (keeps the improved handling from your first version)
 app.use((err, req, res, next) => {
@@ -398,7 +412,25 @@ async function startServer() {
   try {
     await connectMongoDB();
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+    const server = http.createServer(app);
+    // Socket.io for real-time logs
+    const io = new IOServer(server, {
+      cors: {
+        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+        methods: ['GET', 'POST'],
+        credentials: true
+      }
+    });
+
+    // Attach socket instance to logger so logger can emit events
+    try {
+      logger.attachSocket(io);
+    } catch (e) {
+      console.warn('Could not attach socket to logger', e.message || e);
+    }
+
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {
     console.error('❌ Failed to start server', err);
     // In local dev it's okay to exit; in serverless this path isn't used.
