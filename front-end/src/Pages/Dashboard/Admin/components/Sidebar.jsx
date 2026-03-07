@@ -19,8 +19,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const { logout } = useAuth()
 
   const menuItems = [
-    { id: 'home', label: 'Dashboard', icon: LayoutGrid }
-    , { id: 'logs', label: 'Logs', icon: Terminal }
+    { id: 'home', label: 'Dashboard', icon: LayoutGrid },
+    { id: 'faculty', label: 'Faculty', icon: Users }
   ]
 
   const handleLogout = () => {
@@ -59,11 +59,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                activeTab === item.id
-                  ? 'bg-green-600 font-semibold'
-                  : 'hover:bg-green-600'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === item.id
+                ? 'bg-green-600 font-semibold'
+                : 'hover:bg-green-600'
+                }`}
               title={isCollapsed ? item.label : ''}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />

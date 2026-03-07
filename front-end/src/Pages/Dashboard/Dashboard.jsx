@@ -24,7 +24,7 @@ import CoordinatorApprovedRequest from "./Coordinator/ApprovedRequest" // Approv
 import CoordinatorApplyReimbursement from "./Coordinator/ApplyReimbursement" // Main dashboard for faculty
 import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profile settings page for faculty
 
-import HODDashboard from "./Hod/HODDashboard" 
+import HODDashboard from "./Hod/HODDashboard"
 
 import PrincipalDashboard from "./Principal/PrincipalDashboard"
 
@@ -107,10 +107,14 @@ export default function Dashboard() {
 
   const userRole = user?.role || "Student"
 
+  // Admin users are restricted to /dashboard/admin only
+  if (userRole === "Admin" && !location.pathname.startsWith("/dashboard/admin")) {
+    return <Navigate to="/dashboard/admin" replace />
+  }
   // If the URL explicitly targets coordinator routes, render coordinator dashboard directly
   if (location.pathname.startsWith("/dashboard/coordinator")) {
     return (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <CoordinatorDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -120,7 +124,7 @@ export default function Dashboard() {
   // Force Faculty layout when path targets faculty, regardless of user role
   if (location.pathname.startsWith("/dashboard/faculty")) {
     return (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <FacultyProfileProvider>
           <FacultyNotificationProvider>
             <FacultyNavbar />
@@ -141,7 +145,7 @@ export default function Dashboard() {
 
   if (location.pathname.startsWith("/dashboard/hod")) {
     return (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <HODDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -150,7 +154,7 @@ export default function Dashboard() {
 
   if (location.pathname.startsWith("/dashboard/principal")) {
     return (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <PrincipalDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -159,7 +163,7 @@ export default function Dashboard() {
 
   if (location.pathname.startsWith("/dashboard/accounts")) {
     return (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #F59E0B 15%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #F59E0B 15%, white) 0%, white 40%)' }}>
         <AccountsDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -170,7 +174,7 @@ export default function Dashboard() {
     // For testing: allow admin dashboard to be accessed without login.
     // Remove or guard this for production.
     return (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #8B5CF6 15%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #8B5CF6 15%, white) 0%, white 40%)' }}>
         <AdminDashboard />
         <Toaster {...toastConfig} />
       </div>
@@ -179,7 +183,7 @@ export default function Dashboard() {
 
   const getRoutes = (Navbar, Dashboard, RequestStatus, ProfileSettings, Provider = null, NotificationProvider = null) => {
     const content = (
-        <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)'}}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <Navbar />
 
         <AnimatePresence mode="wait">
@@ -212,54 +216,65 @@ export default function Dashboard() {
     case "Faculty":
       return getRoutes(FacultyNavbar, FacultyDashboard, FacultyRequestStatus, FacultyProfileSettings, FacultyProfileProvider)
 
-      case "Coordinator":
-        // Return coordinator dashboard with coordinator-specific components
-        // Note: CoordinatorDashboard handles its own internal navigation, so we don't use getRoutes
-        // Components: CoordinatorDashboard (includes internal navbar and routing)
-        // Data Source: API calls to backend
-        return (
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/20">
-            <CoordinatorDashboard />
-            <Toaster {...toastConfig} />
-          </div>
-        )
+    case "Coordinator":
+      // Return coordinator dashboard with coordinator-specific components
+      // Note: CoordinatorDashboard handles its own internal navigation, so we don't use getRoutes
+      // Components: CoordinatorDashboard (includes internal navbar and routing)
+      // Data Source: API calls to backend
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/20">
+          <CoordinatorDashboard />
+          <Toaster {...toastConfig} />
+        </div>
+      )
 
-       case "HOD":
-        // Return HOD dashboard with sidebar-based navigation
-        // Note: HODDashboard handles its own internal navigation with collapsible sidebar
-        // Components: HODDashboard (includes sidebar, header, and page routing)
-        // Data Source: API calls to backend
-        return (
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
-            <HODDashboard />
-            <Toaster {...toastConfig} />
-          </div>
-        )
+    case "HOD":
+      // Return HOD dashboard with sidebar-based navigation
+      // Note: HODDashboard handles its own internal navigation with collapsible sidebar
+      // Components: HODDashboard (includes sidebar, header, and page routing)
+      // Data Source: API calls to backend
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+          <HODDashboard />
+          <Toaster {...toastConfig} />
+        </div>
+      )
 
-      case "Principal":
-        // Return Principal dashboard with sidebar-based navigation
-        // Note: PrincipalDashboard handles its own internal navigation with collapsible sidebar
-        // Components: PrincipalDashboard (includes sidebar, header, and page routing)
-        // Data Source: API calls to backend
-        return (
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
-            <PrincipalDashboard />
-            <Toaster {...toastConfig} />
-          </div>
-        )
+    case "Principal":
+      // Return Principal dashboard with sidebar-based navigation
+      // Note: PrincipalDashboard handles its own internal navigation with collapsible sidebar
+      // Components: PrincipalDashboard (includes sidebar, header, and page routing)
+      // Data Source: API calls to backend
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+          <PrincipalDashboard />
+          <Toaster {...toastConfig} />
+        </div>
+      )
 
-      case "Accounts":
-        // Return Accounts dashboard with sidebar-based navigation
-        // Note: AccountsDashboard handles its own internal navigation with collapsible sidebar
-        // Components: AccountsDashboard (includes sidebar, header, and page routing)
-        // Primary function: Mark approved requests as reimbursed, print forms, filter by department/type/date
-        return (
-          <div className="min-h-screen bg-gradient-to-br from-amber-50/30 to-orange-50/20">
-            <AccountsDashboard />
-            <Toaster {...toastConfig} />
-          </div>
-        )
+    case "Accounts":
+      // Return Accounts dashboard with sidebar-based navigation
+      // Note: AccountsDashboard handles its own internal navigation with collapsible sidebar
+      // Components: AccountsDashboard (includes sidebar, header, and page routing)
+      // Primary function: Mark approved requests as reimbursed, print forms, filter by department/type/date
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-amber-50/30 to-orange-50/20">
+          <AccountsDashboard />
+          <Toaster {...toastConfig} />
+        </div>
+      )
 
+    case "Admin":
+      // Return Admin dashboard with sidebar-based navigation
+      // Note: AdminDashboard handles its own internal navigation with collapsible sidebar
+      // Components: AdminDashboard (includes sidebar, header, and page routing)
+      // Primary function: Manage faculty members and departments
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-50/30 to-violet-50/20">
+          <AdminDashboard />
+          <Toaster {...toastConfig} />
+        </div>
+      )
 
     default:
       return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider)
