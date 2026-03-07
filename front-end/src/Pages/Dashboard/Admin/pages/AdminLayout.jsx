@@ -77,6 +77,7 @@ const AdminLayout = () => {
       const response = await adminAPI.getFacultyList()
       const staff = response.staff || []
       setStaffList(staff)
+      console.log('Fetched staff:', staff.length)
     } catch (error) {
       console.error('Error fetching staff:', error)
       toast.error(error?.error || 'Failed to fetch staff')

@@ -1,90 +1,107 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { adminAPI } from '../../../../services/api'
-import { io } from 'socket.io-client'
-import { useAuth } from '../../../../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { RefreshCw } from 'lucide-react'
+
+const POLL_INTERVAL = 5000
 
 const AdminLogs = () => {
   const [logs, setLogs] = useState([])
-  const listRef = useRef(null)
-  const auth = useAuth()
-  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    let mounted = true
-    const init = async () => {
-      try {
-        const res = await adminAPI.getLogs()
-        if (mounted) setLogs(res.logs || [])
-      } catch (err) {
-        console.error('Failed to load logs', err)
-      }
-
-      // connect socket (no auth required for testing)
-      const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api$/, '')
-      const socket = io(base, { withCredentials: true })
-
-      socket.on('connect', () => {
-        console.log('Connected to logs socket')
-      })
-
-      socket.on('log', (entry) => {
-        setLogs(prev => [entry, ...prev])
-      })
-
-      socket.on('disconnect', () => {
-        console.log('Logs socket disconnected')
-      })
-
-      // store socket ref for cleanup
-      listRef.current = socket
-    }
-
-    init()
-
-    return () => {
-      mounted = false
-      if (listRef.current && typeof listRef.current.disconnect === 'function') {
-        listRef.current.disconnect()
-      }
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await adminAPI.getLogs()
+      setLogs(res.logs || [])
+      setError(null)
+    } catch (err) {
+      console.error('Failed to load logs', err)
+      setError('Failed to load logs')
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  const handleLoginRedirect = () => {
-    navigate('/login')
+  // Initial fetch + polling
+  useEffect(() => {
+    fetchLogs()
+    const interval = setInterval(fetchLogs, POLL_INTERVAL)
+    return () => clearInterval(interval)
+  }, [fetchLogs])
+
+  // Format timestamp to readable form
+  const formatTime = (ts) => {
+    if (!ts) return '—'
+    const d = new Date(ts)
+    return d.toLocaleString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: true
+    })
+  }
+
+  // Format log data into a readable line
+  const formatDetails = (data) => {
+    if (!data) return ''
+    const parts = []
+    if (data.user) parts.push(data.user)
+    if (data.role) parts.push(`(${data.role})`)
+    if (data.department) parts.push(`• ${data.department}`)
+    return parts.join(' ')
   }
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <h2 className="text-xl font-semibold mb-3">Real-time Server Logs</h2>
-      <div className="text-sm text-gray-500 mb-4">Showing live logs from all dashboards with exact timestamps.</div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xl font-semibold">Activity Logs</h2>
+        <button
+          onClick={fetchLogs}
+          className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh
+        </button>
+      </div>
+      <div className="text-sm text-gray-500 mb-4">
+        Showing activities performed by all users (auto-refreshes every {POLL_INTERVAL / 1000}s).
+      </div>
 
-      <div ref={listRef} className="overflow-auto max-h-[65vh] border rounded">
-        <table className="w-full table-fixed text-sm">
-          <thead className="bg-gray-100 sticky top-0">
-            <tr>
-              <th className="p-2 text-left w-40">Timestamp</th>
-              <th className="p-2 text-left w-20">Level</th>
-              <th className="p-2 text-left">Message</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((l, idx) => (
-              <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                <td className="p-2 align-top font-mono text-xs text-gray-700">{l.timestamp}</td>
-                <td className="p-2 align-top font-semibold">{l.level}</td>
-                <td className="p-2 align-top whitespace-pre-wrap">{l.message}{l.data ? `\n${JSON.stringify(l.data)}` : ''}</td>
-              </tr>
-            ))}
-            {logs.length === 0 && (
+      {loading && logs.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">Loading logs...</div>
+      ) : error && logs.length === 0 ? (
+        <div className="p-8 text-center text-red-500">{error}</div>
+      ) : (
+        <div className="overflow-auto max-h-[65vh] border rounded">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 sticky top-0">
               <tr>
-                <td colSpan={3} className="p-4 text-center text-gray-500">No logs available</td>
+                <th className="p-2.5 text-left w-52">Timestamp</th>
+                <th className="p-2.5 text-left">Activity</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {logs.map((l, idx) => (
+                <tr key={idx} className="odd:bg-white even:bg-gray-50 border-b border-gray-100">
+                  <td className="p-2.5 align-top font-mono text-xs text-gray-600 whitespace-nowrap">
+                    {formatTime(l.timestamp)}
+                  </td>
+                  <td className="p-2.5 align-top">
+                    <div className="font-medium text-gray-900">{l.message}</div>
+                    {l.data && (
+                      <div className="text-xs text-gray-500 mt-0.5">{formatDetails(l.data)}</div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {logs.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="p-6 text-center text-gray-500">No activity logs yet. Logs will appear as users interact with the portal.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )
+      )}
     </div>
   )
 }

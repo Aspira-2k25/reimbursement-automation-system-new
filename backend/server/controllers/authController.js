@@ -44,6 +44,7 @@ const authController = {
       // Set httpOnly cookie for security (centralized options)
       res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
 
+
       // Return user data (without sensitive information or token)
       res.json({
         message: 'Login successful',
@@ -122,6 +123,7 @@ const authController = {
 
       // Set httpOnly cookie for security (consistent with regular login)
       res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+
 
       return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
     } catch (error) {
@@ -312,6 +314,7 @@ const authController = {
       // Clear the httpOnly cookie as well (same options as when setting)
       const clearOpts = buildAuthCookieOptions(0);
       res.clearCookie('auth_token', clearOpts);
+
 
       res.json({ message: 'Logout successful' });
     } catch (error) {

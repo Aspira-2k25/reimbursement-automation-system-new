@@ -70,7 +70,6 @@ const logger = require('./utils/logger');
 const formRoutes = require('./routes/formRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
 const authRoutes = require('./routes/auth');
-const notificationRoutes = require('./routes/notificationRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
 const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user upload controller
 const upload = require('./middleware/multer');             // multer middleware (if needed)
@@ -302,6 +301,10 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Activity logging middleware (captures all non-admin user actions)
+const activityLogger = require('./middleware/activityLogger');
+app.use('/api', activityLogger);
+
 // Auth routes (CSRF exempt for login, but protected for logout)
 app.use('/api/auth', authRoutes);
 
@@ -311,34 +314,32 @@ app.use('/api/uploads', uploadRoutes);
 // Cloudinary / user upload controller (keeps the same path used in your second file)
 app.use('/api/users', uploadRoute);
 
-// Conditional CSRF middleware — only state-changing methods (POST, PUT, DELETE, PATCH)
-const conditionalCsrf = (req, res, next) => {
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    return next(); // Skip CSRF for read-only requests
-  }
-  return csrfProtection(req, res, next);
-};
+// Forms (MongoDB) - Apply CSRF protection to state-changing routes
+app.use('/api/forms', csrfProtection, formRoutes);
 
-// Forms (MongoDB) - Apply conditional CSRF (skips GET requests)
-app.use('/api/forms', conditionalCsrf, formRoutes);
-
-// Student forms (MongoDB) - Apply conditional CSRF (skips GET requests)
-app.use('/api/student-forms', conditionalCsrf, studentFormRoutes);
-
-// Notification routes
-app.use('/api/notifications', notificationRoutes);
+// Student forms (MongoDB) - Apply CSRF protection to state-changing routes
+app.use('/api/student-forms', csrfProtection, studentFormRoutes);
 
 // CSRF token endpoint for frontend
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-// Admin logs - returns recent logs. previously protected, now public for easier testing
+// Admin logs - returns recent activity logs (excludes admin user actions)
 app.get('/api/admin/logs',
   (req, res) => {
     try {
-      const logs = logger.getLogs();
-      res.json({ logs });
+      const allLogs = logger.getLogs();
+      // Filter to only show activity logs from non-admin users
+      const activityLogs = allLogs.filter(log => {
+        // Only include INFO-level logs that have user activity data
+        if (log.level !== 'INFO') return false;
+        if (!log.data || !log.data.role) return false;
+        // Exclude admin actions
+        if (log.data.role?.toLowerCase() === 'admin') return false;
+        return true;
+      });
+      res.json({ logs: activityLogs });
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch logs' });
     }
@@ -410,7 +411,13 @@ app.use((err, req, res, next) => {
 // because: 1) It slows down cold starts, 2) Connections might fail and crash the function
 // Instead, connect lazily when routes are actually called (lazy initialization)
 // Only connect immediately if running as a traditional server (local dev)
-// MongoDB connection is handled by startServer() below
+if (require.main === module) {
+  connectMongoDB().catch((err) => {
+    console.error('❌ Failed to connect MongoDB on startup', err);
+    // In local dev, we can exit if DB connection fails
+    process.exit(1);
+  });
+}
 // In serverless, MongoDB will connect on first route that needs it
 
 // When running this file directly (local dev), start the HTTP server
