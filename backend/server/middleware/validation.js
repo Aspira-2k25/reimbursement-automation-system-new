@@ -142,8 +142,8 @@ const validationMiddleware = {
     }
 
     // Validate role if provided
-    if (role && !['Faculty', 'HOD', 'coordinator', 'Principal', 'Student', 'Accounts'].includes(role)) {
-      errors.push('Invalid role. Must be one of: Faculty, HOD, coordinator, Principal, Student, Accounts');
+    if (role && !['Faculty', 'HOD', 'coordinator', 'Principal', 'Student', 'Accounts', 'Admin'].includes(role)) {
+      errors.push('Invalid role. Must be one of: Faculty, HOD, coordinator, Principal, Student, Accounts, Admin');
     }
 
     if (errors.length > 0) {
