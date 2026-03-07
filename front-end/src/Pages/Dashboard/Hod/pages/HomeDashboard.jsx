@@ -57,7 +57,6 @@ const HomeDashboard = () => {
       }
 
       const formData = data?.form || data
-      console.log('Fetched request details:', formData)
       setRequestDetails(formData)
     } catch (error) {
       console.error('Error fetching request details:', error)
@@ -84,7 +83,6 @@ const HomeDashboard = () => {
     try {
       // Use the most reliable ID - prioritize _id, then applicationId, then id
       const requestId = request._id || request.applicationId || request.id
-      console.log('Approving request:', { request, requestId, status: request.status })
 
       if (!requestId) {
         toast.error('Invalid request: Missing ID')
@@ -200,7 +198,6 @@ const HomeDashboard = () => {
       try {
         // Use the most reliable ID - prioritize _id, then applicationId, then id
         const requestId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
-        console.log('Rejecting request:', { request: rejectModal.request, requestId, status: rejectModal.request.status })
 
         if (!requestId) {
           toast.error('Invalid request: Missing ID')
