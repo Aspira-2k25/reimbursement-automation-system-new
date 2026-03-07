@@ -26,7 +26,7 @@ const sanitizeInput = (input) => {
 // SECURITY: Validate file type and size
 const validateFile = (file) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  const maxSize = 1 * 1024 * 1024; // 1MB
+  const maxSize = 500 * 1024; // 500KB
 
   if (!file) return { valid: true };
 
@@ -35,7 +35,7 @@ const validateFile = (file) => {
   }
 
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 1MB' };
+    return { valid: false, error: 'File size must be less than 500KB' };
   }
 
   return { valid: true };
@@ -250,6 +250,13 @@ const StudentNptelForm = () => {
       } else if (res.status === 429) {
         // Daily submission limit reached — show prominent warning
         toast.error(data.message || "You have reached the maximum of 3 submissions per day.", {
+          duration: 5000,
+          icon: '⚠️',
+        });
+        setIsSubmitting(false);
+      } else if (res.status === 413) {
+        // File too large — show prominent warning popup
+        toast.error(data.message || "File size exceeds 500KB limit. Please upload a smaller file.", {
           duration: 5000,
           icon: '⚠️',
         });
@@ -597,7 +604,7 @@ const StudentNptelForm = () => {
                              file:bg-teal-50 file:text-teal-700
                              hover:file:bg-teal-100"
                 />
-                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 1MB</p>
+                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 500KB</p>
               </div>
 
               <div>
@@ -627,7 +634,7 @@ const StudentNptelForm = () => {
                              file:bg-teal-50 file:text-teal-700
                              hover:file:bg-teal-100"
                 />
-                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 1MB</p>
+                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 500KB</p>
               </div>
             </div>
           </div>
