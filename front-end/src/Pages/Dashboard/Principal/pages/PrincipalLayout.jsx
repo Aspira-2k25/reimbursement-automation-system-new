@@ -189,10 +189,12 @@ const PrincipalLayout = ({ children }) => {
   const collegeStats = useMemo(() => {
     const total = allRequests.length
     const pending = allRequests.filter(r => r.status === 'Under Principal').length
-    const approved = allRequests.filter(r => r.status === 'Approved').length
+    // Include all post-approval statuses for accurate counting
+    const approvedStatuses = ['Approved', 'Reimbursed', 'Disbursed']
+    const approved = allRequests.filter(r => approvedStatuses.includes(r.status)).length
     const rejected = allRequests.filter(r => r.status === 'Rejected').length
     const approvedAmount = allRequests
-      .filter(r => r.status === 'Approved')
+      .filter(r => approvedStatuses.includes(r.status))
       .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
 
     const processedRequests = approved + rejected

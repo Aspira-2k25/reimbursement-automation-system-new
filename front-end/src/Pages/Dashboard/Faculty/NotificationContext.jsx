@@ -5,14 +5,13 @@ const NotificationContext = createContext()
 export const useNotificationContext = () => {
   const context = useContext(NotificationContext)
   if (!context) {
-    // Return safe defaults instead of throwing so components can render
-    // gracefully even without a NotificationProvider wrapper
+    console.warn('useNotificationContext used outside provider - returning empty fallback');
     return {
       notifications: [],
+      addNotification: () => { },
       markNotificationAsRead: () => { },
-      markAllNotificationsAsRead: () => { },
-      addNotification: () => { }
-    }
+      markAllNotificationsAsRead: () => { }
+    };
   }
   return context
 }
