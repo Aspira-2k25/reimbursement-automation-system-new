@@ -33,7 +33,7 @@ const PrincipalLayout = ({ children }) => {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('Under Principal')
   const [departmentFilter, setDepartmentFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
 
@@ -189,11 +189,13 @@ const PrincipalLayout = ({ children }) => {
   const collegeStats = useMemo(() => {
     const total = allRequests.length
     const pending = allRequests.filter(r => r.status === 'Under Principal').length
-    const approved = allRequests.filter(r => r.status === 'Approved').length
+    // Include all post-approval statuses for accurate counting
+    const approvedStatuses = ['Approved', 'Reimbursed', 'Disbursed']
+    const approved = allRequests.filter(r => approvedStatuses.includes(r.status)).length
     const rejected = allRequests.filter(r => r.status === 'Rejected').length
     const approvedAmount = allRequests
-      .filter(r => r.status === 'Approved')
-      .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
+      .filter(r => approvedStatuses.includes(r.status))
+      .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
 
     const processedRequests = approved + rejected
     const approvalRate = processedRequests > 0 ? Math.round((approved / processedRequests) * 100) : 0
@@ -269,9 +271,9 @@ const PrincipalLayout = ({ children }) => {
     updateRequestStatus: useCallback(async (requestId, newStatus, comments = '') => {
       try {
         // Find the request to determine which API to use
-        const request = allRequests.find(req => 
-          req.id === requestId || 
-          req._id === requestId || 
+        const request = allRequests.find(req =>
+          req.id === requestId ||
+          req._id === requestId ||
           req.applicationId === requestId
         )
 
@@ -290,7 +292,7 @@ const PrincipalLayout = ({ children }) => {
         const formId = request._id || request.applicationId || request.id
 
         // Prepare update data
-        const updateData = { 
+        const updateData = {
           status: newStatus,
           reviewedBy: userProfile.fullName,
           reviewedAt: new Date().toISOString()

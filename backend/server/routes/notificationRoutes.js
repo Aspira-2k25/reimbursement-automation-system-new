@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/auth');
-const notificationService = require('../utils/notificationServise');
+const notificationService = require('../utils/notificationService');
 
 // GET /api/notifications - Get user's notifications
 router.get(
