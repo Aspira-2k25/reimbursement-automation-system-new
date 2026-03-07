@@ -247,6 +247,13 @@ const StudentNptelForm = () => {
         toast.success("Application submitted successfully! Your request is now under review.");
         // Navigate to request status page after successful submission
         navigate('/dashboard/requests');
+      } else if (res.status === 429) {
+        // Daily submission limit reached — show prominent warning
+        toast.error(data.message || "You have reached the maximum of 3 submissions per day.", {
+          duration: 5000,
+          icon: '⚠️',
+        });
+        setIsSubmitting(false);
       } else {
         toast.error("Error: " + data.error);
         // Re-enable button on error so user can retry
