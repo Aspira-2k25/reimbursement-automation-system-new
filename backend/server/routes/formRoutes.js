@@ -651,9 +651,9 @@ router.put(
           try {
             if (form.userId && !isNaN(form.userId)) {
               const staffUser = await dbUtils.getStaffProfile(form.userId);
-              if (staffUser && staffUser.email) {
-                userEmail = staffUser.email;
-                userName = staffUser.name || userName;
+              if (staffUser) {
+                userEmail = userEmail || staffUser.email;
+                userName = userName || staffUser.name;
               }
             }
           } catch (dbError) {

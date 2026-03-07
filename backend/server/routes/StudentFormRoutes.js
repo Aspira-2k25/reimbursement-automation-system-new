@@ -127,8 +127,8 @@ router.post(
         message: `Your reimbursement application ${newStudentForm.applicationId} has been submitted successfully.`,
         phase: 'Student',
         status: 'Pending',
-        userEmail: req.user.email || req.body.email,
-        userName: req.body.name,
+        userEmail: req.body.email || req.user.email,
+        userName: req.body.name || req.user.username || 'Student',
         studentId: req.body.studentId,
         amount: req.body.amount,
       }, true); // Send email notification
@@ -708,17 +708,17 @@ router.put(
           notificationType = 'approval';
         }
 
-        // Get user email from login token or fallback to form email
-        let userEmail = form.email; // Fallback to form email
+        // Priority: 1. Form Email, 2. Postgres Profile Email
+        let userEmail = form.email;
         let userName = form.name;
 
         try {
-          // Priority: 1. Postgres Profile Email, 2. Form Email
           if (form.userId && !isNaN(form.userId)) {
             const staffUser = await dbUtils.getStaffProfile(form.userId);
-            if (staffUser && staffUser.email) {
-              userEmail = staffUser.email;
-              userName = staffUser.name || userName;
+            if (staffUser) {
+              // Only fallback to staff profile email if form email is missing
+              userEmail = userEmail || staffUser.email;
+              userName = userName || staffUser.name;
             }
           }
         } catch (dbError) {
