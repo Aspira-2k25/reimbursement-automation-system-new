@@ -88,14 +88,14 @@ const validateFileContent = async (buffer, expectedMimeType) => {
   }
 };
 
-// Maximum file sizes (1MB uniform limit as per requirements)
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB per file
-const MAX_TOTAL_SIZE = 1 * 1024 * 1024; // 1MB total for all files
+// Maximum file sizes (500KB uniform limit as per requirements)
+const MAX_FILE_SIZE = 500 * 1024; // 500KB per file
+const MAX_TOTAL_SIZE = 500 * 1024; // 500KB total for all files
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: MAX_FILE_SIZE // 1MB per file
+    fileSize: MAX_FILE_SIZE // 500KB per file
   },
   fileFilter: fileFilter
 });
@@ -107,7 +107,7 @@ const validateTotalUploadSize = (req, res, next) => {
   if (contentLength > MAX_TOTAL_SIZE) {
     return res.status(413).json({
       error: 'Upload too large',
-      message: `Total upload size exceeds ${MAX_TOTAL_SIZE / (1024 * 1024)}MB limit`
+      message: `Total upload size exceeds 500KB limit`
     });
   }
 

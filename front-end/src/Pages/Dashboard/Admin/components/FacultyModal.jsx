@@ -5,7 +5,7 @@ import { X, Loader } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const FacultyModal = () => {
-  const { editingStaff, setShowModal, handleSaveFaculty, departments, loading } = useAdminContext()
+  const { editingStaff, setShowModal, handleSaveStaff, departments, loading } = useAdminContext()
 
   const [formData, setFormData] = useState({
     username: '',
@@ -109,10 +109,10 @@ const FacultyModal = () => {
         submitData.password = formData.password
       }
 
-      await handleSaveFaculty(submitData)
+      await handleSaveStaff(submitData)
     } catch (error) {
       console.error('Error:', error)
-      toast.error(error?.error || 'Failed to save faculty')
+      toast.error(error?.error || 'Failed to save staff')
     } finally {
       setSaving(false)
     }
@@ -146,7 +146,7 @@ const FacultyModal = () => {
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">
-            {editingStaff ? 'Edit Faculty' : 'Add New Faculty'}
+            {editingStaff ? 'Edit Staff' : 'Add New Staff'}
           </h2>
           <button
             onClick={() => setShowModal(false)}
@@ -308,9 +308,8 @@ const FacultyModal = () => {
                   Saving...
                 </>
               ) : (
-                editingStaff ? 'Update Faculty' : 'Add Faculty'
-              )}
-            </motion.button>
+                editingStaff ? 'Update Staff' : 'Add Staff'
+              )}            </motion.button>
           </div>
         </form>
       </motion.div>

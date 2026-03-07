@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   Users,
   Settings,
+  Terminal,
   ChevronLeft,
   ChevronRight,
   LogOut
@@ -19,6 +20,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
   const menuItems = [
     { id: 'home', label: 'Dashboard', icon: LayoutGrid }
+    , { id: 'logs', label: 'Logs', icon: Terminal }
   ]
 
   const handleLogout = () => {

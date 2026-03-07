@@ -167,10 +167,8 @@ export default function Dashboard() {
   }
 
   if (location.pathname.startsWith("/dashboard/admin")) {
-    // prevent direct access without login or non-admin users
-    if (!user || user.role !== 'Admin') {
-      return <Navigate to="/login" replace />
-    }
+    // For testing: allow admin dashboard to be accessed without login.
+    // Remove or guard this for production.
     return (
         <div className="min-h-screen" style={{background: 'linear-gradient(180deg, color-mix(in oklab, #8B5CF6 15%, white) 0%, white 40%)'}}>
         <AdminDashboard />
