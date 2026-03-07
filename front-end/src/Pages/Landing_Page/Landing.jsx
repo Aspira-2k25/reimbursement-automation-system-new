@@ -126,7 +126,7 @@ export default function LandingPage() {
             <img
               src={apshahLogo}
               alt="A.P. Shah Institute of Technology Logo"
-              className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-sm"
+              className="h-12 w-12 sm:h-16 sm:w-16 object-contain rounded-sm"
             />
             <div className="flex flex-col">
               <span className="font-bold text-sm sm:text-base leading-tight" style={{ color: theme.dark }}>
@@ -141,7 +141,7 @@ export default function LandingPage() {
               <img
                 src={websiteLogo}
                 alt="Reimbursement Portal Logo"
-                className="h-8 w-8 object-contain"
+                className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
               />
               <span className="font-semibold text-sm sm:text-base" style={{ color: theme.dark }}>
                 Reimbursement Portal

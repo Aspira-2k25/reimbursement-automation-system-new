@@ -94,7 +94,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             <img
               src={apshahLogo}
               alt="A.P. Shah Logo"
-              className="h-8 w-8 sm:h-10 sm:w-10 rounded-sm object-contain drop-shadow-sm"
+              className="h-10 w-10 sm:h-12 sm:w-12 rounded-sm object-contain drop-shadow-sm"
             />
             <span className="font-bold text-white text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block">
               PCT's A. P. Shah Institute of Technology
@@ -140,7 +140,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
             {/* System Logo */}
             <div className="hidden sm:flex items-center gap-2 mr-2">
-              <img src={websiteLogo} alt="Reimbursement Portal" className="h-8 w-8 drop-shadow-sm object-contain" />
+              <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
               <span className="font-semibold text-white/95 text-sm">
                 Reimbursement Portal
               </span>
