@@ -42,16 +42,6 @@ const REIMBURSEMENT_TYPES = {
   LAB_MATERIALS: { name: 'Lab Materials', code: 'LAB' }
 };
 
-// Departments with codes for Application ID
-const DEPARTMENTS = {
-  CE: { name: 'Computer Engineering', code: 'CE' },
-  IT: { name: 'Information Technology', code: 'IT' },
-  AIML: { name: 'CSE AI and ML', code: 'AIML' },
-  DS: { name: 'CSE Data Science', code: 'DS' },
-  CIVIL: { name: 'Civil Engineering', code: 'CVL' },
-  MECH: { name: 'Mechanical Engineering', code: 'MECH' }
-};
-
 // Department list for dropdowns
 const DEPARTMENT_LIST = [
   'Computer Engineering',
@@ -96,7 +86,7 @@ module.exports = {
   APPLICANT_TYPES,
   USER_ROLES,
   REIMBURSEMENT_TYPES,
-  DEPARTMENTS,
+
   DEPARTMENT_LIST,
   FILE_CONSTRAINTS,
   VALIDATION_RULES,
