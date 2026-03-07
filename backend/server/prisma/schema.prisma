@@ -18,7 +18,7 @@ datasource db {
 model Staff {
   id          Int       @id @default(autoincrement())
   username    String    @unique @db.VarChar(100)
-  password    String    @db.VarChar(100)
+  password    String    @db.VarChar(255)
   email       String    @unique @db.VarChar(100)
   role        String?   @db.VarChar(50)
   name        String?   @db.VarChar(100)
