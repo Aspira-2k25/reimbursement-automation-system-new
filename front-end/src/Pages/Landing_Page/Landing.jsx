@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Users, Clock, BarChart3 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
+import apshahLogo from '../../assets/images/Apshah_logo.png';
+import websiteLogo from '../../assets/images/Website_logo.png';
+
 // Simple 3D Avatar Component using Canvas
 const Avatar3D = () => {
   const canvasRef = useRef(null);
@@ -115,32 +118,49 @@ export default function LandingPage() {
       }}
     >
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="w-full mx-auto px-6 md:px-12 lg:px-24 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shadow-sm"
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between">
+        <div className="w-full mx-auto px-6 md:px-12 lg:px-24 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+
+          {/* Left Side: College Branding */}
+          <div className="flex items-center gap-3">
+            <img
+              src={apshahLogo}
+              alt="A.P. Shah Institute of Technology Logo"
+              className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-sm"
+            />
+            <div className="flex flex-col">
+              <span className="font-bold text-sm sm:text-base leading-tight" style={{ color: theme.dark }}>
+                PCT's A. P. Shah Institute of Technology
+              </span>
+            </div>
+          </div>
+
+          {/* Right Side: System Logo + Login */}
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2 hidden sm:flex">
+              <img
+                src={websiteLogo}
+                alt="Reimbursement Portal Logo"
+                className="h-8 w-8 object-contain"
+              />
+              <span className="font-semibold text-sm sm:text-base" style={{ color: theme.dark }}>
+                Reimbursement Portal
+              </span>
+            </div>
+            <a
+              href="/login"
+              className="px-6 py-2 text-white rounded-lg hover:shadow-lg transition-shadow text-sm font-medium whitespace-nowrap"
               style={{
-                backgroundImage: `linear-gradient(135deg, ${theme.mint}, ${theme.green})`
+                backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.sea})`
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/login');
               }}
             >
-              <div className="h-3 w-3 sm:h-4 sm:w-4 rounded-sm bg-white/20"></div>
-            </div>
-            <span className="font-semibold" style={{ color: theme.dark }}>Reimbursement Portal</span>
+              Login
+            </a>
           </div>
-          <a
-            href="/login"
-            className="px-6 py-2 text-white rounded-lg hover:shadow-lg transition-shadow text-sm font-medium"
-            style={{
-              backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.sea})`
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/login');
-            }}
-          >
-            Login
-          </a>
         </div>
       </nav>
 
