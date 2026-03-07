@@ -68,6 +68,7 @@ const logger = require('./utils/logger');
 const formRoutes = require('./routes/formRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
 const authRoutes = require('./routes/auth');
+const notificationRoutes = require('./routes/notificationRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
 const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user upload controller
 const upload = require('./middleware/multer');             // multer middleware (if needed)
@@ -308,11 +309,22 @@ app.use('/api/uploads', uploadRoutes);
 // Cloudinary / user upload controller (keeps the same path used in your second file)
 app.use('/api/users', uploadRoute);
 
-// Forms (MongoDB) - Apply CSRF protection to state-changing routes
-app.use('/api/forms', csrfProtection, formRoutes);
+// Conditional CSRF middleware — only state-changing methods (POST, PUT, DELETE, PATCH)
+const conditionalCsrf = (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next(); // Skip CSRF for read-only requests
+  }
+  return csrfProtection(req, res, next);
+};
 
-// Student forms (MongoDB) - Apply CSRF protection to state-changing routes
-app.use('/api/student-forms', csrfProtection, studentFormRoutes);
+// Forms (MongoDB) - Apply conditional CSRF (skips GET requests)
+app.use('/api/forms', conditionalCsrf, formRoutes);
+
+// Student forms (MongoDB) - Apply conditional CSRF (skips GET requests)
+app.use('/api/student-forms', conditionalCsrf, studentFormRoutes);
+
+// Notification routes
+app.use('/api/notifications', notificationRoutes);
 
 // CSRF token endpoint for frontend
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
@@ -384,13 +396,7 @@ app.use((err, req, res, next) => {
 // because: 1) It slows down cold starts, 2) Connections might fail and crash the function
 // Instead, connect lazily when routes are actually called (lazy initialization)
 // Only connect immediately if running as a traditional server (local dev)
-if (require.main === module) {
-  connectMongoDB().catch((err) => {
-    console.error('❌ Failed to connect MongoDB on startup', err);
-    // In local dev, we can exit if DB connection fails
-    process.exit(1);
-  });
-}
+// MongoDB connection is handled by startServer() below
 // In serverless, MongoDB will connect on first route that needs it
 
 // When running this file directly (local dev), start the HTTP server
