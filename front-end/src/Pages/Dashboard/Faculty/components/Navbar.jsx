@@ -5,6 +5,8 @@ import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
 import { useAuth } from "../../../../context/AuthContext.jsx"
+import apshahLogo from "../../../../assets/images/Apshah_logo.png"
+import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 function initials(name) {
   return name
@@ -83,10 +85,14 @@ export default function Navbar() {
         <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Logo section */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shadow-sm" style={{ background: 'linear-gradient(135deg, var(--color-dark-green), var(--color-light-teal))' }}>
-              <div className="h-3 w-3 sm:h-4 sm:w-4 rounded-sm bg-white/20"></div>
-            </div>
-            <span className="font-bold text-white text-base sm:text-lg">Reimbursement Portal</span>
+            <img
+              src={apshahLogo}
+              alt="A.P. Shah Logo"
+              className="h-10 w-10 sm:h-12 sm:w-12 rounded-sm object-contain drop-shadow-sm"
+            />
+            <span className="font-bold text-white text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block">
+              PCT's A. P. Shah Institute of Technology
+            </span>
           </div>
 
           {/* Desktop Navigation */}
@@ -142,7 +148,16 @@ export default function Navbar() {
           </nav>
 
           {/* Right section with notifications and profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-4">
+
+            {/* System Logo */}
+            <div className="hidden sm:flex items-center gap-2 mr-2">
+              <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
+              <span className="font-semibold text-white/95 text-sm">
+                Reimbursement Portal
+              </span>
+            </div>
+
             {/* Notification menu */}
             <div className="relative">
               <NotificationMenu />
@@ -180,8 +195,8 @@ export default function Navbar() {
               {/* Profile dropdown menu with smooth transitions */}
               <div
                 className={`absolute right-0 top-full mt-2 w-64 sm:w-72 rounded-xl border border-white/30 bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/20 z-30 transition-all duration-300 ease-out ${open
-                    ? 'opacity-100 translate-y-0 scale-100'
-                    : 'opacity-0 translate-y-2 scale-95 pointer-events-none'
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-2 scale-95 pointer-events-none'
                   }`}
               >
                 <div className="p-2">
