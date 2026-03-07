@@ -175,30 +175,6 @@ const HODLayout = ({ children }) => {
       // Map backend data to HOD dashboard format
       const mappedRequests = allForms.map(mapFormToRequest)
 
-      console.log('Fetched HOD requests - Total:', mappedRequests.length)
-      console.log('By type:', {
-        'Student': mappedRequests.filter(r => r.applicantType === 'Student').length,
-        'Faculty': mappedRequests.filter(r => r.applicantType === 'Faculty').length
-      })
-      console.log('By status:', {
-        'Under HOD': mappedRequests.filter(r => r.status === 'Under HOD').length,
-        'Pending': mappedRequests.filter(r => r.status === 'Pending').length,
-        'Under Coordinator': mappedRequests.filter(r => r.status === 'Under Coordinator').length,
-        'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
-        'Rejected': mappedRequests.filter(r => r.status === 'Rejected').length
-      })
-
-      // Log sample requests to debug ID and status issues
-      if (mappedRequests.length > 0) {
-        console.log('Sample requests:', mappedRequests.slice(0, 3).map(r => ({
-          id: r.id,
-          _id: r._id,
-          applicationId: r.applicationId,
-          status: r.status,
-          applicantType: r.applicantType,
-          applicantName: r.applicantName
-        })))
-      }
 
       setAllRequests(mappedRequests)
     } catch (error) {
@@ -218,7 +194,7 @@ const HODLayout = ({ children }) => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
-      console.log('HOD Dashboard - User data:', user)
+
 
       // Build email: prefer stored email, otherwise construct from username
       let userEmail = user.email
@@ -396,14 +372,6 @@ const HODLayout = ({ children }) => {
         // Ensure formId is a string
         formId = String(formId)
 
-        console.log('Updating request:', {
-          requestId,
-          formId,
-          currentStatus,
-          newStatus,
-          applicantType: request.applicantType,
-          applicantName: request.applicantName
-        })
 
         // Update status via API - choose correct API based on applicantType
         const updateData = { status: newStatus }
@@ -419,13 +387,10 @@ const HODLayout = ({ children }) => {
         let response
         try {
           if (request.applicantType === 'Student') {
-            console.log('Calling studentFormsAPI.updateById with:', { formId, updateData })
             response = await studentFormsAPI.updateById(formId, updateData)
           } else {
-            console.log('Calling facultyFormsAPI.updateById with:', { formId, updateData })
             response = await facultyFormsAPI.updateById(formId, updateData)
           }
-          console.log('API response:', response)
         } catch (apiError) {
           console.error('API call failed:', apiError)
           const apiErrorMessage = apiError?.response?.data?.error || apiError?.error || apiError?.message || 'API call failed'
@@ -541,14 +506,6 @@ const HODLayout = ({ children }) => {
         return matchesSearch && matchesStatus && matchesType
       })
 
-      console.log('Filtered requests:', {
-        totalRequests: allRequests.length,
-        statusFilter,
-        typeFilter,
-        searchQuery,
-        filteredCount: filtered.length,
-        filteredRequests: filtered
-      })
 
       return filtered
     }, [allRequests, searchQuery, statusFilter, typeFilter])

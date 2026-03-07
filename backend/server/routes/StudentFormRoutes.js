@@ -9,27 +9,10 @@ const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 const { validateUploadedFiles } = require("../middleware/multer");
-const { generateApplicationIdWithRetry } = require("../utils/applicationIdGenerator");
-const notificationService = require('../utils/notificationServise');
+const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
-
-// Input sanitization helpers
-const sanitizeString = (str) => {
-  if (typeof str !== 'string') return '';
-  // Remove MongoDB operators and other dangerous characters
-  return str.replace(/[${}<>]/g, '').trim();
-};
-
-const sanitizeApplicationId = (id) => {
-  if (typeof id !== 'string') return '';
-  // Only allow alphanumeric, hyphens, and underscores
-  return id.replace(/[^a-zA-Z0-9\-_]/g, '');
-};
-
-// Validate MongoDB ObjectId format
-const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
-};
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES } = require('../utils/formHelpers');
 
 
 // POST /api/student-forms/submit
@@ -338,36 +321,7 @@ router.get(
   }
 );
 
-// Department aliases for flexible matching between short codes and full names
-const DEPARTMENT_ALIASES = {
-  'IT': 'Information Technology',
-  'CE': 'Computer Engineering',
-  'AIML': 'CSE AI and ML',
-  'DS': 'CSE Data Science',
-  'CIVIL': 'Civil Engineering',
-  'MECH': 'Mechanical Engineering',
-};
-
-// Get all possible department name variants for a given department value
-const getDepartmentVariants = (department) => {
-  if (!department) return [];
-  const variants = [department];
-  const upperDept = department.toUpperCase().trim();
-
-  // If department is a short alias, add its full name
-  if (DEPARTMENT_ALIASES[upperDept]) {
-    variants.push(DEPARTMENT_ALIASES[upperDept]);
-  }
-
-  // If department is a full name, add the short alias
-  for (const [alias, fullName] of Object.entries(DEPARTMENT_ALIASES)) {
-    if (fullName.toLowerCase() === department.toLowerCase().trim()) {
-      variants.push(alias);
-    }
-  }
-
-  return [...new Set(variants)]; // deduplicate
-};
+// Department aliases and helpers imported from ../utils/formHelpers
 
 // GET /api/student-forms/for-hod - Get requests approved by coordinator (status: Under HOD)
 router.get(
@@ -462,7 +416,7 @@ router.post(
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
       const isOwner = String(form.userId) === String(userId);
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -554,7 +508,7 @@ router.get(
       const isOwner =
         String(form.userId) === String(userId) ||
         (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
@@ -610,7 +564,7 @@ router.put(
       const isOwner =
         String(form.userId) === String(userId) ||
         (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden", message: "You can only edit your own applications." });
