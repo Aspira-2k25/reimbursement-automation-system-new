@@ -34,7 +34,9 @@ export default function LoginPage() {
     try {
       const { user } = await login(formData.name, formData.email, formData.password);
       const role = (user?.role || '').toLowerCase();
-      if (role === 'coordinator') {
+      if (role === 'admin') {
+        navigate('/dashboard/admin', { replace: true });
+      } else if (role === 'coordinator') {
         navigate('/dashboard/coordinator', { replace: true });
       } else if (role === 'faculty') {
         navigate('/dashboard/faculty', { replace: true });

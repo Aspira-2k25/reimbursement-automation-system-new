@@ -18,15 +18,15 @@ router.put('/profile', verifyToken, csrfProtection, authController.updateProfile
 router.get('/staff', verifyToken, authController.getAllStaff);
 router.get('/staff/department/:department', verifyToken, authController.getStaffByDepartment);
 
-// Create user endpoint (can be protected with admin role check if needed)
-router.post('/create-user', verifyToken, csrfProtection, requireRole(['Principal']), validateRegister, authController.createUser);
+// Create user endpoint — restricted to Admin role only
+router.post('/create-user', verifyToken, csrfProtection, requireRole(['Admin']), validateRegister, authController.createUser);
 
-// Admin routes for faculty management (public - no auth required for admin dashboard)
-router.get('/admin/faculty', authController.getFacultyList);
-router.get('/admin/faculty/:id', authController.getStaffById);
-router.put('/admin/faculty/:id', authController.updateStaffById);
-router.post('/admin/faculty', authController.createFaculty);
-router.delete('/admin/faculty/:id', authController.deleteFaculty);
+// Admin routes for faculty management (secured - Admin role required)
+router.get('/admin/faculty', verifyToken, requireRole(['Admin']), authController.getFacultyList);
+router.get('/admin/faculty/:id', verifyToken, requireRole(['Admin']), authController.getStaffById);
+router.put('/admin/faculty/:id', verifyToken, csrfProtection, requireRole(['Admin']), authController.updateStaffById);
+router.post('/admin/faculty', verifyToken, csrfProtection, requireRole(['Admin']), authController.createFaculty);
+router.delete('/admin/faculty/:id', verifyToken, csrfProtection, requireRole(['Admin']), authController.deleteFaculty);
 
 
 // Test route for checking authentication
