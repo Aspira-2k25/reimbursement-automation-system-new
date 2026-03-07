@@ -11,7 +11,7 @@ const sanitizeHtml = (str) => {
 
 const createTransporter = () => {
   const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').replace(/\s/g, ''); // Gmail app passwords usually don't have spaces
+  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, ''); // Trim whitespace and strip surrounding quotes
 
   return nodemailer.createTransport({
     service: 'gmail',
