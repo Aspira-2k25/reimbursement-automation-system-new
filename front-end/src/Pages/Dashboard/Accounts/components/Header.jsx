@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { AnimatePresence ,motion} from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   Bell,
   ChevronDown,
@@ -33,11 +33,11 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
   const unreadCount = notifications.filter(n => n.unread).length
 
-  // Update time every minute
+  // Update time every second for real-time clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-    }, 60000) // Update every minute
+    }, 1000) // Update every second
 
     return () => clearInterval(timer)
   }, [])
@@ -78,6 +78,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     return currentTime.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hour12: true
     })
   }
@@ -153,15 +154,13 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                       notifications.slice(0, 5).map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                            notification.unread ? 'bg-[#65CCB8]/20' : ''
-                          }`}
+                          className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${notification.unread ? 'bg-[#65CCB8]/20' : ''
+                            }`}
                           onClick={() => markNotificationAsRead(notification.id)}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              notification.unread ? 'bg-[#3B945E]' : 'bg-transparent'
-                            }`} />
+                            <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-[#3B945E]' : 'bg-transparent'
+                              }`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900 font-medium truncate">
                                 {notification.title}
@@ -201,7 +200,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
               onClick={handleProfileClick}
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#57BA98]"
             >
-                <div className="w-8 h-8 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AC'}
                 </span>
