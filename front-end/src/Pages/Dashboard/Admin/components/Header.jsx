@@ -29,7 +29,7 @@ const Header = ({ isCollapsed, setIsCollapsed }) => {
             <img
               src={apshahLogo}
               alt="A.P. Shah Logo"
-              className="h-8 w-8 sm:h-10 sm:w-10 rounded-sm object-contain drop-shadow-sm"
+              className="h-12 w-12 sm:h-14 sm:w-14 rounded-sm object-contain drop-shadow-sm"
             />
             <span className="font-bold text-xs sm:text-sm tracking-wide max-w-[200px] leading-tight hidden lg:block text-gray-900">
               PCT's A. P. Shah Institute of Technology
@@ -43,7 +43,7 @@ const Header = ({ isCollapsed, setIsCollapsed }) => {
       <div className="flex items-center gap-2 sm:gap-4">
         {/* System Logo */}
         <div className="hidden sm:flex items-center gap-2 mr-2">
-          <img src={websiteLogo} alt="Reimbursement Portal" className="h-8 w-8 drop-shadow-sm object-contain" />
+          <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
           <span className="font-semibold text-sm text-gray-900 hidden md:block">
             Reimbursement Portal
           </span>

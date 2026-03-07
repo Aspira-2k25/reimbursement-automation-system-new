@@ -292,12 +292,12 @@ const StudentNptelForm = () => {
 
             {/* Mobile Layout: Logos side by side above the text */}
             <div className="w-full flex justify-between px-2 sm:hidden">
-              <img src={apshahLogo} alt="A.P. Shah Logo" className="h-14 w-14 object-contain" />
-              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-12 w-12 object-contain" />
+              <img src={apshahLogo} alt="A.P. Shah Logo" className="h-18 w-18 object-contain" />
+              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-16 w-16 object-contain" />
             </div>
 
             {/* Desktop Layout: Left Logo */}
-            <img src={apshahLogo} alt="A.P. Shah Logo" className="hidden sm:block h-16 w-16 object-contain" />
+            <img src={apshahLogo} alt="A.P. Shah Logo" className="hidden sm:block h-20 w-20 object-contain" />
 
             <div className="flex-1 px-0 sm:px-4">
               <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-800 leading-tight">
@@ -309,7 +309,7 @@ const StudentNptelForm = () => {
             </div>
 
             {/* Desktop Layout: Right Logo */}
-            <img src={websiteLogo} alt="Reimbursement Portal Logo" className="hidden sm:block h-14 w-14 object-contain mt-1" />
+            <img src={websiteLogo} alt="Reimbursement Portal Logo" className="hidden sm:block h-18 w-18 object-contain mt-1" />
           </div>
         </div>
 

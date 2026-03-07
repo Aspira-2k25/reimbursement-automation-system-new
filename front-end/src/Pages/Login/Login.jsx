@@ -99,6 +99,12 @@ export default function LoginPage() {
 
         {/* Content */}
         <motion.div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center" {...fadeInUp}>
+          {/* Large System Logo on the Green Panel */}
+          <img
+            src={websiteLogo}
+            alt="Reimbursement Portal Logo"
+            className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 object-contain drop-shadow-lg mb-6 lg:mb-8"
+          />
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 leading-tight">
             Welcome Back!
           </h1>
@@ -117,7 +123,7 @@ export default function LoginPage() {
               <img
                 src={websiteLogo}
                 alt="Reimbursement System Logo"
-                className="h-16 w-16 mb-4 object-contain drop-shadow-sm"
+                className="h-20 w-20 sm:h-24 sm:w-24 mb-5 object-contain drop-shadow-md"
               />
               <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>
                 Log In
