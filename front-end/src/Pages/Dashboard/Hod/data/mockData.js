@@ -141,14 +141,6 @@ export const departments = [
 export function calculateStats(requests = []) {
   const total = requests.length
 
-  // Count by status
-  const pending = requests.filter(r =>
-    r.status === 'Pending' || r.status === 'Under HOD' || r.status === 'Under Coordinator'
-  ).length
-  const underPrincipal = requests.filter(r => r.status === 'Under Principal').length
-  const approved = requests.filter(r => r.status === 'Approved' || r.status === 'Reimbursed').length
-  const rejected = requests.filter(r => r.status === 'Rejected').length
-
   // Parse amounts - handle both ₹1,000 format and raw numbers
   const parseAmount = (amt) => {
     if (typeof amt === 'number') return amt
@@ -158,13 +150,22 @@ export function calculateStats(requests = []) {
     return 0
   }
 
+  // Count by status
+  const pendingStatuses = ['Pending', 'Under HOD', 'Under Coordinator']
+  const postHodStatuses = ['Under Principal', 'Approved', 'Reimbursed', 'Disbursed']
+
+  const pending = requests.filter(r => pendingStatuses.includes(r.status)).length
+  const underPrincipal = requests.filter(r => r.status === 'Under Principal').length
+  const approved = requests.filter(r => postHodStatuses.includes(r.status)).length
+  const rejected = requests.filter(r => r.status === 'Rejected').length
+
   // Calculate amounts
   const totalAmount = requests.reduce((sum, r) => sum + parseAmount(r.amount), 0)
   const approvedAmount = requests
-    .filter(r => r.status === 'Approved' || r.status === 'Reimbursed')
+    .filter(r => postHodStatuses.includes(r.status))
     .reduce((sum, r) => sum + parseAmount(r.amount), 0)
   const pendingAmount = requests
-    .filter(r => r.status === 'Pending' || r.status === 'Under HOD' || r.status === 'Under Coordinator')
+    .filter(r => pendingStatuses.includes(r.status))
     .reduce((sum, r) => sum + parseAmount(r.amount), 0)
 
   // Calculate rates

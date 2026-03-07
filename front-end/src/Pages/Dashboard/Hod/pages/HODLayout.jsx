@@ -143,7 +143,6 @@ const HODLayout = ({ children }) => {
 
       if (studentApprovedData.status === 'fulfilled') {
         const forms = (studentApprovedData.value?.forms || studentApprovedData.value || [])
-          .filter(f => f.status === 'Under Principal')
           .map(f => ({ ...f, applicantType: 'Student' }))
         allForms = [...allForms, ...forms]
       }
@@ -163,7 +162,6 @@ const HODLayout = ({ children }) => {
 
       if (facultyApprovedData.status === 'fulfilled') {
         const forms = (facultyApprovedData.value?.forms || facultyApprovedData.value || [])
-          .filter(f => f.status === 'Under Principal')
           .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
         allForms = [...allForms, ...forms]
       }
@@ -177,31 +175,7 @@ const HODLayout = ({ children }) => {
       // Map backend data to HOD dashboard format
       const mappedRequests = allForms.map(mapFormToRequest)
 
-      console.log('Fetched HOD requests - Total:', mappedRequests.length)
-      console.log('By type:', {
-        'Student': mappedRequests.filter(r => r.applicantType === 'Student').length,
-        'Faculty': mappedRequests.filter(r => r.applicantType === 'Faculty').length
-      })
-      console.log('By status:', {
-        'Under HOD': mappedRequests.filter(r => r.status === 'Under HOD').length,
-        'Pending': mappedRequests.filter(r => r.status === 'Pending').length,
-        'Under Coordinator': mappedRequests.filter(r => r.status === 'Under Coordinator').length,
-        'Under Principal': mappedRequests.filter(r => r.status === 'Under Principal').length,
-        'Rejected': mappedRequests.filter(r => r.status === 'Rejected').length
-      })
-      
-      // Log sample requests to debug ID and status issues
-      if (mappedRequests.length > 0) {
-        console.log('Sample requests:', mappedRequests.slice(0, 3).map(r => ({
-          id: r.id,
-          _id: r._id,
-          applicationId: r.applicationId,
-          status: r.status,
-          applicantType: r.applicantType,
-          applicantName: r.applicantName
-        })))
-      }
-      
+
       setAllRequests(mappedRequests)
     } catch (error) {
       console.error('Error fetching HOD requests:', error)
@@ -220,7 +194,7 @@ const HODLayout = ({ children }) => {
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
-      console.log('HOD Dashboard - User data:', user)
+
 
       // Build email: prefer stored email, otherwise construct from username
       let userEmail = user.email
@@ -299,20 +273,20 @@ const HODLayout = ({ children }) => {
     updateRequestStatus: useCallback(async (requestId, newStatus, remarks = '') => {
       try {
         // Try to find request by multiple ID fields
-        const request = allRequests.find(req => 
-          req.id === requestId || 
-          req._id === requestId || 
+        const request = allRequests.find(req =>
+          req.id === requestId ||
+          req._id === requestId ||
           req.applicationId === requestId ||
           String(req.id) === String(requestId) ||
           String(req._id) === String(requestId) ||
           String(req.applicationId) === String(requestId)
         )
-        
+
         if (!request) {
           console.error('Request not found:', requestId)
-          console.error('Available requests:', allRequests.map(r => ({ 
-            id: r.id, 
-            _id: r._id, 
+          console.error('Available requests:', allRequests.map(r => ({
+            id: r.id,
+            _id: r._id,
             applicationId: r.applicationId,
             applicantName: r.applicantName,
             status: r.status
@@ -323,7 +297,7 @@ const HODLayout = ({ children }) => {
 
         // Validate request status - Backend requires exactly "Under HOD" for updates
         const currentStatus = String(request.status || '').trim()
-        
+
         // CRITICAL: Backend validation requires exactly "Under HOD" status
         // Student forms backend (line 385 in StudentFormRoutes.js) requires exactly "Under HOD"
         // Faculty forms backend (line 252 in formRoutes.js) doesn't check status, but we validate for consistency
@@ -335,11 +309,11 @@ const HODLayout = ({ children }) => {
             'Approved': 'Request has already been approved and cannot be modified.',
             'Rejected': 'Request has already been rejected and cannot be modified.'
           }
-          
+
           const errorMsg = statusMap[currentStatus] || `Cannot update request. Current status is "${currentStatus}". Only requests with status "Under HOD" can be approved/rejected by HOD.`
           toast.error(errorMsg)
-          console.error('Invalid status for HOD update:', { 
-            currentStatus, 
+          console.error('Invalid status for HOD update:', {
+            currentStatus,
             requestId,
             formId: request._id || request.applicationId,
             applicantType: request.applicantType,
@@ -359,7 +333,7 @@ const HODLayout = ({ children }) => {
         // Get the correct form ID - backend expects MongoDB _id for student forms
         // For faculty forms, it can use either _id or applicationId
         let formId = null
-        
+
         if (request.applicantType === 'Student') {
           // Student forms: backend uses MongoDB _id (line 336 in StudentFormRoutes.js)
           formId = request._id
@@ -377,12 +351,12 @@ const HODLayout = ({ children }) => {
           // Faculty forms: backend tries applicationId first, then _id (line 252 in formRoutes.js)
           formId = request.applicationId || request._id || request.id
         }
-        
+
         // If formId is still a string like "form-123", extract the actual ID
         if (formId && String(formId).startsWith('form-')) {
           formId = String(formId).replace('form-', '')
         }
-        
+
         if (!formId) {
           console.error('No valid form ID found for request:', {
             request,
@@ -394,18 +368,10 @@ const HODLayout = ({ children }) => {
           toast.error('Invalid request ID. Please refresh the page.')
           return false
         }
-        
+
         // Ensure formId is a string
         formId = String(formId)
 
-        console.log('Updating request:', { 
-          requestId, 
-          formId, 
-          currentStatus,
-          newStatus, 
-          applicantType: request.applicantType,
-          applicantName: request.applicantName 
-        })
 
         // Update status via API - choose correct API based on applicantType
         const updateData = { status: newStatus }
@@ -421,13 +387,10 @@ const HODLayout = ({ children }) => {
         let response
         try {
           if (request.applicantType === 'Student') {
-            console.log('Calling studentFormsAPI.updateById with:', { formId, updateData })
             response = await studentFormsAPI.updateById(formId, updateData)
           } else {
-            console.log('Calling facultyFormsAPI.updateById with:', { formId, updateData })
             response = await facultyFormsAPI.updateById(formId, updateData)
           }
-          console.log('API response:', response)
         } catch (apiError) {
           console.error('API call failed:', apiError)
           const apiErrorMessage = apiError?.response?.data?.error || apiError?.error || apiError?.message || 'API call failed'
@@ -528,6 +491,12 @@ const HODLayout = ({ children }) => {
         } else if (statusFilter === 'Under HOD') {
           // Explicitly handle "Under HOD" filter
           matchesStatus = request.status === 'Under HOD'
+        } else if (statusFilter === 'Under Accounts') {
+          // "Under Accounts" = approved by principal, now with accounts department
+          matchesStatus = request.status === 'Approved'
+        } else if (statusFilter === 'Approved') {
+          // "Approved" includes fully approved and reimbursed
+          matchesStatus = request.status === 'Approved' || request.status === 'Reimbursed'
         } else {
           matchesStatus = request.status === statusFilter
         }
@@ -537,14 +506,6 @@ const HODLayout = ({ children }) => {
         return matchesSearch && matchesStatus && matchesType
       })
 
-      console.log('Filtered requests:', {
-        totalRequests: allRequests.length,
-        statusFilter,
-        typeFilter,
-        searchQuery,
-        filteredCount: filtered.length,
-        filteredRequests: filtered
-      })
 
       return filtered
     }, [allRequests, searchQuery, statusFilter, typeFilter])

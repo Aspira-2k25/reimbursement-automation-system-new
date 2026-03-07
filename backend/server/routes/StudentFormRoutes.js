@@ -3,32 +3,16 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const StudentForm = require("../models/StudentForm");
+const Form = require("../models/Form");
 const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 const { validateUploadedFiles } = require("../middleware/multer");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
-const notificationService = require('../utils/notificationServise');
+const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
-
-// Input sanitization helpers
-const sanitizeString = (str) => {
-  if (typeof str !== 'string') return '';
-  // Remove MongoDB operators and other dangerous characters
-  return str.replace(/[${}<>]/g, '').trim();
-};
-
-const sanitizeApplicationId = (id) => {
-  if (typeof id !== 'string') return '';
-  // Only allow alphanumeric, hyphens, and underscores
-  return id.replace(/[^a-zA-Z0-9\-_]/g, '');
-};
-
-// Validate MongoDB ObjectId format
-const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
-};
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES } = require('../utils/formHelpers');
 
 
 // POST /api/student-forms/submit
@@ -45,6 +29,23 @@ router.post(
       const userId = req.user.userId || req.user.email;
 
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
+
+      // ── Daily submission limit: max 3 per student per day ──
+      const MAX_DAILY_SUBMISSIONS = 3;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const todayCount = await StudentForm.countDocuments({
+        userId: String(userId),
+        createdAt: { $gte: todayStart }
+      });
+
+      if (todayCount >= MAX_DAILY_SUBMISSIONS) {
+        return res.status(429).json({
+          error: "Daily submission limit reached",
+          message: `Students can submit a maximum of ${MAX_DAILY_SUBMISSIONS} forms per day. You have already submitted ${todayCount} today.`
+        });
+      }
 
       // Upload received files to Cloudinary in parallel (if present)
       const uploadPromises = [];
@@ -89,33 +90,33 @@ router.post(
       const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
       const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
-      // Generate meaningful application ID
-      // Format: S-NPT-2026-IT-001 (Student NPTEL 2026 IT Dept Sequence 1)
-      const applicationId = await generateApplicationId({
-        applicantType: 'Student',
-        reimbursementType: req.body.reimbursementType || 'NPTEL',
-        academicYear: req.body.academicYear,
-        department: req.body.department
-      }, StudentForm);
-
-      const newStudentForm = new StudentForm({
-        ...req.body,
-        amount, // Use parsed numeric value
-        marks, // Use parsed numeric value
-        applicationId, // Use generated ID
-        userId,
-        status: "Pending", // Ensure status is Pending when student submits
-        documents: [
-          nptelResultUpload
-            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
-            : null,
-          idCardUpload
-            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
-            : null,
-        ].filter(Boolean),
-      });
-
-      await newStudentForm.save();
+      // Generate Application ID and save with retry for duplicate prevention
+      // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
+      const { savedDoc: newStudentForm } = await generateApplicationIdWithRetry(
+        {
+          applicantType: 'Student',
+          reimbursementType: req.body.reimbursementType || 'NPTEL',
+          academicYear: req.body.academicYear,
+          department: req.body.department
+        },
+        [StudentForm, Form],
+        (applicationId) => new StudentForm({
+          ...req.body,
+          amount,
+          marks,
+          applicationId,
+          userId,
+          status: "Pending",
+          documents: [
+            nptelResultUpload
+              ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+              : null,
+            idCardUpload
+              ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+              : null,
+          ].filter(Boolean),
+        })
+      );
 
       // submission notification
       await notificationService.createNotification({
@@ -126,8 +127,8 @@ router.post(
         message: `Your reimbursement application ${newStudentForm.applicationId} has been submitted successfully.`,
         phase: 'Student',
         status: 'Pending',
-        userEmail: req.user.email || req.body.email,
-        userName: req.body.name,
+        userEmail: req.body.email || req.user.email,
+        userName: req.body.name || req.user.username || 'Student',
         studentId: req.body.studentId,
         amount: req.body.amount,
       }, true); // Send email notification
@@ -320,36 +321,7 @@ router.get(
   }
 );
 
-// Department aliases for flexible matching between short codes and full names
-const DEPARTMENT_ALIASES = {
-  'IT': 'Information Technology',
-  'CE': 'Computer Engineering',
-  'AIML': 'CSE AI and ML',
-  'DS': 'CSE Data Science',
-  'CIVIL': 'Civil Engineering',
-  'MECH': 'Mechanical Engineering',
-};
-
-// Get all possible department name variants for a given department value
-const getDepartmentVariants = (department) => {
-  if (!department) return [];
-  const variants = [department];
-  const upperDept = department.toUpperCase().trim();
-
-  // If department is a short alias, add its full name
-  if (DEPARTMENT_ALIASES[upperDept]) {
-    variants.push(DEPARTMENT_ALIASES[upperDept]);
-  }
-
-  // If department is a full name, add the short alias
-  for (const [alias, fullName] of Object.entries(DEPARTMENT_ALIASES)) {
-    if (fullName.toLowerCase() === department.toLowerCase().trim()) {
-      variants.push(alias);
-    }
-  }
-
-  return [...new Set(variants)]; // deduplicate
-};
+// Department aliases and helpers imported from ../utils/formHelpers
 
 // GET /api/student-forms/for-hod - Get requests approved by coordinator (status: Under HOD)
 router.get(
@@ -444,7 +416,7 @@ router.post(
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
       const isOwner = String(form.userId) === String(userId);
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -536,7 +508,7 @@ router.get(
       const isOwner =
         String(form.userId) === String(userId) ||
         (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
@@ -592,7 +564,7 @@ router.put(
       const isOwner =
         String(form.userId) === String(userId) ||
         (req.user.email && String(form.userId).toLowerCase() === String(req.user.email).toLowerCase());
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({ error: "Forbidden", message: "You can only edit your own applications." });
@@ -736,17 +708,17 @@ router.put(
           notificationType = 'approval';
         }
 
-        // Get user email from login token or fallback to form email
-        let userEmail = form.email; // Fallback to form email
+        // Priority: 1. Form Email, 2. Postgres Profile Email
+        let userEmail = form.email;
         let userName = form.name;
 
         try {
-          // Priority: 1. Postgres Profile Email, 2. Form Email
           if (form.userId && !isNaN(form.userId)) {
             const staffUser = await dbUtils.getStaffProfile(form.userId);
-            if (staffUser && staffUser.email) {
-              userEmail = staffUser.email;
-              userName = staffUser.name || userName;
+            if (staffUser) {
+              // Only fallback to staff profile email if form email is missing
+              userEmail = userEmail || staffUser.email;
+              userName = userName || staffUser.name;
             }
           }
         } catch (dbError) {

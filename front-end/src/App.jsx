@@ -28,6 +28,8 @@ function App() {
           <Route path="/form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />
           <Route path="/nptel-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
           <Route path="/nptel-form/edit/:id" element={<ProtectedRoute><EditForm /></ProtectedRoute>} />
+          <Route path="/faculty-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
+          <Route path="/faculty-form/edit/:id" element={<ProtectedRoute><EditForm /></ProtectedRoute>} />
           <Route path="/student-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
           <Route path="/student-nptel-form" element={<ProtectedRoute><StudentNptelForm /></ProtectedRoute>} />
           <Route path="/faculty-nptel-form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />

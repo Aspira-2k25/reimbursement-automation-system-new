@@ -36,7 +36,6 @@ function StatusBadge({ status }) {
 export default function RequestsTable({ search, requests = [], onDelete }) {
   const navigate = useNavigate();
   const [viewItem, setViewItem] = React.useState(null);
-  const [editItem, setEditItem] = React.useState(null);
   const [deleteItem, setDeleteItem] = React.useState(null);
 
   // Filter requests based on search term
@@ -112,7 +111,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     className="icon-btn"
                     onClick={() => {
                       setViewItem(r);
-                      navigate(`/nptel-form/view/${r.id}`);
+                      navigate(`/faculty-form/view/${r.id}`);
                     }}
                     aria-label="View"
                   >
@@ -120,10 +119,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                   </button>
                   <button
                     className="icon-btn hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => {
-                      setEditItem(r);
-                      navigate(`/nptel-form/edit/${r.id}`);
-                    }}
+                    onClick={() => navigate(`/faculty-form/edit/${r.id}`)}
                     aria-label="Edit"
                     disabled={r.status !== 'Under HOD'}
                     title={r.status !== 'Under HOD' ? 'Editing locked — form has been acted upon' : 'Edit'}
@@ -255,113 +251,6 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
         </div>
       )}
 
-      {editItem && (
-        <div className={modalStyle} role="dialog" aria-modal="true">
-          <div
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200"
-            onClick={() => setEditItem(null)}
-          ></div>
-          <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Edit Faculty Request</h3>
-              <button
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
-                onClick={() => setEditItem(null)}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <EditForm
-              item={editItem}
-              onCancel={() => setEditItem(null)}
-              onSave={(payload) => {
-                // TODO: Implement actual save logic
-                setEditItem(null)
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
-  )
-}
-
-function EditForm({ item, onSave, onCancel }) {
-  const [form, setForm] = React.useState({
-    category: item.category,
-    description: item.description,
-    amount: item.amount,
-  })
-
-  const handleSubmit = React.useCallback((e) => {
-    e.preventDefault()
-    onSave(form)
-  }, [form, onSave])
-
-  const handleCancel = React.useCallback(() => {
-    onCancel()
-  }, [onCancel])
-
-  return (
-    <form
-      className="grid grid-cols-1 gap-4"
-      onSubmit={handleSubmit}
-    >
-      <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Category</span>
-        <input
-          className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          value={form.category}
-          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-          required
-        />
-      </label>
-      <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Description</span>
-        <textarea
-          className="input min-h-20 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          required
-        />
-      </label>
-      <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Amount (₹)</span>
-        <input
-          className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          type="number"
-          min="1"
-          max="1500"
-          step="1"
-          value={form.amount}
-          onChange={(e) => {
-            const val = e.target.value;
-            const numVal = parseFloat(val);
-            if (val === '' || (!isNaN(numVal) && numVal > 0 && numVal <= 1500)) {
-              setForm((f) => ({ ...f, amount: val === '' ? '' : numVal }));
-            }
-          }}
-          onWheel={(e) => e.target.blur()}
-          required
-        />
-      </label>
-
-      <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
-        <button
-          type="button"
-          className="btn btn-outline hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150"
-          onClick={handleCancel}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="btn btn-primary hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all duration-150"
-        >
-          Save Changes
-        </button>
-      </div>
-    </form>
   )
 }
