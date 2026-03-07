@@ -8,6 +8,7 @@ import { adminAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import FacultyManagement from './FacultyManagement'
 import Dashboard from './Dashboard'
+import AdminLogs from './AdminLogs'
 
 // Context for sharing Admin state across components
 const AdminContext = createContext()
@@ -205,6 +206,7 @@ const AdminLayout = () => {
               >
                 {activeTab === 'home' && <Dashboard />}
                 {activeTab === 'faculty' && <FacultyManagement />}
+                {activeTab === 'logs' && <AdminLogs />}
               </motion.div>
             </AnimatePresence>
           </div>

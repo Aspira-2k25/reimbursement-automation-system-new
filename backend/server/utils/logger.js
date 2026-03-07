@@ -22,6 +22,33 @@ const colors = {
 class Logger {
   constructor() {
     this.isProduction = process.env.NODE_ENV === 'production';
+    this._buffer = [];
+    this._maxBuffer = 2000; // keep recent logs in memory
+    this._io = null;
+  }
+
+  attachSocket(io) {
+    this._io = io;
+  }
+
+  getLogs() {
+    // return a shallow copy
+    return this._buffer.slice().reverse(); // newest first
+  }
+
+  _pushLogObject(obj) {
+    this._buffer.push(obj);
+    if (this._buffer.length > this._maxBuffer) {
+      this._buffer.shift();
+    }
+    // emit to socket if available
+    try {
+      if (this._io) {
+        this._io.emit('log', obj);
+      }
+    } catch (e) {
+      // ignore socket errors
+    }
   }
 
   formatMessage(level, message, data = null) {
@@ -38,26 +65,40 @@ class Logger {
     return logMessage;
   }
 
+  // create structured log object for programmatic use
+  createLogObject(level, message, data = null) {
+    return {
+      timestamp: new Date().toISOString(),
+      level,
+      message: typeof message === 'string' ? message : JSON.stringify(message),
+      data: data || null
+    };
+  }
+
   error(message, data = null) {
     // Always log errors, even in production
     console.error(this.formatMessage(LOG_LEVELS.ERROR, message, data));
+    this._pushLogObject(this.createLogObject(LOG_LEVELS.ERROR, message, data));
   }
 
   warn(message, data = null) {
     if (!this.isProduction) {
       console.warn(this.formatMessage(LOG_LEVELS.WARN, message, data));
+      this._pushLogObject(this.createLogObject(LOG_LEVELS.WARN, message, data));
     }
   }
 
   info(message, data = null) {
     if (!this.isProduction) {
       console.info(this.formatMessage(LOG_LEVELS.INFO, message, data));
+      this._pushLogObject(this.createLogObject(LOG_LEVELS.INFO, message, data));
     }
   }
 
   debug(message, data = null) {
     if (!this.isProduction && process.env.DEBUG === 'true') {
       console.debug(this.formatMessage(LOG_LEVELS.DEBUG, message, data));
+      this._pushLogObject(this.createLogObject(LOG_LEVELS.DEBUG, message, data));
     }
   }
 
