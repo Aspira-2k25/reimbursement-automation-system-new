@@ -323,7 +323,7 @@ const RequestStatus = () => {
                       {/* View */}
                       <button
                         className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
-                        onClick={() => navigate(`/nptel-form/view/${r.id}`)}
+                        onClick={() => navigate(`/faculty-form/view/${r.id}`)}
                         title="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -331,7 +331,7 @@ const RequestStatus = () => {
                       {/* Edit */}
                       <button
                         className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => navigate(`/nptel-form/edit/${r.id}`)}
+                        onClick={() => navigate(`/faculty-form/edit/${r.id}`)}
                         title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
                         disabled={r.status !== 'Under Principal'}
                       >
