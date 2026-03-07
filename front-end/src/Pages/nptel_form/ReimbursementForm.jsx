@@ -293,7 +293,6 @@ const ReimbursementForm = () => {
 
       if (res.ok) {
         toast.success("Application submitted successfully! Your request is now under review.");
-        console.log(data);
         // Navigate based on user role after successful submission
         const navRole = user?.role?.toLowerCase();
         if (navRole === 'coordinator') {

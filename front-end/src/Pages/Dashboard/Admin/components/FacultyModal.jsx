@@ -168,9 +168,8 @@ const FacultyModal = () => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder="John Doe"
             />
             {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
@@ -187,9 +186,8 @@ const FacultyModal = () => {
               value={formData.username}
               onChange={handleChange}
               disabled={!!editingStaff}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                errors.username ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${errors.username ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder="johndoe"
             />
             {errors.username && <p className="text-red-600 text-xs mt-1">{errors.username}</p>}
@@ -205,9 +203,8 @@ const FacultyModal = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder="john@example.com"
             />
             {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
@@ -256,9 +253,8 @@ const FacultyModal = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.password ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.password ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder={editingStaff ? 'Leave blank to keep current' : 'Min 6 characters'}
             />
             {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password}</p>}
@@ -275,9 +271,8 @@ const FacultyModal = () => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                  errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 placeholder="Confirm password"
               />
               {errors.confirmPassword && <p className="text-red-600 text-xs mt-1">{errors.confirmPassword}</p>}
