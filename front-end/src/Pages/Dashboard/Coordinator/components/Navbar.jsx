@@ -7,6 +7,8 @@ import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, L
 import NotificationMenu from "./NotificationMenu"
 import { Check, CheckCheck } from "lucide-react"
 import { toast } from "react-hot-toast"
+import apshahLogo from "../../../../assets/images/Apshah_logo.png"
+import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile, notifications = [], markNotificationAsRead, markAllNotificationsAsRead }) {
   const { logout } = useAuth()
@@ -89,11 +91,13 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
         <div className="flex items-center justify-between lg:justify-normal h-16">
           {/* Left Section: Logo - Flex-1 to push center items to true center */}
           <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)' }}>
-              <div className="w-4 h-4 bg-white rounded-md opacity-90"></div>
-            </div>
-            <span className="text-lg lg:text-xl font-semibold text-white truncate">
-              Reimbursement Portal
+            <img
+              src={apshahLogo}
+              alt="A.P. Shah Logo"
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-sm object-contain drop-shadow-sm"
+            />
+            <span className="font-bold text-white text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block">
+              PCT's A. P. Shah Institute of Technology
             </span>
           </div>
 
@@ -133,7 +137,16 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
           {/* Right Section: Profile & Notifications - Flex-1 to balance the left side */}
           <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4">
-            <NotificationMenu 
+
+            {/* System Logo */}
+            <div className="hidden sm:flex items-center gap-2 mr-2">
+              <img src={websiteLogo} alt="Reimbursement Portal" className="h-8 w-8 drop-shadow-sm object-contain" />
+              <span className="font-semibold text-white/95 text-sm">
+                Reimbursement Portal
+              </span>
+            </div>
+
+            <NotificationMenu
               notifications={notifications}
               markNotificationAsRead={markNotificationAsRead}
               markAllNotificationsAsRead={markAllNotificationsAsRead}
