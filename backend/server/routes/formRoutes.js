@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const Form = require("../models/Form");
+const StudentForm = require("../models/StudentForm");
 const authMiddleware = require("../middleware/auth");
 const upload = require("../middleware/multer");  // <-- multer setup
 const { validateUploadedFiles } = require("../middleware/multer");  // <-- file content validation
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
-const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const { generateApplicationIdWithRetry } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationServise');
 const dbUtils = require('../utils/database');
 const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
@@ -94,40 +95,38 @@ router.post(
         initialStatus = "Under Principal"; // HOD forms bypass HOD review
       }
 
-      // Generate meaningful application ID
-      // Format: F-NPT-2026-IT-001 (Faculty NPTEL 2026 IT Dept Sequence 1)
-      const applicationId = await generateApplicationId({
-        applicantType: applicantType,
-        reimbursementType: req.body.reimbursementType || 'NPTEL',
-        academicYear: req.body.academicYear,
-        department: req.body.department || req.user.department
-      }, Form);
-
-
-
       // Parse numeric fields
       const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
       const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
-      const newForm = new Form({
-        ...req.body,
-        amount, // Use parsed numeric value
-        marks, // Use parsed numeric value
-        applicationId, // Use generated ID
-        userId, // attach it to the form
-        applicantType, // Use normalized value (overrides req.body.applicantType)
-        status: initialStatus, // Set based on applicant type (this should override model default)
-        documents: [
-          nptelResultUpload
-            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
-            : null,
-          idCardUpload
-            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
-            : null
-        ].filter(Boolean),
-      });
-
-      await newForm.save();
+      // Generate Application ID and save with retry for duplicate prevention
+      // Format: F-COMP-NPT-2026-001 (Faculty, Comp Dept, NPTEL, 2026, Global Sequence 1)
+      const { savedDoc: newForm } = await generateApplicationIdWithRetry(
+        {
+          applicantType: applicantType,
+          reimbursementType: req.body.reimbursementType || 'NPTEL',
+          academicYear: req.body.academicYear,
+          department: req.body.department || req.user.department
+        },
+        [Form, StudentForm],
+        (applicationId) => new Form({
+          ...req.body,
+          amount,
+          marks,
+          applicationId,
+          userId,
+          applicantType,
+          status: initialStatus,
+          documents: [
+            nptelResultUpload
+              ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+              : null,
+            idCardUpload
+              ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+              : null
+          ].filter(Boolean),
+        })
+      );
 
       // Send email notification for submission
       try {
