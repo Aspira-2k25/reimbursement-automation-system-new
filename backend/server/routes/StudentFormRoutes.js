@@ -3,12 +3,13 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const StudentForm = require("../models/StudentForm");
+const Form = require("../models/Form");
 const authMiddleware = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 const { validateUploadedFiles } = require("../middleware/multer");
-const { generateApplicationId } = require("../utils/applicationIdGenerator");
+const { generateApplicationIdWithRetry } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationServise');
 const dbUtils = require('../utils/database');
 
@@ -45,6 +46,23 @@ router.post(
       const userId = req.user.userId || req.user.email;
 
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
+
+      // ── Daily submission limit: max 3 per student per day ──
+      const MAX_DAILY_SUBMISSIONS = 3;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const todayCount = await StudentForm.countDocuments({
+        userId: String(userId),
+        createdAt: { $gte: todayStart }
+      });
+
+      if (todayCount >= MAX_DAILY_SUBMISSIONS) {
+        return res.status(429).json({
+          error: "Daily submission limit reached",
+          message: `Students can submit a maximum of ${MAX_DAILY_SUBMISSIONS} forms per day. You have already submitted ${todayCount} today.`
+        });
+      }
 
       // Upload received files to Cloudinary in parallel (if present)
       const uploadPromises = [];
@@ -89,33 +107,33 @@ router.post(
       const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
       const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
-      // Generate meaningful application ID
-      // Format: S-NPT-2026-IT-001 (Student NPTEL 2026 IT Dept Sequence 1)
-      const applicationId = await generateApplicationId({
-        applicantType: 'Student',
-        reimbursementType: req.body.reimbursementType || 'NPTEL',
-        academicYear: req.body.academicYear,
-        department: req.body.department
-      }, StudentForm);
-
-      const newStudentForm = new StudentForm({
-        ...req.body,
-        amount, // Use parsed numeric value
-        marks, // Use parsed numeric value
-        applicationId, // Use generated ID
-        userId,
-        status: "Pending", // Ensure status is Pending when student submits
-        documents: [
-          nptelResultUpload
-            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
-            : null,
-          idCardUpload
-            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
-            : null,
-        ].filter(Boolean),
-      });
-
-      await newStudentForm.save();
+      // Generate Application ID and save with retry for duplicate prevention
+      // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
+      const { savedDoc: newStudentForm } = await generateApplicationIdWithRetry(
+        {
+          applicantType: 'Student',
+          reimbursementType: req.body.reimbursementType || 'NPTEL',
+          academicYear: req.body.academicYear,
+          department: req.body.department
+        },
+        [StudentForm, Form],
+        (applicationId) => new StudentForm({
+          ...req.body,
+          amount,
+          marks,
+          applicationId,
+          userId,
+          status: "Pending",
+          documents: [
+            nptelResultUpload
+              ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+              : null,
+            idCardUpload
+              ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+              : null,
+          ].filter(Boolean),
+        })
+      );
 
       // submission notification
       await notificationService.createNotification({
