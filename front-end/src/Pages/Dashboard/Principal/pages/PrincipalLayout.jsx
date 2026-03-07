@@ -193,7 +193,7 @@ const PrincipalLayout = ({ children }) => {
     const rejected = allRequests.filter(r => r.status === 'Rejected').length
     const approvedAmount = allRequests
       .filter(r => r.status === 'Approved')
-      .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
+      .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
 
     const processedRequests = approved + rejected
     const approvalRate = processedRequests > 0 ? Math.round((approved / processedRequests) * 100) : 0
