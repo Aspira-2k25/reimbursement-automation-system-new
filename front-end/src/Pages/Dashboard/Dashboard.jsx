@@ -214,7 +214,7 @@ export default function Dashboard() {
       return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider, StudentNotificationProvider)
 
     case "Faculty":
-      return getRoutes(FacultyNavbar, FacultyDashboard, FacultyRequestStatus, FacultyProfileSettings, FacultyProfileProvider)
+      return getRoutes(FacultyNavbar, FacultyDashboard, FacultyRequestStatus, FacultyProfileSettings, FacultyProfileProvider, FacultyNotificationProvider)
 
     case "Coordinator":
       // Return coordinator dashboard with coordinator-specific components
@@ -277,6 +277,6 @@ export default function Dashboard() {
       )
 
     default:
-      return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider)
+      return getRoutes(StudentNavbar, StudentDashboard, StudentRequestStatus, StudentProfileSettings, ProfileProvider, StudentNotificationProvider)
   }
 }

@@ -124,7 +124,7 @@ const AllDepartmentOverview = () => {
     if (department.isOwnDepartment) {
       setExpandedDept(expandedDept === department.id ? null : department.id)
     } else {
-      toast.info(`${department.name} - View Only. Click your department to manage.`, { duration: 2000 })
+      toast(`${department.name} - View Only. Click your department to manage.`, { duration: 2000 })
     }
   }, [expandedDept])
 
