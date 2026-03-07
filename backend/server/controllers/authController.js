@@ -438,11 +438,50 @@ authController.createUser = async (req, res) => {
 
 // ==================== ADMIN FACULTY MANAGEMENT ====================
 
-// Get all staff members (admin only)
+// Get all staff members (admin only) — supports optional pagination
 authController.getFacultyList = async (req, res) => {
   try {
+    const page = parseInt(req.query.page, 10);
+    const limit = parseInt(req.query.limit, 10);
+
+    // If pagination params are provided, use paginated query
+    if (page > 0 && limit > 0) {
+      const safePage = Math.max(1, page);
+      const safeLimit = Math.min(Math.max(1, limit), 100); // cap at 100
+      const offset = (safePage - 1) * safeLimit;
+
+      const staff = await prisma.staff.findMany({
+        skip: offset,
+        take: safeLimit,
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          department: true,
+          role: true,
+          email: true,
+          employee_id: true,
+          is_active: true,
+          created_at: true,
+          last_login: true,
+        },
+      });
+      const total = await prisma.staff.count();
+
+      return res.json({
+        staff,
+        pagination: {
+          page: safePage,
+          limit: safeLimit,
+          total,
+          totalPages: Math.ceil(total / safeLimit),
+        },
+      });
+    }
+
+    // Default: return all (backward compatible)
     const staff = await dbUtils.getAllStaff();
-    // no filtering; return entire roster for admin
     res.json({ staff });
   } catch (error) {
     console.error('getFacultyList error:', error);
@@ -479,7 +518,7 @@ authController.updateStaffById = async (req, res) => {
     }
 
     // Basic validation
-    if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
@@ -520,7 +559,7 @@ authController.updateStaffById = async (req, res) => {
 // Create new faculty member (admin action)
 authController.createFaculty = async (req, res) => {
   try {
-    const { username, name, department, email, password, employee_id } = req.body;
+    const { username, name, department, role, email, password, employee_id } = req.body;
 
     // Basic validation
     if (!username || !name || !password) {
@@ -530,7 +569,7 @@ authController.createFaculty = async (req, res) => {
     }
 
     // Validate email format
-    if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
@@ -567,7 +606,7 @@ authController.createFaculty = async (req, res) => {
         password: hashedPassword,
         email: email ? email.toLowerCase().trim() : null,
         department: department || null,
-        role: 'Faculty',
+        role: role || 'Faculty',
         employee_id: employee_id || null,
         is_active: true,
       },
