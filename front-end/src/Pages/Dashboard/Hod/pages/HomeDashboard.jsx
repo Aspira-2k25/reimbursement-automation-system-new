@@ -57,7 +57,6 @@ const HomeDashboard = () => {
       }
 
       const formData = data?.form || data
-      console.log('Fetched request details:', formData)
       setRequestDetails(formData)
     } catch (error) {
       console.error('Error fetching request details:', error)
@@ -84,8 +83,7 @@ const HomeDashboard = () => {
     try {
       // Use the most reliable ID - prioritize _id, then applicationId, then id
       const requestId = request._id || request.applicationId || request.id
-      console.log('Approving request:', { request, requestId, status: request.status })
-      
+
       if (!requestId) {
         toast.error('Invalid request: Missing ID')
         setIsLoading(false)
@@ -124,7 +122,7 @@ const HomeDashboard = () => {
         setSearchQuery('')
         break
       case 'Approved Requests':
-        setStatusFilter('Approved')
+        setStatusFilter('Under Accounts')
         setTypeFilter('All')
         setSearchQuery('')
         break
@@ -200,8 +198,7 @@ const HomeDashboard = () => {
       try {
         // Use the most reliable ID - prioritize _id, then applicationId, then id
         const requestId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
-        console.log('Rejecting request:', { request: rejectModal.request, requestId, status: rejectModal.request.status })
-        
+
         if (!requestId) {
           toast.error('Invalid request: Missing ID')
           setIsLoading(false)
@@ -375,7 +372,8 @@ const HomeDashboard = () => {
                 <option value="All">All Status</option>
                 <option value="Pending">Pending / Under HOD</option>
                 <option value="Under Principal">Under Principal</option>
-                <option value="Approved">Approved</option>
+                <option value="Under Accounts">Under Accounts</option>
+                <option value="Reimbursed">Reimbursed</option>
                 <option value="Rejected">Rejected</option>
               </select>
 
@@ -536,21 +534,21 @@ const HomeDashboard = () => {
                         {requestDetails.documents.map((doc, index) => {
                           // SECURITY: Validate URL before rendering to prevent XSS
                           const isValidUrl = doc.url && (
-                            doc.url.startsWith('https://') || 
+                            doc.url.startsWith('https://') ||
                             doc.url.startsWith('http://')
                           );
-                          
+
                           // Only allow Cloudinary URLs (trusted domain)
                           const isTrustedDomain = doc.url && (
                             doc.url.includes('cloudinary.com') ||
                             doc.url.includes('res.cloudinary.com')
                           );
-                          
+
                           if (!isValidUrl || !isTrustedDomain) {
                             console.warn('Blocked potentially unsafe document URL:', doc.url);
                             return null;
                           }
-                          
+
                           return (
                             <a
                               key={index}

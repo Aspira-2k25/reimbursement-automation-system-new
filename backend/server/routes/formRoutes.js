@@ -1,34 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const Form = require("../models/Form");
+const StudentForm = require("../models/StudentForm");
 const authMiddleware = require("../middleware/auth");
 const upload = require("../middleware/multer");  // <-- multer setup
 const { validateUploadedFiles } = require("../middleware/multer");  // <-- file content validation
 const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
-const notificationService = require('../utils/notificationServise');
+const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
 const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
-
-// Input sanitization helpers
-const sanitizeString = (str) => {
-  if (typeof str !== 'string') return '';
-  // Remove MongoDB operators and other dangerous characters
-  return str.replace(/[${}<>]/g, '').trim();
-};
-
-const sanitizeApplicationId = (id) => {
-  if (typeof id !== 'string') return '';
-  // Only allow alphanumeric, hyphens, and underscores
-  return id.replace(/[^a-zA-Z0-9\-_]/g, '');
-};
-
-// Validate MongoDB ObjectId format
-const isValidObjectId = (id) => {
-  const mongoose = require('mongoose');
-  return mongoose.Types.ObjectId.isValid(id);
-};
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES } = require('../utils/formHelpers');
 
 // POST /api/forms/submit
 router.post(
@@ -94,40 +77,38 @@ router.post(
         initialStatus = "Under Principal"; // HOD forms bypass HOD review
       }
 
-      // Generate meaningful application ID
-      // Format: F-NPT-2026-IT-001 (Faculty NPTEL 2026 IT Dept Sequence 1)
-      const applicationId = await generateApplicationId({
-        applicantType: applicantType,
-        reimbursementType: req.body.reimbursementType || 'NPTEL',
-        academicYear: req.body.academicYear,
-        department: req.body.department || req.user.department
-      }, Form);
-
-
-
       // Parse numeric fields
       const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
       const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
-      const newForm = new Form({
-        ...req.body,
-        amount, // Use parsed numeric value
-        marks, // Use parsed numeric value
-        applicationId, // Use generated ID
-        userId, // attach it to the form
-        applicantType, // Use normalized value (overrides req.body.applicantType)
-        status: initialStatus, // Set based on applicant type (this should override model default)
-        documents: [
-          nptelResultUpload
-            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
-            : null,
-          idCardUpload
-            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
-            : null
-        ].filter(Boolean),
-      });
-
-      await newForm.save();
+      // Generate Application ID and save with retry for duplicate prevention
+      // Format: F-COMP-NPT-2026-001 (Faculty, Comp Dept, NPTEL, 2026, Global Sequence 1)
+      const { savedDoc: newForm } = await generateApplicationIdWithRetry(
+        {
+          applicantType: applicantType,
+          reimbursementType: req.body.reimbursementType || 'NPTEL',
+          academicYear: req.body.academicYear,
+          department: req.body.department || req.user.department
+        },
+        [Form, StudentForm],
+        (applicationId) => new Form({
+          ...req.body,
+          amount,
+          marks,
+          applicationId,
+          userId,
+          applicantType,
+          status: initialStatus,
+          documents: [
+            nptelResultUpload
+              ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+              : null,
+            idCardUpload
+              ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+              : null
+          ].filter(Boolean),
+        })
+      );
 
       // Send email notification for submission
       try {
@@ -202,34 +183,7 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
   }
 });
 
-// Department aliases for flexible matching between short codes and full names
-const DEPARTMENT_ALIASES = {
-  'IT': 'Information Technology',
-  'CE': 'Computer Engineering',
-  'AIML': 'CSE AI and ML',
-  'DS': 'CSE Data Science',
-  'CIVIL': 'Civil Engineering',
-  'MECH': 'Mechanical Engineering',
-};
-
-// Get all possible department name variants for a given department value
-const getDepartmentVariants = (department) => {
-  if (!department) return [];
-  const variants = [department];
-  const upperDept = department.toUpperCase().trim();
-
-  if (DEPARTMENT_ALIASES[upperDept]) {
-    variants.push(DEPARTMENT_ALIASES[upperDept]);
-  }
-
-  for (const [alias, fullName] of Object.entries(DEPARTMENT_ALIASES)) {
-    if (fullName.toLowerCase() === department.toLowerCase().trim()) {
-      variants.push(alias);
-    }
-  }
-
-  return [...new Set(variants)];
-};
+// Department aliases and helpers imported from ../utils/formHelpers
 
 // GET /api/forms/for-hod - Get faculty forms for HOD (status: Under HOD)
 // IMPORTANT: Must be BEFORE /:id route to avoid being caught as a param
@@ -697,9 +651,9 @@ router.put(
           try {
             if (form.userId && !isNaN(form.userId)) {
               const staffUser = await dbUtils.getStaffProfile(form.userId);
-              if (staffUser && staffUser.email) {
-                userEmail = staffUser.email;
-                userName = staffUser.name || userName;
+              if (staffUser) {
+                userEmail = userEmail || staffUser.email;
+                userName = userName || staffUser.name;
               }
             }
           } catch (dbError) {

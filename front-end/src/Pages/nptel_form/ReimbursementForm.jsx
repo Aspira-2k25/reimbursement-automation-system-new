@@ -5,6 +5,16 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { getCsrfToken, fetchCsrfToken } from '../../services/api';
 
+// Department options
+const DEPARTMENTS = [
+  "Computer Engineering",
+  "Information Technology",
+  "CSE AI and ML",
+  "CSE Data Science",
+  "Civil Engineering",
+  "Mechanical Engineering"
+];
+
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
@@ -17,7 +27,7 @@ const sanitizeInput = (input) => {
 // SECURITY: Validate file type and size
 const validateFile = (file) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  const maxSize = 1 * 1024 * 1024; // 1MB
+  const maxSize = 500 * 1024; // 500KB
 
   if (!file) return { valid: true };
 
@@ -26,7 +36,7 @@ const validateFile = (file) => {
   }
 
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 1MB' };
+    return { valid: false, error: 'File size must be less than 500KB' };
   }
 
   return { valid: true };
@@ -39,6 +49,7 @@ const ReimbursementForm = () => {
     name: '',
     facultyId: '',
     jobTitle: '',
+    department: '',
     email: '',
     amount: '',
     accountName: '',
@@ -74,6 +85,11 @@ const ReimbursementForm = () => {
     // Job Title validation
     if (!formData.jobTitle.trim()) {
       newErrors.jobTitle = 'Job Title is required';
+    }
+
+    // Department validation
+    if (!formData.department) {
+      newErrors.department = 'Department is required';
     }
 
     // Email validation
@@ -212,11 +228,6 @@ const ReimbursementForm = () => {
       const userRole = user?.role || 'Faculty';
       formDataToSend.append('applicantType', userRole); // Will be HOD, Coordinator, or Faculty
 
-      // Add department from user profile
-      if (user?.department) {
-        formDataToSend.append('department', user.department);
-      }
-
       // SECURITY: Use refs instead of direct DOM access
       const nptelFile = nptelFileRef.current?.files[0];
       const idCardFile = idCardFileRef.current?.files[0];
@@ -282,7 +293,6 @@ const ReimbursementForm = () => {
 
       if (res.ok) {
         toast.success("Application submitted successfully! Your request is now under review.");
-        console.log(data);
         // Navigate based on user role after successful submission
         const navRole = user?.role?.toLowerCase();
         if (navRole === 'coordinator') {
@@ -294,6 +304,13 @@ const ReimbursementForm = () => {
         } else {
           navigate('/dashboard/faculty/requests');
         }
+      } else if (res.status === 413) {
+        // File too large — show prominent warning popup
+        toast.error(data.message || "File size exceeds 500KB limit. Please upload a smaller file.", {
+          duration: 5000,
+          icon: '⚠️',
+        });
+        setIsSubmitting(false);
       } else {
         const message =
           res.status === 403 && data?.error === 'Invalid CSRF token'
@@ -403,6 +420,30 @@ const ReimbursementForm = () => {
                     }`}
                 />
                 {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
+              </div>
+
+              {/* Department Field */}
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Department *
+                </label>
+                <select
+                  id="department"
+                  name="department"
+                  value={formData.department}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                >
+                  <option value="">Select Department</option>
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
               {/* Email Field */}
@@ -644,7 +685,7 @@ const ReimbursementForm = () => {
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 500KB</p>
 
               </div>
 
@@ -679,7 +720,7 @@ const ReimbursementForm = () => {
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 500KB</p>
 
               </div>
             </div>

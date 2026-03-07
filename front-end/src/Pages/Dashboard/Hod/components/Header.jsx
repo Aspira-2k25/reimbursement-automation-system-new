@@ -33,11 +33,11 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
   const unreadCount = notifications.filter(n => n.unread).length
 
-  // Update time every minute
+  // Update time every second for real-time clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-    }, 60000) // Update every minute
+    }, 1000) // Update every second
 
     return () => clearInterval(timer)
   }, [])
@@ -78,6 +78,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     return currentTime.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hour12: true
     })
   }
