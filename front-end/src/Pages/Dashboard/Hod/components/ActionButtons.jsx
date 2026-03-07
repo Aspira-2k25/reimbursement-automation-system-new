@@ -24,7 +24,7 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
     if (onView) {
       onView(request)
     } else {
-      toast.info(`Viewing details for request ${request.id}`)
+      toast(`Viewing details for request ${request.id}`)
     }
   }
 
