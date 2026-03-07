@@ -71,7 +71,18 @@ export function ProfileProvider({ children }) {
 export function useProfile() {
   const context = useContext(ProfileContext)
   if (!context) {
-    throw new Error('useProfile must be used within a ProfileProvider')
+    console.warn('useProfile used outside a ProfileProvider - returning safe default')
+    return {
+      profileData: {
+        name: '',
+        facultyId: '',
+        designation: '',
+        department: '',
+        email: ''
+      },
+      updateProfileData: () => { },
+      isProfileComplete: false
+    }
   }
   return context
 }
