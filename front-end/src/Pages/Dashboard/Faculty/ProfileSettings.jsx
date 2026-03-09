@@ -2,7 +2,7 @@ import React from "react"
 import { toast } from "react-hot-toast"
 import "../Dashboard.css"
 import { useProfile } from "./ProfileContext"
-import { authAPI } from '../../../services/api' 
+import { authAPI } from '../../../services/api'
 
 /**
  * Faculty ProfileSettings Component
@@ -10,7 +10,7 @@ import { authAPI } from '../../../services/api'
  */
 export default function ProfileSettings() {
   const { profile, updateProfile, resetProfile } = useProfile()
-  
+
   // State for form inputs
   const [name, setName] = React.useState(profile.name)
   const [dept, setDept] = React.useState(profile.department)
@@ -31,18 +31,18 @@ export default function ProfileSettings() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // Update profile in context
       updateProfile({
         name: name,
         department: dept,
         designation: designation
       })
-      
+
       // Show success message
       toast.success("Faculty profile updated successfully!")
     } catch (error) {
@@ -130,44 +130,44 @@ export default function ProfileSettings() {
           {/* Full Name input */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Full Name</span>
-            <input 
-              className="input w-full" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              required 
+            <input
+              className="input w-full"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
             />
           </label>
-          
+
           {/* Department input */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Department</span>
-            <input 
-              className="input w-full" 
-              value={dept} 
-              onChange={(e) => setDept(e.target.value)} 
-              required 
+            <input
+              className="input w-full"
+              value={dept}
+              onChange={(e) => setDept(e.target.value)}
+              required
             />
           </label>
-          
+
           {/* Designation input */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Designation</span>
-            <input 
-              className="input w-full" 
-              value={designation} 
-              onChange={(e) => setDesignation(e.target.value)} 
-              required 
-              placeholder="e.g., Associate Professor" 
+            <input
+              className="input w-full"
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              required
+              placeholder="e.g., Associate Professor"
             />
           </label>
-          
+
           {/* Role input (disabled) */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Role</span>
-            <input 
-              className="input w-full" 
-              value="Faculty" 
-              disabled 
+            <input
+              className="input w-full"
+              value="Faculty"
+              disabled
             />
           </label>
 
@@ -181,8 +181,8 @@ export default function ProfileSettings() {
             >
               Reset
             </button>
-            <button 
-              className="btn btn-primary w-full sm:w-auto" 
+            <button
+              className="btn btn-primary w-full sm:w-auto"
               type="submit"
               disabled={isLoading}
             >
@@ -224,6 +224,6 @@ export default function ProfileSettings() {
         </div>
 
       </div>
-    </main> 
+    </main>
   )
 }
