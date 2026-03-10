@@ -36,7 +36,7 @@ const authController = {
 
       // Generate JWT token with short expiry
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, email: user.email, department: user.department },
+        { userId: user.id, username: user.username, name: user.name, role: user.role, email: user.email, department: user.department },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
@@ -44,6 +44,12 @@ const authController = {
       // Set httpOnly cookie for security (centralized options)
       res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
 
+      // Log the login activity
+      logger.info('User logged in', {
+        user: user.name || user.username || user.email || 'Unknown',
+        role: user.role,
+        department: user.department || ''
+      });
 
       // Return user data (without sensitive information or token)
       res.json({
@@ -124,6 +130,12 @@ const authController = {
       // Set httpOnly cookie for security (consistent with regular login)
       res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
 
+      // Log the Google login activity
+      logger.info('User logged in via Google', {
+        user: staff?.name || name || email,
+        role: role,
+        department: staff?.department || ''
+      });
 
       return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
     } catch (error) {
@@ -314,6 +326,22 @@ const authController = {
       // Clear the httpOnly cookie as well (same options as when setting)
       const clearOpts = buildAuthCookieOptions(0);
       res.clearCookie('auth_token', clearOpts);
+
+      // Log the logout activity if we could decode the token
+      if (token) {
+        try {
+          const decoded = jwt.decode(token);
+          if (decoded && decoded.userId) {
+            logger.info('User logged out', {
+              user: decoded.name || decoded.username || decoded.email || 'Unknown',
+              role: decoded.role || 'Unknown',
+              department: decoded.department || ''
+            });
+          }
+        } catch (e) {
+          // ignore parsing errors
+        }
+      }
 
 
       res.json({ message: 'Logout successful' });
