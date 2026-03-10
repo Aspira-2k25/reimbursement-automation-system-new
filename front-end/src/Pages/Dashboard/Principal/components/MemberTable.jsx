@@ -3,8 +3,6 @@ import {
   Search,
   Download,
   Mail,
-  Phone,
-  Calendar,
   GraduationCap,
   User,
   ChevronLeft,
@@ -106,18 +104,15 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
    * Export table data to CSV format
    */
   const exportToCSV = () => {
-    const headers = ['ID', 'Name', 'Type', 'Designation/Year', 'Department', 'Email', 'Phone', 'Join Date', 'Total Reimbursements']
+    const headers = ['ID', 'Name', 'Type', 'Department', 'Email', 'Total Reimbursements']
     const csvContent = [
       headers.join(','),
       ...sortedMembers.map(member => [
         member.id,
         member.name,
         member.type,
-        member.type === 'Faculty' ? member.designation : member.year,
         member.department,
         member.email,
-        member.phone,
-        member.joinDate,
         member.totalReimbursements
       ].join(','))
     ].join('\n')
@@ -197,29 +192,11 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Type
               </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('designation')}
-              >
-                Position
-                {sortConfig.key === 'designation' && (
-                  <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Department
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contact
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('joinDate')}
-              >
-                Join Date
-                {sortConfig.key === 'joinDate' && (
-                  <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                )}
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -260,11 +237,6 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {member.type === 'Faculty' ? member.designation : member.year}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{member.department}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -273,16 +245,6 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                       <Mail className="w-3 h-3" />
                       <span className="truncate max-w-32">{member.email}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Phone className="w-3 h-3" />
-                      <span>{member.phone}</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(member.joinDate)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
