@@ -3,6 +3,8 @@
  * Provides structured logging with different levels
  * Only logs in development/staging, silent in production (unless error)
  */
+const fs = require('fs');
+const path = require('path');
 
 const LOG_LEVELS = {
   ERROR: 'ERROR',
@@ -25,6 +27,30 @@ class Logger {
     this._buffer = [];
     this._maxBuffer = 2000; // keep recent logs in memory
     this._io = null;
+    this._logPath = path.join(__dirname, '../../logs.json');
+    this._loadLogs();
+  }
+
+  _loadLogs() {
+    try {
+      if (fs.existsSync(this._logPath)) {
+        const fileContent = fs.readFileSync(this._logPath, 'utf8');
+        if (fileContent.trim()) {
+          this._buffer = JSON.parse(fileContent);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load logs.json:', err.message);
+      this._buffer = [];
+    }
+  }
+
+  _saveLogs() {
+    try {
+      fs.writeFileSync(this._logPath, JSON.stringify(this._buffer, null, 2));
+    } catch (err) {
+      console.error('Failed to save logs.json:', err.message);
+    }
   }
 
   attachSocket(io) {
@@ -41,6 +67,11 @@ class Logger {
     if (this._buffer.length > this._maxBuffer) {
       this._buffer.shift();
     }
+
+    // Save to disk asynchronously so we don't block the main thread
+    fs.writeFile(this._logPath, JSON.stringify(this._buffer, null, 2), (err) => {
+      if (err) console.error('Failed to save logs.json:', err.message);
+    });
     // emit to socket if available
     try {
       if (this._io) {
@@ -55,13 +86,13 @@ class Logger {
     const timestamp = new Date().toISOString();
     const color = colors[level] || colors.RESET;
     const reset = colors.RESET;
-    
+
     let logMessage = `${color}[${timestamp}] [${level}]${reset} ${message}`;
-    
+
     if (data) {
       logMessage += `\n${JSON.stringify(data, null, 2)}`;
     }
-    
+
     return logMessage;
   }
 
@@ -119,7 +150,7 @@ class Logger {
       const level = statusCode >= 400 ? LOG_LEVELS.WARN : LOG_LEVELS.INFO;
       const logData = { statusCode };
       if (duration) logData.duration = `${duration}ms`;
-      
+
       if (level === LOG_LEVELS.WARN) {
         this.warn(message, logData);
       } else {

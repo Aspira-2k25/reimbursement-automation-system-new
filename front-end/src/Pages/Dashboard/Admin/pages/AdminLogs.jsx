@@ -80,22 +80,25 @@ const AdminLogs = () => {
               </tr>
             </thead>
             <tbody>
-              {logs.map((l, idx) => (
-                <tr key={idx} className="odd:bg-white even:bg-gray-50 border-b border-gray-100">
-                  <td className="p-2.5 align-top font-mono text-xs text-gray-600 whitespace-nowrap">
-                    {formatTime(l.timestamp)}
-                  </td>
-                  <td className="p-2.5 align-top">
-                    <div className="font-medium text-gray-900">{l.message}</div>
-                    {l.data && (
-                      <div className="text-xs text-gray-500 mt-0.5">{formatDetails(l.data)}</div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {logs.length === 0 && (
+              {logs.length > 0 ? (
+                logs.map((l, idx) => (
+                  <tr key={idx} className="odd:bg-white even:bg-gray-50 border-b border-gray-100">
+                    <td className="p-2.5 align-top font-mono text-xs text-gray-600 whitespace-nowrap">
+                      {formatTime(l.timestamp)}
+                    </td>
+                    <td className="p-2.5 align-top">
+                      <div className="font-medium text-gray-900">{l.message}</div>
+                      {l.data && (
+                        <div className="text-xs text-gray-500 mt-0.5">{formatDetails(l.data)}</div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={2} className="p-6 text-center text-gray-500">No activity logs yet. Logs will appear as users interact with the portal.</td>
+                  <td colSpan={2} className="p-6 text-center text-gray-500">
+                    No activity logs yet. Logs will appear as users interact with the portal.
+                  </td>
                 </tr>
               )}
             </tbody>
