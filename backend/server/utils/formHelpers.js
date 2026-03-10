@@ -70,10 +70,54 @@ const getDepartmentVariants = (department) => {
     return [...new Set(variants)]; // deduplicate
 };
 
+/**
+ * Build a strict department filter for MongoDB queries based on user role and their department.
+ * Principals, Accounts, and Admins can see all departments.
+ * HODs and Coordinators can only see applications matching their department precisely.
+ * 
+ * @param {string} userRole 
+ * @param {string} userDepartment 
+ * @returns {object} MongoDB query object for department filtering
+ */
+const buildDepartmentFilter = (userRole, userDepartment) => {
+    const role = (userRole || '').toLowerCase();
+
+    // Principals, Accounts, and Admins can see all requests
+    if (['principal', 'accounts', 'admin'].includes(role)) {
+        return {};
+    }
+
+    // Coordinators and HODs are strictly filtered to their own department
+    if (['coordinator', 'hod'].includes(role)) {
+        if (!userDepartment) {
+            // Edge case: if an HOD/Coordinator has no department assigned, they technically
+            // shouldn't see anything, but we'll return an unsatisfiable query to be safe.
+            return { department: "__NONE__" };
+        }
+
+        const deptVariants = getDepartmentVariants(userDepartment);
+        const deptPattern = deptVariants
+            .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .join('|');
+        const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+
+        return {
+            $or: [
+                { department: { $in: deptVariants } },
+                { department: { $regex: deptRegex } }
+            ]
+        };
+    }
+
+    // Fallback for students and faculty is usually handled via user owner IDs elsewhere.
+    return {};
+};
+
 module.exports = {
     DEPARTMENT_ALIASES,
     sanitizeString,
     sanitizeApplicationId,
     isValidObjectId,
     getDepartmentVariants,
+    buildDepartmentFilter,
 };

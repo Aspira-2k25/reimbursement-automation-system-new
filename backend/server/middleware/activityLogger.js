@@ -22,9 +22,8 @@ function getActivityMessage(req) {
     const path = req.originalUrl || req.path;
 
     // ── Auth ──
-    if (path.startsWith('/api/auth/login')) return 'Logged in';
-    if (path.startsWith('/api/auth/google')) return 'Logged in via Google';
-    if (path.startsWith('/api/auth/logout')) return 'Logged out';
+    // Note: login, google login, and logout are now logged explicitly in authController
+    // with accurate user details, so we skip them here.
     if (path.startsWith('/api/auth/profile') && method === 'PUT') return 'Updated profile';
 
     // ── Faculty forms ──
