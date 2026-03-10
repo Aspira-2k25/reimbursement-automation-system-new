@@ -94,7 +94,7 @@ const HomeDashboard = () => {
       default:
         break
     }
-    toast.info(`Filtered to show ${statType.toLowerCase()}`)
+    toast(`Filtered to show ${statType.toLowerCase()}`)
   }, [setStatusFilter, setDepartmentFilter, setTypeFilter, setSearchQuery])
 
   // Get filtered requests

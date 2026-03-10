@@ -423,4 +423,14 @@ export const adminAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   }
+  ,
+  // Get recent server logs (requires admin role)
+  getLogs: async () => {
+    try {
+      const res = await api.get('/admin/logs');
+      return res.data; // { logs: [...] }
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
 };
