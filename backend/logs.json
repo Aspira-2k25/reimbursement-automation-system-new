@@ -1,0 +1,82 @@
+[
+  {
+    "timestamp": "2026-03-10T17:26:12.098Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "admin",
+      "role": "Admin",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:26:28.772Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Rudra Sahu",
+      "role": "Faculty",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:26:39.114Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Rudra Sahu",
+      "role": "Faculty",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:26:54.638Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Shubham",
+      "role": "HOD",
+      "department": "Computer Engineering"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:27:15.872Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Shubham",
+      "role": "HOD",
+      "department": "Computer Engineering"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:27:34.591Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:27:45.572Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:28:06.868Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": ""
+    }
+  }
+]
