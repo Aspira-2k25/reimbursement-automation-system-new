@@ -12,7 +12,7 @@ const { validateUploadedFiles } = require("../middleware/multer");
 const { generateApplicationId, generateApplicationIdWithRetry } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES } = require('../utils/formHelpers');
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES, buildDepartmentFilter } = require('../utils/formHelpers');
 
 
 // POST /api/student-forms/submit
@@ -186,7 +186,10 @@ router.get(
       }
 
       // Fetch forms with status "Pending" (awaiting coordinator approval)
-      const forms = await StudentForm.find({ status: "Pending" }).sort({ createdAt: -1 });
+      const deptFilter = buildDepartmentFilter(userRole, req.user.department);
+      const query = { $and: [{ status: "Pending" }, deptFilter] };
+
+      const forms = await StudentForm.find(query).sort({ createdAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -209,9 +212,14 @@ router.get(
       }
 
       // Fetch forms with status "Under HOD", "Under Principal", "Approved", "Reimbursed", or "Disbursed"
-      const forms = await StudentForm.find({
-        status: { $in: ["Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed"] }
-      }).sort({ updatedAt: -1 });
+      const deptFilter = buildDepartmentFilter(userRole, req.user.department);
+      const query = {
+        $and: [
+          { status: { $in: ["Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed"] } },
+          deptFilter
+        ]
+      };
+      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -250,10 +258,15 @@ router.get(
         rejectedByFilter = ['Accounts'];
       }
 
-      const forms = await StudentForm.find({
-        status: "Rejected",
-        rejectedBy: { $in: rejectedByFilter }
-      }).sort({ updatedAt: -1 });
+      const deptFilter = buildDepartmentFilter(userRole, req.user.department);
+      const query = {
+        $and: [
+          { status: "Rejected", rejectedBy: { $in: rejectedByFilter } },
+          deptFilter
+        ]
+      };
+
+      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -337,35 +350,15 @@ router.get(
 
       // Get HOD's department for filtering
       const hodDepartment = req.user.department;
+      const deptFilter = buildDepartmentFilter(userRole, hodDepartment);
 
-      // Build query
-      let query = { status: "Under HOD" };
-
-      // If HOD has a department, filter by it OR forms without department (Principal sees all)
-      // Uses alias mapping so "IT" matches "Information Technology" and vice versa
-      if (hodDepartment && userRole === 'hod') {
-        const deptVariants = getDepartmentVariants(hodDepartment);
-        // Build a case-insensitive regex that matches any variant
-        const deptPattern = deptVariants
-          .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-          .join('|');
-        const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
-
-        query = {
-          $and: [
-            { status: "Under HOD" },
-            {
-              $or: [
-                { department: { $in: deptVariants } },
-                { department: { $regex: deptRegex } },
-                { department: { $exists: false } },
-                { department: null },
-                { department: "" }
-              ]
-            }
-          ]
-        };
-      }
+      // Build strict intersection query
+      const query = {
+        $and: [
+          { status: "Under HOD" },
+          deptFilter
+        ]
+      };
 
       const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
 

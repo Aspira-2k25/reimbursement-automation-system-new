@@ -104,7 +104,7 @@ const HomeDashboard = () => {
 
   const handleMarkReimbursed = useCallback(async (request) => {
     if (request.status === 'Reimbursed') {
-      toast.info('This request has already been reimbursed')
+      toast('This request has already been reimbursed')
       return
     }
 
@@ -189,7 +189,7 @@ const HomeDashboard = () => {
         break
     }
     if (statType !== 'Reimbursed') {
-      toast.info(`Filtered to show ${statType.toLowerCase()}`)
+      toast(`Filtered to show ${statType.toLowerCase()}`)
     }
   }, [setStatusFilter, setDepartmentFilter, setTypeFilter, setSearchQuery, setActiveTab])
 

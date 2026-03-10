@@ -58,6 +58,8 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const { csrfProtection } = require('./middleware/csrf');
+const http = require('http');
+const { Server: IOServer } = require('socket.io');
 
 // Database/connectors
 const connectMongoDB = require('./config/mongo');
@@ -68,7 +70,6 @@ const logger = require('./utils/logger');
 const formRoutes = require('./routes/formRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
 const authRoutes = require('./routes/auth');
-const notificationRoutes = require('./routes/notificationRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
 const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user upload controller
 const upload = require('./middleware/multer');             // multer middleware (if needed)
@@ -300,6 +301,10 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Activity logging middleware (captures all non-admin user actions)
+const activityLogger = require('./middleware/activityLogger');
+app.use('/api', activityLogger);
+
 // Auth routes (CSRF exempt for login, but protected for logout)
 app.use('/api/auth', authRoutes);
 
@@ -309,27 +314,37 @@ app.use('/api/uploads', uploadRoutes);
 // Cloudinary / user upload controller (keeps the same path used in your second file)
 app.use('/api/users', uploadRoute);
 
-// Conditional CSRF middleware — only state-changing methods (POST, PUT, DELETE, PATCH)
-const conditionalCsrf = (req, res, next) => {
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    return next(); // Skip CSRF for read-only requests
-  }
-  return csrfProtection(req, res, next);
-};
+// Forms (MongoDB) - Apply CSRF protection to state-changing routes
+app.use('/api/forms', csrfProtection, formRoutes);
 
-// Forms (MongoDB) - Apply conditional CSRF (skips GET requests)
-app.use('/api/forms', conditionalCsrf, formRoutes);
-
-// Student forms (MongoDB) - Apply conditional CSRF (skips GET requests)
-app.use('/api/student-forms', conditionalCsrf, studentFormRoutes);
-
-// Notification routes
-app.use('/api/notifications', notificationRoutes);
+// Student forms (MongoDB) - Apply CSRF protection to state-changing routes
+app.use('/api/student-forms', csrfProtection, studentFormRoutes);
 
 // CSRF token endpoint for frontend
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
+
+// Admin logs - returns recent activity logs (excludes admin user actions)
+app.get('/api/admin/logs',
+  (req, res) => {
+    try {
+      const allLogs = logger.getLogs();
+      // Filter to only show activity logs from non-admin users
+      const activityLogs = allLogs.filter(log => {
+        // Only include INFO-level logs that have user activity data
+        if (log.level !== 'INFO') return false;
+        if (!log.data || !log.data.role) return false;
+        // Exclude admin actions
+        if (log.data.role?.toLowerCase() === 'admin') return false;
+        return true;
+      });
+      res.json({ logs: activityLogs });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+  }
+);
 
 // ----------------- Error handler -----------------
 // Centralized error handling (keeps the improved handling from your first version)
@@ -396,7 +411,13 @@ app.use((err, req, res, next) => {
 // because: 1) It slows down cold starts, 2) Connections might fail and crash the function
 // Instead, connect lazily when routes are actually called (lazy initialization)
 // Only connect immediately if running as a traditional server (local dev)
-// MongoDB connection is handled by startServer() below
+if (require.main === module) {
+  connectMongoDB().catch((err) => {
+    console.error('❌ Failed to connect MongoDB on startup', err);
+    // In local dev, we can exit if DB connection fails
+    process.exit(1);
+  });
+}
 // In serverless, MongoDB will connect on first route that needs it
 
 // When running this file directly (local dev), start the HTTP server
@@ -404,7 +425,25 @@ async function startServer() {
   try {
     await connectMongoDB();
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+    const server = http.createServer(app);
+    // Socket.io for real-time logs
+    const io = new IOServer(server, {
+      cors: {
+        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+        methods: ['GET', 'POST'],
+        credentials: true
+      }
+    });
+
+    // Attach socket instance to logger so logger can emit events
+    try {
+      logger.attachSocket(io);
+    } catch (e) {
+      console.warn('Could not attach socket to logger', e.message || e);
+    }
+
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {
     console.error('❌ Failed to start server', err);
     // In local dev it's okay to exit; in serverless this path isn't used.

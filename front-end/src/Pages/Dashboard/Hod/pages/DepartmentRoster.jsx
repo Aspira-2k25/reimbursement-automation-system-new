@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Users, 
-  GraduationCap, 
-  User, 
+import {
+  Users,
+  GraduationCap,
+  User,
   Plus,
   FileText,
   TrendingUp,
@@ -15,16 +15,28 @@ import MemberTable from '../components/MemberTable'
 import { useHODContext } from './HODLayout'
 import { getMembersByType } from '../data/mockData'
 
+// Helper to expand known department acronyms
+const formatDepartmentName = (dept) => {
+  if (!dept) return 'N/A';
+  const d = dept.toUpperCase().trim();
+  if (d === 'IT') return 'Information Technology';
+  if (d === 'CSE' || d === 'COMP' || d === 'CE') return 'Computer Engineering';
+  if (d === 'MECH' || d === 'ME') return 'Mechanical Engineering';
+  if (d === 'CIVIL') return 'Civil Engineering';
+  if (d === 'AIML' || d === 'AI&ML' || d === 'CSE(AIML)') return 'CSE AI and ML';
+  if (d === 'DS' || d === 'CSE(DS)') return 'CSE Data Science';
+  return dept;
+};
+
 const DepartmentRoster = () => {
   const { departmentMembers, userProfile } = useHODContext()
-  const [showAddModal, setShowAddModal] = useState(false)
 
   // Calculate department statistics
   const departmentStats = useMemo(() => {
     const facultyMembers = getMembersByType(departmentMembers, 'Faculty')
     const studentMembers = getMembersByType(departmentMembers, 'Student')
-    
-    const totalReimbursements = departmentMembers.reduce((sum, member) => 
+
+    const totalReimbursements = departmentMembers.reduce((sum, member) =>
       sum + (member.totalReimbursements || 0), 0
     )
 
@@ -38,7 +50,7 @@ const DepartmentRoster = () => {
         trend: { direction: 'up', value: '+3.2%' }
       },
       {
-        title: "Faculty Members", 
+        title: "Faculty Members",
         value: facultyMembers.length.toString(),
         subtitle: "Active teaching staff",
         icon: User,
@@ -63,21 +75,21 @@ const DepartmentRoster = () => {
   }, [departmentMembers])
 
   // Faculty and Student breakdown
-  const facultyMembers = useMemo(() => 
+  const facultyMembers = useMemo(() =>
     getMembersByType(departmentMembers, 'Faculty'), [departmentMembers]
   )
-  
-  const studentMembers = useMemo(() => 
+
+  const studentMembers = useMemo(() =>
     getMembersByType(departmentMembers, 'Student'), [departmentMembers]
   )
 
   const handleAddMember = () => {
     setShowAddModal(true)
-    toast.info('Add member functionality would be implemented here')
+    toast('Add member functionality would be implemented here')
   }
 
   const handleViewMember = (member) => {
-    toast.info(`Viewing profile for ${member.name}`)
+    toast(`Viewing profile for ${member.name}`)
   }
 
   const handleExportRoster = () => {
@@ -87,7 +99,7 @@ const DepartmentRoster = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <motion.div 
+      <motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -109,20 +121,11 @@ const DepartmentRoster = () => {
             <FileText className="w-4 h-4" />
             Export Roster
           </motion.button>
-          <motion.button
-            onClick={handleAddMember}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Member
-          </motion.button>
         </div>
       </motion.div>
 
       {/* Department Overview */}
-      <motion.div 
+      <motion.div
         className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-4 sm:p-6 text-white"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -131,7 +134,10 @@ const DepartmentRoster = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold mb-2">
-              {userProfile?.department || 'Civil Engineering'} Department
+              {userProfile ?
+                (formatDepartmentName(userProfile.department)) || 'Civil Engineering'
+                : 'Civil Engineering'
+              } Department
             </h2>
             <p className="text-indigo-100 mb-4 text-sm sm:text-base">
               Engineering College • Academic Year 2024-25
@@ -148,7 +154,7 @@ const DepartmentRoster = () => {
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div 
+            <motion.div
               className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
@@ -181,7 +187,7 @@ const DepartmentRoster = () => {
             <User className="w-5 h-5 text-green-600" />
             <h3 className="text-lg font-semibold text-gray-900">Faculty Overview</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-green-50 rounded-lg">
@@ -199,7 +205,7 @@ const DepartmentRoster = () => {
                 <div className="text-sm text-gray-600">Active</div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900">Top Contributors</h4>
               {facultyMembers
@@ -226,7 +232,7 @@ const DepartmentRoster = () => {
             <GraduationCap className="w-5 h-5 text-blue-600" />
             <h3 className="text-lg font-semibold text-gray-900">Student Overview</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
@@ -246,7 +252,7 @@ const DepartmentRoster = () => {
                 <div className="text-sm text-gray-600">Participation</div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900">Year-wise Distribution</h4>
               {(() => {
@@ -255,7 +261,7 @@ const DepartmentRoster = () => {
                   acc[year] = (acc[year] || 0) + 1
                   return acc
                 }, {})
-                
+
                 return Object.entries(yearGroups).map(([year, count]) => (
                   <div key={year} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <div className="text-sm font-medium">{year}</div>
@@ -269,55 +275,11 @@ const DepartmentRoster = () => {
       </div>
 
       {/* Complete Member Table */}
-      <MemberTable 
+      <MemberTable
         members={departmentMembers}
         title="Complete Department Roster"
       />
 
-      {/* Add Member Modal (placeholder) */}
-      <AnimatePresence>
-        {showAddModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowAddModal(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.div 
-              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto"
-              onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3 }}
-            >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Member</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              This feature would allow adding new faculty or student members to the department roster.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddModal(false)
-                  toast.success('Member would be added to the roster')
-                }}
-                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Add Member
-              </button>
-            </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

@@ -11,7 +11,7 @@ const { generateApplicationId, generateApplicationIdWithRetry } = require("../ut
 const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
 const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES } = require('../utils/formHelpers');
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES, buildDepartmentFilter } = require('../utils/formHelpers');
 
 // POST /api/forms/submit
 router.post(
@@ -197,39 +197,22 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
 
     // Get HOD's department for filtering
     const hodDepartment = req.user.department;
+    const deptFilter = buildDepartmentFilter(userRole, hodDepartment);
 
-    // Build query: status "Under HOD" OR no status (old forms)
-    let query = {
-      $or: [
-        { status: "Under HOD" },
-        { status: { $exists: false } },
-        { status: null }
-      ]
-    };
-
-    // If HOD has a department, filter by it OR forms without department (Principal sees all)
-    // Uses alias mapping so "IT" matches "Information Technology" and vice versa
-    if (hodDepartment && userRole === 'hod') {
-      const deptVariants = getDepartmentVariants(hodDepartment);
-      const deptPattern = deptVariants
-        .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .join('|');
-      const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
-
-      query.$and = [
-        query.$or ? { $or: query.$or } : {},
+    // Build strict intersection query
+    // HODs only see Faculty forms ("Under HOD" status or old forms lacking status)
+    const query = {
+      $and: [
         {
           $or: [
-            { department: { $in: deptVariants } },
-            { department: { $regex: deptRegex } },
-            { department: { $exists: false } },
-            { department: null },
-            { department: "" }
+            { status: "Under HOD" },
+            { status: { $exists: false } },
+            { status: null }
           ]
-        }
-      ];
-      delete query.$or;
-    }
+        },
+        deptFilter
+      ]
+    };
 
     const forms = await Form.find(query).sort({ updatedAt: -1 });
 
@@ -258,19 +241,14 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
       query.userId = String(userId);
     }
     // HOD: only see forms from their department
-    else if (userRole === 'hod' && userDepartment) {
-      query.$and = [
-        { status: { $in: ["Under Principal", "Approved", "Reimbursed", "Disbursed"] } },
-        {
-          $or: [
-            { department: userDepartment },
-            { department: { $exists: false } },
-            { department: null },
-            { department: "" }
-          ]
-        }
-      ];
-      delete query.status; // Remove duplicate
+    else if (userRole === 'hod') {
+      const deptFilter = buildDepartmentFilter(userRole, userDepartment);
+      query = {
+        $and: [
+          { status: { $in: ["Under Principal", "Approved", "Reimbursed", "Disbursed"] } },
+          deptFilter
+        ]
+      };
     }
     // Principal: sees all (no additional filter)
 
@@ -310,10 +288,15 @@ router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
       rejectedByFilter = ['Accounts'];
     }
 
-    const forms = await Form.find({
-      status: "Rejected",
-      rejectedBy: { $in: rejectedByFilter }
-    }).sort({ updatedAt: -1 });
+    const deptFilter = buildDepartmentFilter(userRole, req.user.department);
+    const query = {
+      $and: [
+        { status: "Rejected", rejectedBy: { $in: rejectedByFilter } },
+        deptFilter
+      ]
+    };
+
+    const forms = await Form.find(query).sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -331,10 +314,17 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Forbidden: Only principals can access this endpoint" });
     }
 
-    // Fetch forms with status "Under Principal" (awaiting principal approval)
-    const forms = await Form.find({
-      status: "Under Principal"
-    }).sort({ updatedAt: -1 });
+    // Fetch forms with status "Pending" (awaiting coordinator approval)
+    // Exclude HOD's own forms from this list as they bypass coordinator
+    const deptFilter = buildDepartmentFilter(userRole, req.user.department);
+    const query = {
+      $and: [
+        { status: "Under Principal" },
+        deptFilter
+      ]
+    };
+
+    const forms = await Form.find(query).sort({ updatedAt: -1 });
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching principal forms:", err);
