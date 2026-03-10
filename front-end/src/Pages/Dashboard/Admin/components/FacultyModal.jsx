@@ -12,7 +12,7 @@ const FacultyModal = () => {
     name: '',
     email: '',
     department: '',
-    employee_id: '',
+    role: '',
     password: '',
     confirmPassword: ''
   })
@@ -27,7 +27,7 @@ const FacultyModal = () => {
         name: editingStaff.name || '',
         email: editingStaff.email || '',
         department: editingStaff.department || '',
-        employee_id: editingStaff.employee_id || '',
+        role: editingStaff.role || 'Faculty',
         password: '',
         confirmPassword: ''
       })
@@ -37,7 +37,7 @@ const FacultyModal = () => {
         name: '',
         email: '',
         department: '',
-        employee_id: '',
+        role: '',
         password: '',
         confirmPassword: ''
       })
@@ -102,7 +102,7 @@ const FacultyModal = () => {
         username: formData.username.trim(),
         email: formData.email.trim(),
         department: formData.department,
-        employee_id: formData.employee_id.trim()
+        role: formData.role || 'Faculty'
       }
 
       if (formData.password) {
@@ -112,7 +112,7 @@ const FacultyModal = () => {
       await handleSaveStaff(submitData)
     } catch (error) {
       console.error('Error:', error)
-      toast.error(error?.error || 'Failed to save faculty')
+      toast.error(error?.error || 'Failed to save staff')
     } finally {
       setSaving(false)
     }
@@ -146,7 +146,7 @@ const FacultyModal = () => {
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">
-            {editingStaff ? 'Edit Faculty' : 'Add New Faculty'}
+            {editingStaff ? 'Edit Staff' : 'Add New Staff'}
           </h2>
           <button
             onClick={() => setShowModal(false)}
@@ -170,7 +170,6 @@ const FacultyModal = () => {
               onChange={handleChange}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
-              placeholder="John Doe"
             />
             {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
           </div>
@@ -188,7 +187,6 @@ const FacultyModal = () => {
               disabled={!!editingStaff}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${errors.username ? 'border-red-500' : 'border-gray-300'
                 }`}
-              placeholder="johndoe"
             />
             {errors.username && <p className="text-red-600 text-xs mt-1">{errors.username}</p>}
           </div>
@@ -205,7 +203,6 @@ const FacultyModal = () => {
               onChange={handleChange}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
-              placeholder="john@example.com"
             />
             {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
           </div>
@@ -221,26 +218,38 @@ const FacultyModal = () => {
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <option value="">Select Department</option>
-              {departments.filter(d => d !== 'All').map(dept => (
+              {/* {departments.filter(d => d !== 'All').map(dept => (
                 <option key={dept} value={dept}>{dept}</option>
-              ))}
+              ))} */}
+
+              <option value="">Select Department</option>
+              <option value="Information Technology">Information Technology</option>
+              <option value="Computer Engineering">Computer Engineering</option>
+              <option value="CSE AI and ML">CSE AI and ML</option>
+              <option value="CSE Data Science">CSE Data Science</option>
+              <option value="Civil Engineering">Civil Engineering</option>
+              <option value="Mechanical Engineering">Mechanical Engineering</option>
             </select>
           </div>
 
-          {/* Employee ID */}
+          {/* Role */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Employee ID
+              Role
             </label>
-            <input
-              type="text"
-              name="employee_id"
-              value={formData.employee_id}
+            <select
+              name="role"
+              value={formData.role}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="EMP001"
-            />
+            >
+              <option value="">Select Role</option>
+              <option value="Faculty">Faculty</option>
+              <option value="Coordinator">Coordinator</option>
+              <option value="HOD">HOD</option>
+              <option value="Principal">Principal</option>
+              <option value="Accounts">Accounts</option>
+            </select>
           </div>
 
           {/* Password */}
@@ -303,9 +312,8 @@ const FacultyModal = () => {
                   Saving...
                 </>
               ) : (
-                editingStaff ? 'Update Faculty' : 'Add Faculty'
-              )}
-            </motion.button>
+                editingStaff ? 'Update Staff' : 'Add Staff'
+              )}            </motion.button>
           </div>
         </form>
       </motion.div>
