@@ -3,13 +3,24 @@ import {
   Search,
   Download,
   Mail,
-  Phone,
-  Calendar,
   GraduationCap,
   User,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
+
+// Helper to expand known department acronyms
+const formatDepartmentName = (dept) => {
+  if (!dept) return 'N/A';
+  const d = dept.toUpperCase().trim();
+  if (d === 'IT') return 'Information Technology';
+  if (d === 'CSE' || d === 'COMP' || d === 'CE') return 'Computer Engineering';
+  if (d === 'MECH' || d === 'ME') return 'Mechanical Engineering';
+  if (d === 'CIVIL') return 'Civil Engineering';
+  if (d === 'AIML' || d === 'AI&ML' || d === 'CSE(AIML)') return 'CSE AI and ML';
+  if (d === 'DS' || d === 'CSE(DS)') return 'CSE Data Science';
+  return dept;
+};
 
 /**
  * MemberTable Component
@@ -105,18 +116,15 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
    * Export table data to CSV format
    */
   const exportToCSV = () => {
-    const headers = ['ID', 'Name', 'Type', 'Designation/Year', 'Specialization/Department', 'Email', 'Phone', 'Join Date', 'Total Reimbursements']
+    const headers = ['ID', 'Name', 'Type', 'Specialization/Department', 'Email', 'Total Reimbursements']
     const csvContent = [
       headers.join(','),
       ...sortedMembers.map(member => [
         member.id,
         member.name,
         member.type,
-        member.type === 'Faculty' ? member.designation : member.year,
-        member.type === 'Faculty' ? member.specialization : member.department,
+        member.type === 'Faculty' ? member.specialization : formatDepartmentName(member.department),
         member.email,
-        member.phone,
-        member.joinDate,
         member.totalReimbursements
       ].join(','))
     ].join('\n')
@@ -195,29 +203,11 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Type
               </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('designation')}
-              >
-                Position
-                {sortConfig.key === 'designation' && (
-                  <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Specialization
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contact
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('joinDate')}
-              >
-                Join Date
-                {sortConfig.key === 'joinDate' && (
-                  <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                )}
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -235,9 +225,8 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               <tr key={member.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white ${
-                      member.type === 'Student' ? 'bg-blue-600' : 'bg-green-600'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white ${member.type === 'Student' ? 'bg-blue-600' : 'bg-green-600'
+                      }`}>
                       {member.type === 'Student' ? (
                         <GraduationCap className="w-5 h-5" />
                       ) : (
@@ -251,22 +240,17 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    member.type === 'Student'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.type === 'Student'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-green-100 text-green-800'
+                    }`}>
                     {member.type}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    {member.type === 'Faculty' ? member.designation : member.year}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {member.type === 'Faculty' ? member.specialization : member.department}
+                    {member.type === 'Faculty' ? member.specialization :
+                      formatDepartmentName(member.department)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -275,16 +259,6 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                       <Mail className="w-3 h-3" />
                       <span className="truncate max-w-32">{member.email}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Phone className="w-3 h-3" />
-                      <span>{member.phone}</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(member.joinDate)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -324,11 +298,10 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                 <button
                   key={i + 1}
                   onClick={() => handlePageChange(i + 1)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === i + 1
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-200 hover:bg-gray-50'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === i + 1
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-200 hover:bg-gray-50'
+                    }`}
                 >
                   {i + 1}
                 </button>

@@ -53,7 +53,7 @@ const ProfileSettings = () => {
   }, [formData, setUserProfile])
 
   const handleChangePassword = useCallback(() => {
-    toast.info('Password change functionality would be implemented here')
+    toast('Password change functionality would be implemented here')
   }, [])
 
   return (
