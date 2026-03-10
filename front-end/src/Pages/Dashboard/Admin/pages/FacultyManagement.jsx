@@ -53,7 +53,7 @@ const FacultyManagement = () => {
   }
 
   const handleExport = () => {
-    const headers = ['ID', 'Name', 'Username', 'Email', 'Department', 'Employee ID', 'Active']
+    const headers = ['ID', 'Name', 'Username', 'Email', 'Department', 'Role', 'Active']
     const csvContent = [
       headers.join(','),
       ...sortedStaff.map(f => [
@@ -62,7 +62,7 @@ const FacultyManagement = () => {
         f.username,
         f.email || 'N/A',
         f.department || 'N/A',
-        f.employee_id || 'N/A',
+        f.role || 'N/A',
         f.is_active ? 'Yes' : 'No'
       ].join(','))
     ].join('\n')
@@ -175,8 +175,8 @@ const FacultyManagement = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('department')}>
-                  Department {sortConfig.key === 'department' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')}>
+                  Role {sortConfig.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -218,12 +218,11 @@ const FacultyManagement = () => {
                       <div className="text-sm text-gray-600">{faculty.email || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{faculty.department || 'N/A'}</div>
+                      <div className="text-sm text-gray-600">{faculty.role || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        faculty.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${faculty.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
                         {faculty.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>

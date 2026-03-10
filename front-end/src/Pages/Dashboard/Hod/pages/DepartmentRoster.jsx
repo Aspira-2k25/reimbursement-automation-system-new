@@ -73,11 +73,11 @@ const DepartmentRoster = () => {
 
   const handleAddMember = () => {
     setShowAddModal(true)
-    toast.info('Add member functionality would be implemented here')
+    toast('Add member functionality would be implemented here')
   }
 
   const handleViewMember = (member) => {
-    toast.info(`Viewing profile for ${member.name}`)
+    toast(`Viewing profile for ${member.name}`)
   }
 
   const handleExportRoster = () => {
