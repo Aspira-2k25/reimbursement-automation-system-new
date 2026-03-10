@@ -170,6 +170,15 @@ const DepartmentRoster = () => {
     filteredMembers.filter(m => m.type === 'Student'), [filteredMembers]
   )
 
+  const handleAddMember = () => {
+    setShowAddModal(true)
+    toast('Add member functionality would be implemented here')
+  }
+
+  const handleViewMember = (member) => {
+    toast(`Viewing profile for ${member.name}`)
+  }
+
   const handleExportRoster = () => {
     toast.success('Roster export started...')
     // Basic CSV Export implementation
