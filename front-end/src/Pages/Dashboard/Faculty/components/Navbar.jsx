@@ -1,7 +1,7 @@
 
 import React from "react"
 import { useLocation, Link, useNavigate } from "react-router-dom"
-import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
+import { Home, BarChart2, ChevronDown, Settings, LogOut, KeyRound } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
 import { useAuth } from "../../../../context/AuthContext.jsx"
@@ -220,6 +220,21 @@ export default function Navbar() {
                     <div className="flex flex-col">
                       <span className="text-sm font-medium" style={{ color: 'var(--color-dark-gray)' }}>Profile Settings</span>
                       <span className="text-xs" style={{ color: 'var(--color-dark-gray)' }}>Manage your faculty account</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleClose()
+                      navigate("/dashboard/faculty/change-password")
+                    }}
+                    className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-[var(--color-light-teal)]/40 active:bg-[var(--color-light-teal)]/60 rounded-lg transition-colors duration-150 focus:outline-none"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--color-light-teal)' }}>
+                      <KeyRound className="h-4 w-4" style={{ color: 'var(--color-dark-gray)' }} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-dark-gray)' }}>Change Password</span>
+                      <span className="text-xs" style={{ color: 'var(--color-dark-gray)' }}>Secure your account</span>
                     </div>
                   </button>
                   <button
