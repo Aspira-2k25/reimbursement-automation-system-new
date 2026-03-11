@@ -70,6 +70,7 @@ const logger = require('./utils/logger');
 const formRoutes = require('./routes/formRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
 const authRoutes = require('./routes/auth');
+const passwordRoutes = require('./routes/passwordRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
 const uploadRoute = require('./controllers/routeUpload');  // cloudinary or user upload controller
 const upload = require('./middleware/multer');             // multer middleware (if needed)
@@ -207,6 +208,21 @@ const formSubmitLimiter = rateLimit({
 app.use('/api/forms/submit', formSubmitLimiter);
 app.use('/api/student-forms/submit', formSubmitLimiter);
 
+// Password reset / OTP rate limiting
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: {
+    error: 'Too many password reset attempts',
+    message: 'Please try again after 15 minutes.',
+    retryAfter: 900
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/password/forgot-password', passwordResetLimiter);
+app.use('/api/password/send-otp', passwordResetLimiter);
+
 // ----------------- Health / Basic routes -----------------
 // IMPORTANT: These must be BEFORE body parsing so HEAD/GET health checks
 // never encounter undefined req.body issues
@@ -307,6 +323,9 @@ app.use('/api', activityLogger);
 
 // Auth routes (CSRF exempt for login, but protected for logout)
 app.use('/api/auth', authRoutes);
+
+// Password management routes (forgot password, reset, change password, OTP)
+app.use('/api/password', passwordRoutes);
 
 // Uploads (local or specific upload route)
 app.use('/api/uploads', uploadRoutes);

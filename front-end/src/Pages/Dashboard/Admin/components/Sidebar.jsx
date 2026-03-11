@@ -8,7 +8,8 @@ import {
   Terminal,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  KeyRound
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../../context/AuthContext'
@@ -20,7 +21,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
   const menuItems = [
     { id: 'home', label: 'Dashboard', icon: LayoutGrid }
-    , { id: 'logs', label: 'Logs', icon: Terminal }
+    , { id: 'logs', label: 'Logs', icon: Terminal },
+    { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleLogout = () => {

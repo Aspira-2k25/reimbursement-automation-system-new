@@ -8,7 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  User
+  User,
+  KeyRound
 } from 'lucide-react'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
@@ -18,7 +19,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
     { id: 'home', label: 'Home Dashboard', icon: Home },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     { id: 'roster', label: 'Department Roster', icon: Users },
-    { id: 'profile', label: 'Profile Settings', icon: Settings }
+    { id: 'profile', label: 'Profile Settings', icon: Settings },
+    { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleTabClick = useCallback((tabId) => {
