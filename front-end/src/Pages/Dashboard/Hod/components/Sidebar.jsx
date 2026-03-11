@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Building,
   User,
-  Eye
+  Eye,
+  KeyRound
 } from 'lucide-react'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
@@ -22,7 +23,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
     { id: 'apply', label: 'Apply Reimbursement', icon: FileText },
     { id: 'request-status', label: 'Request Status', icon: Building },
     { id: 'all-departments', label: 'ALL Department\nOverview', icon: Eye },
-    { id: 'profile', label: 'Profile Settings', icon: Settings }
+    { id: 'profile', label: 'Profile Settings', icon: Settings },
+    { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleTabClick = useCallback((tabId) => {

@@ -186,6 +186,49 @@ export const authAPI = {
   },
 };
 
+// Password management API functions
+export const passwordAPI = {
+  // Send forgot password email
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post('/password/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Reset password with token
+  resetPassword: async (token, newPassword, confirmPassword) => {
+    try {
+      const response = await api.post('/password/reset-password', { token, newPassword, confirmPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Send OTP for change password
+  sendOtp: async () => {
+    try {
+      const response = await api.post('/password/send-otp');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Change password with OTP verification
+  changePassword: async (oldPassword, newPassword, confirmPassword, otp) => {
+    try {
+      const response = await api.post('/password/change-password', { oldPassword, newPassword, confirmPassword, otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+};
+
 // User API functions
 export const userAPI = {
   // Get all users (for admin)

@@ -78,5 +78,164 @@
       "role": "Admin",
       "department": ""
     }
+  },
+  {
+    "timestamp": "2026-03-10T17:48:46.398Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "admin",
+      "role": "Admin",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:49:37.794Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Gourish Pednekar",
+      "role": "Accounts",
+      "department": "Accounts"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:51:27.982Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Gourish Pednekar",
+      "role": "Accounts",
+      "department": "Accounts"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:51:40.863Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Vaibhavi Naik",
+      "role": "Faculty",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:52:11.069Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Vaibhavi Naik",
+      "role": "Faculty",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:52:21.253Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-10T17:54:07.288Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:27:03.296Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:33:50.441Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:34:02.761Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:34:25.058Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:34:50.218Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:37:39.953Z",
+    "level": "INFO",
+    "message": "New staff created",
+    "data": {
+      "id": 2,
+      "username": "alok"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:39:17.887Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:39:33.397Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Alok K.N. Sahoo",
+      "role": "Principal",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-11T17:40:44.768Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Alok K.N. Sahoo",
+      "role": "Principal",
+      "department": "Information Technology"
+    }
   }
 ]

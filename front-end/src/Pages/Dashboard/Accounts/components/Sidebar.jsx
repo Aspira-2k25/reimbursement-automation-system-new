@@ -7,7 +7,8 @@ import {
   ChevronRight,
   Wallet,
   User,
-  CheckCircle
+  CheckCircle,
+  KeyRound
 } from 'lucide-react'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
@@ -16,7 +17,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
   const menuItems = [
     { id: 'home', label: 'Reimbursement Dashboard', icon: Home },
     { id: 'reimbursed', label: 'Reimbursed List', icon: CheckCircle },
-    { id: 'profile', label: 'Profile Settings', icon: Settings }
+    { id: 'profile', label: 'Profile Settings', icon: Settings },
+    { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleTabClick = useCallback((tabId) => {

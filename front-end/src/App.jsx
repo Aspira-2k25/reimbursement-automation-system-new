@@ -12,6 +12,8 @@ const StudentNptelForm = lazy(() => import('./Pages/nptel_form/StudentForm'))
 const LandingPage = lazy(() => import('./Pages/Landing_Page/Landing'))
 const ViewForm = lazy(() => import('./Pages/nptel_form/ViewForm'))
 const EditForm = lazy(() => import('./Pages/nptel_form/EditForm'))
+const ForgotPassword = lazy(() => import('./Pages/Login/ForgotPassword'))
+const ResetPassword = lazy(() => import('./Pages/Login/ResetPassword'))
 
 function App() {
 
@@ -33,6 +35,8 @@ function App() {
           <Route path="/student-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
           <Route path="/student-nptel-form" element={<ProtectedRoute><StudentNptelForm /></ProtectedRoute>} />
           <Route path="/faculty-nptel-form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Catch-all route MUST be last */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

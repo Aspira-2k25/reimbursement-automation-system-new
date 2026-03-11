@@ -10,6 +10,7 @@ import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
 import DepartmentRoster from './DepartmentRoster'
 import ProfileSettings from './ProfileSettings'
+import ChangePassword from '../../../../components/ChangePassword'
 
 // Context for sharing Principal state across components
 const PrincipalContext = createContext()
@@ -227,6 +228,8 @@ const PrincipalLayout = ({ children }) => {
         return <DepartmentRoster />
       case 'profile':
         return <ProfileSettings />
+      case 'change-password':
+        return <ChangePassword />
       default:
         return <HomeDashboard />
     }
@@ -461,7 +464,8 @@ const PrincipalLayout = ({ children }) => {
                 activeTab === 'reports' ? 'Reports & Analytics' :
                   activeTab === 'roster' ? 'Department Roster' :
                     activeTab === 'profile' ? 'Profile Settings' :
-                      'Principal Dashboard'
+                      activeTab === 'change-password' ? 'Change Password' :
+                        'Principal Dashboard'
             }
           />
 
