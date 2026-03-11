@@ -9,6 +9,7 @@ import ApplyReimbursement from "./ApplyReimbursement"
 import ApprovedRequest from "./ApprovedRequest"
 import RejectedApplications from "./RejectedApplications"
 import ProfileSettings from "./ProfileSettings"
+import ChangePassword from "../../../components/ChangePassword"
 import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide-react"
 import { toast } from "react-hot-toast"
@@ -434,6 +435,8 @@ export default function CoordinatorDashboard() {
         return <RejectedApplications rejectedRequests={rejectedRequests} />
       case "profile":
         return <ProfileSettings userProfile={userProfile} setUserProfile={setUserProfile} />
+      case "change-password":
+        return <ChangePassword />
       default:
         return null
     }

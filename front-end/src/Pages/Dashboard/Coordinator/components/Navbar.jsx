@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { useAuth } from "../../../../context/AuthContext.jsx"
 import { useNavigate } from "react-router-dom"
-import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, LogOut } from "lucide-react"
+import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, LogOut, KeyRound } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
 import { Check, CheckCheck } from "lucide-react"
 import { toast } from "react-hot-toast"
@@ -28,6 +28,11 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
   const handleProfileSettings = useCallback(() => {
     setActiveTab("profile")
+    setIsProfileDropdownOpen(false)
+  }, [setActiveTab])
+
+  const handleChangePassword = useCallback(() => {
+    setActiveTab("change-password")
     setIsProfileDropdownOpen(false)
   }, [setActiveTab])
 
@@ -197,6 +202,19 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                       <div className="text-left">
                         <div className="text-xs sm:text-sm font-medium text-[#182628]">Profile Settings</div>
                         <div className="text-xs text-[#182628]/70">Manage your faculty account</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleChangePassword}
+                      className="flex items-center gap-2 sm:gap-3 w-full px-2 sm:px-3 py-2 sm:py-3 rounded-md hover:bg-[#65CCB8]/40 active:bg-[#65CCB8]/60 transition-colors focus:outline-none"
+                    >
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 40%, white)' }}>
+                        <KeyRound className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#3B945E' }} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs sm:text-sm font-medium text-[#182628]">Change Password</div>
+                        <div className="text-xs text-[#182628]/70">Secure your account</div>
                       </div>
                     </button>
 
