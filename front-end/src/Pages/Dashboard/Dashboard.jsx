@@ -23,6 +23,7 @@ import CoordinatorDashboard from "./Coordinator/CoordinatorDashboard" // Manage 
 import CoordinatorApprovedRequest from "./Coordinator/ApprovedRequest" // Approved Requests of students
 import CoordinatorApplyReimbursement from "./Coordinator/ApplyReimbursement" // Main dashboard for faculty
 import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profile settings page for faculty
+import ChangePassword from "../../components/ChangePassword"
 
 import HODDashboard from "./Hod/HODDashboard"
 
@@ -133,6 +134,7 @@ export default function Dashboard() {
                 <Route path="faculty" element={<PageWrapper><FacultyDashboard /></PageWrapper>} />
                 <Route path="faculty/requests" element={<PageWrapper type="slide"><FacultyRequestStatus /></PageWrapper>} />
                 <Route path="faculty/profile" element={<PageWrapper type="scale"><FacultyProfileSettings /></PageWrapper>} />
+                <Route path="faculty/change-password" element={<PageWrapper><ChangePassword /></PageWrapper>} />
                 <Route path="*" element={<Navigate to="faculty" replace />} />
               </Routes>
             </AnimatePresence>
@@ -191,6 +193,9 @@ export default function Dashboard() {
             <Route index element={<PageWrapper><Dashboard /></PageWrapper>} />
             <Route path="requests" element={<PageWrapper type="slide"><RequestStatus /></PageWrapper>} />
             <Route path="profile" element={<PageWrapper type="scale"><ProfileSettings /></PageWrapper>} />
+            {userRole !== "Student" && (
+              <Route path="change-password" element={<PageWrapper><ChangePassword /></PageWrapper>} />
+            )}
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
         </AnimatePresence>
@@ -218,7 +223,6 @@ export default function Dashboard() {
 
     case "Coordinator":
       // Return coordinator dashboard with coordinator-specific components
-      // Note: CoordinatorDashboard handles its own internal navigation, so we don't use getRoutes
       // Components: CoordinatorDashboard (includes internal navbar and routing)
       // Data Source: API calls to backend
       return (
