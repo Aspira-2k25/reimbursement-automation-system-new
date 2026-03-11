@@ -14,6 +14,7 @@ import {
 import { toast } from 'react-hot-toast'
 import { useAccountsContext } from './AccountsLayout'
 import { authAPI } from '../../../../services/api'
+import ChangePassword from '../../../components/ChangePassword'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile } = useAccountsContext()
@@ -217,6 +218,15 @@ const ProfileSettings = () => {
             </button>
           </div>
         </form>
+      </motion.div>
+
+      <motion.div
+        className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <ChangePassword />
       </motion.div>
     </div>
   )

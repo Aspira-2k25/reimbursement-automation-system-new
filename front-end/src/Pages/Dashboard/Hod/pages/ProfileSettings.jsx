@@ -17,6 +17,7 @@ import {
 import { toast } from 'react-hot-toast'
 import { useHODContext } from './HODLayout'
 import { authAPI } from '../../../../services/api'
+import ChangePassword from '../../../components/ChangePassword'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile } = useHODContext()
@@ -157,10 +158,6 @@ const ProfileSettings = () => {
     setErrors({})
     setIsEditing(false)
   }, [userProfile])
-
-  const handleChangePassword = useCallback(() => {
-    toast.info('Password change functionality would be implemented here')
-  }, [])
 
   return (
     <div className="space-y-6">
@@ -409,17 +406,7 @@ const ProfileSettings = () => {
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={handleChangePassword}
-                className="flex items-center gap-3 w-full p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <Lock className="w-4 h-4 text-gray-500" />
-                <div>
-                  <div className="text-sm font-medium text-gray-900">Change Password</div>
-                  <div className="text-xs text-gray-500">Update your account password</div>
-                </div>
-              </button>
-
+              <ChangePassword />
             </div>
           </div>
 

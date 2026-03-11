@@ -95,6 +95,46 @@ export const authAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
+
+  // Forgot password
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Reset password
+  resetPassword: async (token, newPassword) => {
+    try {
+      const response = await api.post('/auth/reset-password', { token, newPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Request Change Password OTP
+  requestChangePasswordOtp: async () => {
+    try {
+      const response = await api.post('/auth/change-password/request-otp');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  // Verify OTP and Change Password
+  verifyChangePassword: async (oldPassword, newPassword, otp) => {
+    try {
+      const response = await api.post('/auth/change-password/verify', { oldPassword, newPassword, otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
 };
 
 // User API functions

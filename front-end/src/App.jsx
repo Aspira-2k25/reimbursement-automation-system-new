@@ -5,6 +5,7 @@ import LoadingSpinner from './components/LoadingSpinner'
 
 // Lazy load pages for code splitting and better performance
 const LoginPage = lazy(() => import('./Pages/Login/Login'))
+const ResetPasswordPage = lazy(() => import('./Pages/Login/ResetPassword'))
 const Dashboard = lazy(() => import('./Pages/Dashboard/Dashboard'))
 const ReimbursementForm = lazy(() => import('./Pages/nptel_form/ReimbursementForm'))
 const StudentNptelForm = lazy(() => import('./Pages/nptel_form/StudentForm'))
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
           <Route path="/form" element={<ReimbursementForm />} />
           <Route path="/nptel-form/view/:id" element={<ViewForm />} />

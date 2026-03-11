@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
+import ChangePassword from "../../components/ChangePassword"
 
 // Dummy user data
 const initialUserData = {
@@ -140,6 +141,10 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
               )}
             </div>
           </div>
+        </div>
+        {/* Change Password Component */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8 mt-6">
+          <ChangePassword />
         </div>
       </div>
     </div>

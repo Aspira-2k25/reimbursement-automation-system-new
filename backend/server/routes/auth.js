@@ -10,6 +10,11 @@ router.post('/register', validateRegister, authController.register);
 router.post('/google', authController.googleLogin);
 router.post('/logout', verifyToken, authController.logout);
 
+// Password Reset & Change routes
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+router.post('/change-password/request-otp', verifyToken, authController.requestChangePasswordOtp);
+router.post('/change-password/verify', verifyToken, authController.verifyChangePassword);
 
 // Protected routes (authentication required)
 router.get('/profile', verifyToken, authController.getProfile);
