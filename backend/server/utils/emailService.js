@@ -186,6 +186,44 @@ const emailTemplates = {
     `,
   }),
 
+  forgotPassword: (resetLink) => ({
+    subject: 'Password Reset Request',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <body>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Password Reset</h2>
+          <p>You requested a password reset. Click the link below to reset your password:</p>
+          <p>
+            <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #3B945E; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+          </p>
+          <p>This link will expire in 1 hour. If you didn't request this, ignore this email.</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">This is an automated message from the Reimbursement System.</p>
+        </div>
+      </body>
+      </html>
+    `,
+  }),
+
+  changePasswordOtp: (otp) => ({
+    subject: 'OTP for Password Change',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <body>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Password Change Request</h2>
+          <p>You requested to change your password. Use the OTP below to proceed:</p>
+          <h1 style="color: #3B945E; letter-spacing: 5px; text-align: center; padding: 20px; background-color: #f4f4f4; border-radius: 5px;">${otp}</h1>
+          <p>This OTP will expire in 10 minutes. If you didn't request this, please contact support immediately and change your password.</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">This is an automated message from the Reimbursement System.</p>
+        </div>
+      </body>
+      </html>
+    `,
+  }),
+
 };
 
 // send email function 
@@ -235,10 +273,24 @@ const sendSubmissionEmail = async (formData) => {
   return await sendEmail(formData.email, template.subject, template.html);
 };
 
+//send forgot password email
+const sendForgotPasswordEmail = async (email, resetLink) => {
+  const template = emailTemplates.forgotPassword(resetLink);
+  return await sendEmail(email, template.subject, template.html);
+};
+
+//send change password otp email
+const sendChangePasswordOtpEmail = async (email, otp) => {
+  const template = emailTemplates.changePasswordOtp(otp);
+  return await sendEmail(email, template.subject, template.html);
+};
+
 module.exports = {
   sendEmail,
   sendApprovalEmail,
   sendRejectionEmail,
   sendSubmissionEmail,
   isSmtpConfigured,
+  sendForgotPasswordEmail,
+  sendChangePasswordOtpEmail,
 };

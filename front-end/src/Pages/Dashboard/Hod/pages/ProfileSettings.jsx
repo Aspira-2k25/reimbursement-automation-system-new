@@ -17,6 +17,7 @@ import {
 import { toast } from 'react-hot-toast'
 import { useHODContext } from './HODLayout'
 import { authAPI } from '../../../../services/api'
+import ChangePassword from '../../../components/ChangePassword'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile } = useHODContext()
@@ -520,6 +521,7 @@ const ProfileSettings = () => {
                   </div>
                 </div>
               )}
+              <ChangePassword />
             </div>
           </div>
 

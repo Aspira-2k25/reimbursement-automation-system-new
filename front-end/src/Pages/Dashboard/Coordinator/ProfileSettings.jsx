@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "react-hot-toast"
 import { authAPI } from '../../../services/api' 
+import ChangePassword from "../../components/ChangePassword"
 
 // Default user profile fallback (overwritten by actual user data)
 const initialUserData = {
@@ -218,6 +219,10 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
                 </div>
               )}
             </div>          </div>
+        </div>
+        {/* Change Password Component */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8 mt-6">
+          <ChangePassword />
         </div>
       </div>
     </div>

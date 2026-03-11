@@ -375,6 +375,10 @@ authController.getStaffByDepartment = async (req, res) => {
   }
 };
 
+// Add required imports at the top
+const crypto = require('crypto');
+const emailService = require('../utils/emailService');
+
 // Create user endpoint (for admin/user creation via Postman)
 // Similar to register but doesn't auto-login the user
 authController.createUser = async (req, res) => {
@@ -521,20 +525,41 @@ authController.getFacultyList = async (req, res) => {
   }
 };
 
-// Get single staff member by ID
-authController.getStaffById = async (req, res) => {
+// Reset Password
+authController.resetPassword = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: 'Staff ID required' });
-
-    const staff = await dbUtils.getStaffById(id);
-    if (!staff) {
-      return res.status(404).json({ error: 'Staff member not found' });
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required' });
     }
 
-    res.json({ staff });
+    const user = await prisma.staff.findFirst({
+      where: {
+        reset_token: token,
+        reset_token_expiry: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.staff.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        reset_token: null,
+        reset_token_expiry: null,
+      },
+    });
+
+    res.json({ message: 'Password reset successful' });
   } catch (error) {
-    console.error('getStaffById error:', error);
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -584,6 +609,38 @@ authController.updateStaffById = async (req, res) => {
     if (error.code === '23505') {
       return res.status(409).json({ error: 'Username or email already exists' });
     }
+// Request Change Password OTP
+authController.requestChangePasswordOtp = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await prisma.staff.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    const otpExpiry = new Date(Date.now() + 10 * 60000); // 10 minutes
+
+    await prisma.staff.update({
+      where: { id: user.id },
+      data: {
+        otp: otp,
+        otp_expiry: otpExpiry,
+      },
+    });
+
+    const emailResult = await emailService.sendChangePasswordOtpEmail(user.email, otp);
+    if (!emailResult.success) {
+      return res.status(500).json({ error: 'Failed to send OTP email' });
+    }
+
+    res.json({ message: 'OTP sent to your email' });
+  } catch (error) {
+    console.error('Request OTP error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -695,6 +752,51 @@ authController.deleteFaculty = async (req, res) => {
     res.json({ message: 'Faculty member deleted successfully' });
   } catch (error) {
     console.error('deleteFaculty error:', error);
+// Verify OTP & Change Password
+authController.verifyChangePassword = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { oldPassword, newPassword, otp } = req.body;
+    if (!oldPassword || !newPassword || !otp) {
+      return res.status(400).json({ error: 'Old password, new password, and OTP are required' });
+    }
+
+    const user = await prisma.staff.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify OTP
+    if (user.otp !== otp || !user.otp_expiry || user.otp_expiry < new Date()) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Incorrect old password' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update DB
+    await prisma.staff.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        otp: null,
+        otp_expiry: null,
+      },
+    });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Verify change password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

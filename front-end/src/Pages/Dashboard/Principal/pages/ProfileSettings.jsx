@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { usePrincipalContext } from './PrincipalLayout'
+import ChangePassword from '../../../components/ChangePassword'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile } = usePrincipalContext()
@@ -443,6 +444,7 @@ const ProfileSettings = () => {
                   </div>
                 </div>
               )}
+              <ChangePassword />
             </div>
           </div>
 

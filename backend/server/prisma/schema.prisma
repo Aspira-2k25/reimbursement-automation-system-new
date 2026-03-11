@@ -27,7 +27,11 @@ model Staff {
   is_active   Boolean   @default(true)
   last_login  DateTime? @map("last_login")
   created_at  DateTime  @default(now()) @map("created_at")
-  updated_at  DateTime  @updatedAt @map("updated_at")
+  updated_at         DateTime  @updatedAt @map("updated_at")
+  reset_token        String?   @db.VarChar(255)
+  reset_token_expiry DateTime?
+  otp                String?   @db.VarChar(10)
+  otp_expiry         DateTime?
 
   @@map("staff")
   @@index([username])

@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast"
 import "../Dashboard.css"
 import { useProfile } from "./ProfileContext"
 import { authAPI } from '../../../services/api'
+import ChangePassword from "../../components/ChangePassword"
 
 /**
  * Faculty ProfileSettings Component
@@ -222,6 +223,8 @@ export default function ProfileSettings() {
             </div>
           )}
         </div>
+        {/* Change Password Component */}
+        <ChangePassword />
 
       </div>
     </main>

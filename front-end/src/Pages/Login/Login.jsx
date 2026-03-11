@@ -20,6 +20,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -32,6 +34,20 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccessMessage('');
+    
+    if (isForgotPassword) {
+      try {
+        const { authAPI } = await import('../../services/api');
+        await authAPI.forgotPassword(formData.email);
+        setSuccessMessage('Password reset link sent to your email.');
+      } catch (err) {
+        setError(err.error || 'Failed to send reset link');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
     try {
       const { user } = await login(formData.name, formData.email, formData.password);
       const role = (user?.role || '').toLowerCase();
@@ -127,6 +143,7 @@ export default function LoginPage() {
               />
               <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>
                 Log In
+                {isForgotPassword ? 'Reset Password' : 'Login In'}
               </h2>
             </div>
 
@@ -135,6 +152,11 @@ export default function LoginPage() {
               {error && (
                 <div className="text-xs sm:text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
                   {error}
+                </div>
+              )}
+              {successMessage && (
+                <div className="text-xs sm:text-sm text-green-600 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                  {successMessage}
                 </div>
               )}
               {/* Name Input */}
@@ -153,6 +175,22 @@ export default function LoginPage() {
                   className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
               </div>
+              {/* Name Input */}
+              {!isForgotPassword && (
+                <div className="relative">
+                  <User className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
+                    }`} />
+                  <input
+                    type="text"
+                    placeholder="Username"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    onFocus={() => setFocusedField('name')}
+                    onBlur={() => setFocusedField('')}
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
+                  />
+                </div>
+              )}
 
               {/* Email Input */}
               <div className="relative">
@@ -237,6 +275,56 @@ export default function LoginPage() {
                   }}
                 />
               </div>
+              {/* Password Input & Social Login */}
+              {!isForgotPassword && (
+                <>
+                  <div className="relative">
+                    <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
+                      }`} />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField('')}
+                      className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
+                    />
+                  </div>
+                  
+                  <div className="text-center py-4">
+                    <p className="text-gray-400 text-sm">
+                      or use google account to sign in
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-center mb-6">
+                    <GoogleLogin
+                      onSuccess={async (credentialResponse) => {
+                        try {
+                          const credential = credentialResponse?.credential;
+                          if (!credential) {
+                            throw new Error('No Google credential received');
+                          }
+                          await loginWithGoogle(credential);
+                          navigate('/dashboard', { replace: true });
+                          setTimeout(() => {
+                            if (location.pathname !== '/dashboard') {
+                              window.location.assign('/dashboard');
+                            }
+                          }, 50);
+                        } catch (err) {
+                          console.error('Google login error:', err);
+                          setError(err.message || 'Google login failed. Please try again.');
+                        }
+                      }}
+                      onError={() => {
+                        setError('Google login failed. Please try again.');
+                      }}
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Submit Button */}
               <button
@@ -258,11 +346,28 @@ export default function LoginPage() {
                   <div className="flex items-center justify-center">
                     <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2"></div>
                     Logging in...
+                    {isForgotPassword ? 'Sending...' : 'Loging in...'}
                   </div>
                 ) : (
-                  'LOG IN'
+                  isForgotPassword ? 'SEND RESET LINK' : 'LOG IN'
                 )}
               </button>
+
+              {/* Toggle Forgot Password Button */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(!isForgotPassword);
+                    setError('');
+                    setSuccessMessage('');
+                  }}
+                  className="text-sm font-medium transition-colors hover:underline"
+                  style={{ color: '#3B945E' }}
+                >
+                  {isForgotPassword ? 'Back to Login' : 'Forgot Password?'}
+                </button>
+              </div>
             </form>
           </motion.div>
         </div>
