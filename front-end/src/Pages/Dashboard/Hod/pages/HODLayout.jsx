@@ -12,6 +12,7 @@ import ApplyForReimbursement from './ApplyForReimbursement'
 import ProfileSettings from './ProfileSettings'
 import RequestStatus from './RequestStatus'
 import AllDepartmentOverview from './AllDepartmentOverview'
+import ChangePassword from '../../../../components/ChangePassword'
 
 // Context for sharing HOD state across components
 const HODContext = createContext()
@@ -233,6 +234,8 @@ const HODLayout = ({ children }) => {
         return <AllDepartmentOverview />
       case 'profile':
         return <ProfileSettings />
+      case 'change-password':
+        return <ChangePassword />
       default:
         return <HomeDashboard />
     }
@@ -544,7 +547,8 @@ const HODLayout = ({ children }) => {
                       activeTab === 'request-status' ? 'Request Status' :
                         activeTab === 'all-departments' ? 'ALL Department Overview' :
                           activeTab === 'profile' ? 'Profile Settings' :
-                            'HOD Dashboard'
+                            activeTab === 'change-password' ? 'Change Password' :
+                              'HOD Dashboard'
             }
           />
 

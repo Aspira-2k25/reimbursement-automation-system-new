@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast'
 import HomeDashboard from './HomeDashboard'
 import ProfileSettings from './ProfileSettings'
 import ReimbursedList from './ReimbursedList'
+import ChangePassword from '../../../../components/ChangePassword'
 
 // Context for sharing Accounts state across components
 const AccountsContext = createContext()
@@ -353,6 +354,8 @@ const AccountsLayout = () => {
         return <ReimbursedList />
       case 'profile':
         return <ProfileSettings />
+      case 'change-password':
+        return <ChangePassword />
       default:
         return <HomeDashboard />
     }
@@ -411,6 +414,7 @@ const AccountsLayout = () => {
             activeTab === 'home' ? 'Reimbursement Dashboard' :
               activeTab === 'reimbursed' ? 'Reimbursed List' :
               activeTab === 'profile' ? 'Profile Settings' :
+              activeTab === 'change-password' ? 'Change Password' :
                 'Dashboard'
           } />
 
