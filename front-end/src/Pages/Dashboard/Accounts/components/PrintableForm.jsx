@@ -37,17 +37,24 @@ const PrintableForm = ({ request }) => {
             left: 0;
             top: 0;
             width: 100%;
-            padding: 20mm;
+            height: 99vh; /* Force exactly one page height */
+            padding: 10mm;
+            box-sizing: border-box;
+            overflow: hidden;
           }
           @page {
             size: A4;
-            margin: 15mm;
+            margin: 0; /* Removing page margins removes the browser URL/Header/Footer text */
+          }
+          .no-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
         }
       `}</style>
 
       {/* Header */}
-      <div className="text-center border-b-2 border-black pb-4 mb-6">
+      <div className="text-center border-b-2 border-black pb-2 mb-4">
         <h1 className="text-xl font-bold uppercase tracking-wide">
           A.P. Shah Institute of Technology
         </h1>
@@ -61,8 +68,8 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Application Details */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center border-b border-gray-300 pb-2 mb-4">
+      <div className="mb-4">
+        <div className="flex justify-between items-center border-b border-gray-300 pb-1 mb-2">
           <div>
             <span className="font-semibold">Application ID: </span>
             <span className="font-mono">{request.applicationId || request.id || 'N/A'}</span>
@@ -73,14 +80,13 @@ const PrintableForm = ({ request }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
             <span className="font-semibold">Status: </span>
-            <span className={`font-medium ${
-              request.status === 'Approved' ? 'text-[#57BA98]' :
-              request.status === 'Reimbursed' ? 'text-[#3B945E]' :
-              'text-gray-700'
-            }`}>{request.status}</span>
+            <span className={`font-medium ${request.status === 'Approved' ? 'text-[#57BA98]' :
+                request.status === 'Reimbursed' ? 'text-[#3B945E]' :
+                  'text-gray-700'
+              }`}>{request.status}</span>
           </div>
           <div>
             <span className="font-semibold">Applicant Type: </span>
@@ -90,39 +96,39 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Applicant Information */}
-      <div className="mb-6">
-        <h3 className="text-base font-bold border-b border-gray-400 pb-1 mb-3 uppercase">
+      <div className="mb-4 no-break">
+        <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           1. Applicant Information
         </h3>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold w-1/3">Full Name:</td>
-              <td className="py-2">{request.applicantName || request.name || 'N/A'}</td>
+              <td className="py-1 font-semibold w-1/3">Full Name:</td>
+              <td className="py-1">{request.applicantName || request.name || 'N/A'}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Email:</td>
-              <td className="py-2">{request.email || request.applicantEmail || 'N/A'}</td>
+              <td className="py-1 font-semibold">Email:</td>
+              <td className="py-1">{request.email || request.applicantEmail || 'N/A'}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">
+              <td className="py-1 font-semibold">
                 {request.applicantType === 'Student' ? 'Student ID:' : 'Faculty ID:'}
               </td>
-              <td className="py-2">{request.facultyId || request.studentId || request.applicantId || 'N/A'}</td>
+              <td className="py-1">{request.facultyId || request.studentId || request.applicantId || 'N/A'}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Department:</td>
-              <td className="py-2">{request.department || 'N/A'}</td>
+              <td className="py-1 font-semibold">Department:</td>
+              <td className="py-1">{request.department || 'N/A'}</td>
             </tr>
             {request.applicantType === 'Student' && (
               <>
                 <tr className="border-b border-gray-200">
-                  <td className="py-2 font-semibold">Division:</td>
-                  <td className="py-2">{request.division || 'N/A'}</td>
+                  <td className="py-1 font-semibold">Division:</td>
+                  <td className="py-1">{request.division || 'N/A'}</td>
                 </tr>
                 <tr className="border-b border-gray-200">
-                  <td className="py-2 font-semibold">Academic Year:</td>
-                  <td className="py-2">{request.academicYear || request.year || 'N/A'}</td>
+                  <td className="py-1 font-semibold">Academic Year:</td>
+                  <td className="py-1">{request.academicYear || request.year || 'N/A'}</td>
                 </tr>
               </>
             )}
@@ -131,112 +137,108 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Course Details */}
-      <div className="mb-6">
-        <h3 className="text-base font-bold border-b border-gray-400 pb-1 mb-3 uppercase">
+      <div className="mb-4 no-break">
+        <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           2. Course Details
         </h3>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold w-1/3">Course Type:</td>
-              <td className="py-2">{request.reimbursementType || request.category || 'NPTEL'}</td>
+              <td className="py-1 font-semibold w-1/3">Course Type:</td>
+              <td className="py-1">{request.reimbursementType || request.category || 'NPTEL'}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Course Description:</td>
-              <td className="py-2">{request.description || request.remarks || 'N/A'}</td>
+              <td className="py-1 font-semibold">Course Description:</td>
+              <td className="py-1">{request.description || request.remarks || 'N/A'}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Financial Details */}
-      <div className="mb-6">
-        <h3 className="text-base font-bold border-b border-gray-400 pb-1 mb-3 uppercase">
+      <div className="mb-4 no-break">
+        <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           3. Financial Details
         </h3>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold w-1/3">Reimbursement Amount:</td>
-              <td className="py-2 font-bold text-lg">{request.amount || formatCurrency(request.amountNum)}</td>
+              <td className="py-1 font-semibold w-1/3">Reimbursement Amount:</td>
+              <td className="py-1 font-bold text-base">{request.amount || formatCurrency(request.amountNum)}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Bank Details */}
-      <div className="mb-6">
-        <h3 className="text-base font-bold border-b border-gray-400 pb-1 mb-3 uppercase">
+      <div className="mb-4 no-break">
+        <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           4. Bank Account Details
         </h3>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold w-1/3">Account Holder Name:</td>
-              <td className="py-2">{request.accountHolderName || request.applicantName || 'N/A'}</td>
+              <td className="py-1 font-semibold w-1/3">Account Holder Name:</td>
+              <td className="py-1">{request.accountHolderName || request.applicantName || 'N/A'}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Bank Name:</td>
-              <td className="py-2">{request.bankName || 'N/A'}</td>
+              <td className="py-1 font-semibold">Account Number:</td>
+              <td className="py-1 font-mono">{request.accountNumber || 'N/A'}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Account Number:</td>
-              <td className="py-2 font-mono">{request.accountNumber || 'N/A'}</td>
-            </tr>
-            <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">IFSC Code:</td>
-              <td className="py-2 font-mono">{request.ifscCode || 'N/A'}</td>
+              <td className="py-1 font-semibold">IFSC Code:</td>
+              <td className="py-1 font-mono">{request.ifscCode || 'N/A'}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Approval History */}
-      <div className="mb-6">
-        <h3 className="text-base font-bold border-b border-gray-400 pb-1 mb-3 uppercase">
+      <div className="mb-4 no-break">
+        <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           5. Approval History
         </h3>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             {request.hodComments && (
               <tr className="border-b border-gray-200">
-                <td className="py-2 font-semibold w-1/3">HOD Comments:</td>
-                <td className="py-2">{request.hodComments}</td>
+                <td className="py-1 font-semibold w-1/3">HOD Comments:</td>
+                <td className="py-1">{request.hodComments}</td>
               </tr>
             )}
             {request.principalComments && (
               <tr className="border-b border-gray-200">
-                <td className="py-2 font-semibold">Principal Comments:</td>
-                <td className="py-2">{request.principalComments}</td>
+                <td className="py-1 font-semibold">Principal Comments:</td>
+                <td className="py-1">{request.principalComments}</td>
               </tr>
             )}
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Submitted Date:</td>
-              <td className="py-2">{formatDate(request.submittedDate || request.createdAt)}</td>
+              <td className="py-1 font-semibold">Submitted Date:</td>
+              <td className="py-1">{formatDate(request.submittedDate || request.createdAt)}</td>
             </tr>
             <tr className="border-b border-gray-200">
-              <td className="py-2 font-semibold">Last Updated:</td>
-              <td className="py-2">{formatDate(request.lastUpdated || request.updatedAt)}</td>
+              <td className="py-1 font-semibold">Last Updated:</td>
+              <td className="py-1">{formatDate(request.lastUpdated || request.updatedAt)}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Signature Section */}
-      <div className="mt-12 pt-6 border-t border-gray-400">
+      <div className="mt-8 pt-4 border-t border-gray-400 no-break">
         <div className="grid grid-cols-3 gap-8 text-center">
           <div>
-            <div className="border-b border-black mb-2 h-12"></div>
+            <div className="border-b border-black mb-1 h-10"></div>
             <p className="text-sm font-semibold">Applicant Signature</p>
             <p className="text-xs text-gray-500">Date: ____________</p>
           </div>
           <div>
-            <div className="border-b border-black mb-2 h-12"></div>
+            <div className="border-b border-black mb-1 h-10"></div>
             <p className="text-sm font-semibold">Verified By (Accounts)</p>
             <p className="text-xs text-gray-500">Date: ____________</p>
           </div>
           <div>
-            <div className="border-b border-black mb-2 h-12"></div>
+            <div className="border-b border-black mb-1 h-10"></div>
             <p className="text-sm font-semibold">Authorized Signatory</p>
             <p className="text-xs text-gray-500">Date: ____________</p>
           </div>
@@ -244,22 +246,22 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Footer */}
-      <div className="mt-8 pt-4 border-t border-gray-300 text-center text-xs text-gray-500">
+      <div className="mt-4 pt-2 border-t border-gray-300 text-center text-xs text-gray-500 no-break">
         <p>This is a computer-generated document. Please verify all details before processing.</p>
-        <p className="mt-1">Generated on: {new Date().toLocaleString('en-IN')}</p>
+        <p className="mt-0.5">Generated on: {new Date().toLocaleString('en-IN')}</p>
       </div>
 
       {/* Office Use Only Section */}
-      <div className="mt-6 p-4 border-2 border-dashed border-gray-400">
-        <h4 className="text-sm font-bold mb-3">FOR OFFICE USE ONLY</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="mt-3 p-3 border-2 border-dashed border-gray-400 no-break">
+        <h4 className="text-xs font-bold mb-2">FOR OFFICE USE ONLY</h4>
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
             <span className="font-semibold">Cheque/Transaction No.: </span>
-            <span className="border-b border-dotted border-gray-400 inline-block min-w-[150px]">&nbsp;</span>
+            <span className="border-b border-dotted border-gray-400 inline-block min-w-[120px]">&nbsp;</span>
           </div>
           <div>
             <span className="font-semibold">Date of Disbursement: </span>
-            <span className="border-b border-dotted border-gray-400 inline-block min-w-[150px]">&nbsp;</span>
+            <span className="border-b border-dotted border-gray-400 inline-block min-w-[120px]">&nbsp;</span>
           </div>
           <div className="col-span-2">
             <span className="font-semibold">Remarks: </span>

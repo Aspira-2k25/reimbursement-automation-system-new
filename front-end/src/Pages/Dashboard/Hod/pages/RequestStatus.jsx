@@ -91,6 +91,7 @@ const RequestStatus = () => {
         documents: f.documents || [],
         courseName: f.courseName || 'N/A',
         marks: f.marks ?? null,
+        department: f.department || 'N/A',
       })) : []
 
       setRequests(mapped)
@@ -279,6 +280,7 @@ const RequestStatus = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -291,6 +293,7 @@ const RequestStatus = () => {
                 <tr key={r.id} className="hover:bg-slate-50/60">
                   <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
                   <td className="px-4 py-3 text-slate-700">{r.category}</td>
+                  <td className="px-4 py-3 text-slate-700">{r.department}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={r.status} />
                   </td>

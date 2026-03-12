@@ -231,7 +231,7 @@ const HomeDashboard = () => {
     <div className="space-y-6">
       {/* Welcome Section */}
       <motion.div
-        className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
+        className="bg-gradient-to-r from-[#3B945E] to-[#57BA98] rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -504,7 +504,7 @@ const HomeDashboard = () => {
                       <p className="text-sm text-gray-900 mt-1">
                         {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student'
                           ? (requestDetails?.division || 'N/A')
-                          : (requestDetails?.jobTitle || viewModal.request?.applicantType || 'N/A')
+                          : (requestDetails?.applicantType || viewModal.request?.applicantType || 'N/A')
                         }
                       </p>
                     </div>

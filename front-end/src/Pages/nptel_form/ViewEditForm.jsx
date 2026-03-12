@@ -151,6 +151,21 @@ const ViewEditForm = ({ mode = 'view' }) => {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <input
+                type="text"
+                name="department"
+                value={formData.department || ''}
+                onChange={handleChange}
+                disabled={mode !== 'edit'}
+                className={`w-full px-3 py-2 border rounded-md ${mode === 'edit'
+                    ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                    : 'bg-gray-50 border-gray-200'
+                  }`}
+              />
+            </div>
+
             {/* Add other form fields here... */}
           </div>
 
