@@ -186,6 +186,100 @@ const emailTemplates = {
     `,
   }),
 
+  passwordReset: (resetLink) => ({
+    subject: 'Password Reset Request - Reimbursement System',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #3B945E; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+          .content { background-color: #f9fafb; padding: 20px; border-radius: 0 0 5px 5px; }
+          .btn { display: inline-block; padding: 12px 30px; background-color: #3B945E; color: white; text-decoration: none; border-radius: 25px; font-weight: bold; margin: 20px 0; }
+          .link-text { word-break: break-all; font-size: 12px; color: #666; }
+          .warning { background-color: #fef3cd; border-left: 4px solid #f59e0b; padding: 12px; margin: 15px 0; font-size: 13px; }
+          .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>Password Reset Request</h2>
+          </div>
+          <div class="content">
+            <p>Hello,</p>
+            <p>We received a request to reset your password for the Reimbursement System. Click the button below to set a new password:</p>
+            
+            <div style="text-align: center;">
+              <a href="${sanitizeHtml(resetLink)}" class="btn">Reset Password</a>
+            </div>
+
+            <p class="link-text">If the button doesn't work, copy and paste this link into your browser:<br>${sanitizeHtml(resetLink)}</p>
+
+            <div class="warning">
+              <strong>⚠️ This link expires in 15 minutes.</strong> If you didn't request a password reset, you can safely ignore this email.
+            </div>
+
+            <div class="footer">
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p>Reimbursement Automation System</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  }),
+
+  otpEmail: (otp) => ({
+    subject: 'Your OTP for Password Change - Reimbursement System',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #3B945E; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+          .content { background-color: #f9fafb; padding: 20px; border-radius: 0 0 5px 5px; }
+          .otp-box { background-color: #ecfdf5; border: 2px dashed #3B945E; padding: 20px; text-align: center; margin: 20px 0; border-radius: 10px; }
+          .otp-code { font-size: 32px; font-weight: bold; color: #3B945E; letter-spacing: 8px; }
+          .warning { background-color: #fef3cd; border-left: 4px solid #f59e0b; padding: 12px; margin: 15px 0; font-size: 13px; }
+          .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>Password Change OTP</h2>
+          </div>
+          <div class="content">
+            <p>Hello,</p>
+            <p>Your OTP for password change is:</p>
+            
+            <div class="otp-box">
+              <div class="otp-code">${sanitizeHtml(otp)}</div>
+            </div>
+
+            <div class="warning">
+              <strong>⚠️ This OTP is valid for 5 minutes.</strong> Do not share this code with anyone.
+            </div>
+
+            <p>If you didn't request this OTP, please secure your account immediately.</p>
+
+            <div class="footer">
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p>Reimbursement Automation System</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  }),
+
 };
 
 // send email function 
@@ -235,10 +329,24 @@ const sendSubmissionEmail = async (formData) => {
   return await sendEmail(formData.email, template.subject, template.html);
 };
 
+// Send password reset email
+const sendPasswordResetEmail = async (email, resetLink) => {
+  const template = emailTemplates.passwordReset(resetLink);
+  return await sendEmail(email, template.subject, template.html);
+};
+
+// Send OTP email
+const sendOtpEmail = async (email, otp) => {
+  const template = emailTemplates.otpEmail(otp);
+  return await sendEmail(email, template.subject, template.html);
+};
+
 module.exports = {
   sendEmail,
   sendApprovalEmail,
   sendRejectionEmail,
   sendSubmissionEmail,
+  sendPasswordResetEmail,
+  sendOtpEmail,
   isSmtpConfigured,
 };
