@@ -34,3 +34,28 @@ model Staff {
   @@index([email])
   @@index([department])
 }
+
+// Password reset tokens for forgot-password flow (15-min expiry)
+model PasswordResetToken {
+  id          Int      @id @default(autoincrement())
+  email       String   @db.VarChar(100)
+  token       String   @unique @db.VarChar(255)
+  expiry_time DateTime
+  created_at  DateTime @default(now())
+
+  @@map("password_reset_tokens")
+  @@index([token])
+  @@index([email])
+}
+
+// OTP verification for change-password flow (5-min expiry)
+model OtpVerification {
+  id          Int      @id @default(autoincrement())
+  email       String   @db.VarChar(100)
+  otp         String   @db.VarChar(10)
+  expiry_time DateTime
+  created_at  DateTime @default(now())
+
+  @@map("otp_verification")
+  @@index([email])
+}
