@@ -118,13 +118,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
         {/* Right Section - Notifications & Profile */}
         <div className="flex items-center gap-4">
-          {/* System Logo */}
-          <div className="hidden sm:flex items-center gap-2 mr-2">
-            <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
-            <span className="font-semibold text-sm text-gray-900">
-              Reimbursement Portal
-            </span>
-          </div>
+
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>

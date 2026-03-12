@@ -82,7 +82,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)' }}>
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
-        <div className="flex h-14 sm:h-16 items-center justify-between">
+        <div className="flex h-14 sm:h-16 items-center justify-between relative">
           {/* Logo section */}
           <div className="flex items-center gap-2 sm:gap-3">
             <img
@@ -96,7 +96,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:grid grid-cols-2 gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
+          <nav className="hidden md:grid grid-cols-2 gap-1 absolute left-1/2 -translate-x-1/2 p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
             <div
               className={[
                 "absolute top-1 bottom-1 rounded-xl sliding-block",
@@ -149,14 +149,6 @@ export default function Navbar() {
 
           {/* Right section with notifications and profile */}
           <div className="flex items-center gap-2 sm:gap-4">
-
-            {/* System Logo */}
-            <div className="hidden sm:flex items-center gap-2 mr-2">
-              <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
-              <span className="font-semibold text-white/95 text-sm">
-                Reimbursement Portal
-              </span>
-            </div>
 
             {/* Notification menu */}
             <div className="relative">
