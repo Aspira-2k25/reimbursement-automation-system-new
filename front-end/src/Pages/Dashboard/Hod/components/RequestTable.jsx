@@ -110,7 +110,7 @@ const RequestTable = ({
    * Export table data to CSV format
    */
   const exportToCSV = () => {
-    const headers = ['ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Category', 'Amount', 'Status', 'Submitted Date']
+    const headers = ['ID', 'Applicant', 'Department', 'Type', 'Course Name', 'Marks', 'Category', 'Amount', 'Status', 'Submitted Date']
 
     // Helper function to escape CSV fields (wrap in quotes if contains comma or quotes)
     const escapeCSV = (value) => {
@@ -145,6 +145,7 @@ const RequestTable = ({
       ...sortedRequests.map(request => [
         escapeCSV(request.id),
         escapeCSV(request.applicantName),
+        escapeCSV(request.department || 'N/A'),
         escapeCSV(request.applicantType),
         escapeCSV(request.courseName || 'N/A'),
         escapeCSV(request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A'),
@@ -286,7 +287,7 @@ const RequestTable = ({
                       <div>
                         <div className="text-sm font-medium text-gray-900">{request.applicantName}</div>
                         <div className="text-sm text-gray-500">
-                          {request.applicantType === 'Student' ? request.year : request.designation}
+                          {request.applicantType === 'Student' ? request.year : request.designation} • {request.department || 'N/A'}
                         </div>
                       </div>
                     </div>

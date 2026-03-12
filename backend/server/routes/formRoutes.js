@@ -506,7 +506,7 @@ router.put(
         // Faculty/Coordinator forms start at "Under HOD", HOD forms start at "Under Principal".
         const initialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
         if (form.status === initialStatus) {
-          allowedUpdates = ['name', 'email', 'facultyId', 'jobTitle', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
+          allowedUpdates = ['name', 'email', 'facultyId', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
         } else {
           return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
         }

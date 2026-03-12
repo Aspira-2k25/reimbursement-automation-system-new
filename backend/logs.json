@@ -237,5 +237,64 @@
       "role": "Principal",
       "department": "Information Technology"
     }
+  },
+  {
+    "timestamp": "2026-03-12T19:05:34.338Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T19:07:14.962Z",
+    "level": "INFO",
+    "message": "New staff created",
+    "data": {
+      "id": 4,
+      "username": "gourish"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T19:07:40.820Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T19:07:56.770Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Gourish Pednekar",
+      "role": "Accounts",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-12T19:31:18.514Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-12T19:31:28.486Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
   }
 ]
