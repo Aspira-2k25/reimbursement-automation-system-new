@@ -11,9 +11,11 @@
  *   S-AIML-NPT-2026-003 → Student, AIML Dept, NPTEL, 2026, Sequence 3
  * 
  * The sequence number is GLOBALLY UNIQUE across all forms, departments,
- * roles, and form types. Duplicate prevention uses retry logic with the
- * MongoDB unique index on applicationId.
+ * roles, and form types. Uniqueness is guaranteed by an atomic MongoDB
+ * counter (findOneAndUpdate + $inc) — no race conditions possible.
  */
+
+const { getNextSequence } = require('../models/Counter');
 
 // ──────────────────────────────────────────────────────────────
 // Role prefixes
@@ -172,42 +174,8 @@ function extractYear(academicYear) {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Global sequence generator
+// Main entry point — atomic ID generation
 // ──────────────────────────────────────────────────────────────
-
-/**
- * Find the highest sequence number that exists in the database
- * across ALL provided Mongoose models for the given year.
- *
- * @param {string}   year    4-digit year string
- * @param {Object[]} Models  Array of Mongoose models (e.g. [StudentForm, Form])
- * @returns {Promise<number>} The highest sequence found (0 if none)
- */
-async function findMaxSequence(year, Models) {
-  let maxSeq = 0;
-
-  for (const Model of Models) {
-    // Match any applicationId ending with  -YEAR-NNN  (covers all roles / depts / types)
-    const docs = await Model.find({
-      applicationId: { $regex: `-${year}-[0-9]{3,}$` }
-    }).select('applicationId').lean();
-
-    for (const doc of docs) {
-      const parts = doc.applicationId.split('-');
-      const seq = parseInt(parts[parts.length - 1], 10);
-      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
-    }
-  }
-
-  return maxSeq;
-}
-
-// ──────────────────────────────────────────────────────────────
-// Main entry point
-// ──────────────────────────────────────────────────────────────
-
-/** Maximum retries when a duplicate applicationId is detected. */
-const MAX_RETRIES = 5;
 
 /**
  * Generate a globally unique Application ID.
@@ -215,20 +183,18 @@ const MAX_RETRIES = 5;
  * Format:  ROLE-DEPT-FORMTYPE-YEAR-SEQ
  * Example: S-IT-NPT-2026-001
  *
- * The returned ID is *not* yet saved — the caller saves it.
- * If two requests race and produce the same sequence, the MongoDB
- * unique index on `applicationId` will reject the second write.
- * Use {@link generateApplicationIdWithRetry} to handle that automatically.
+ * Uses an atomic MongoDB counter (findOneAndUpdate + $inc) to guarantee
+ * that every call receives a unique, monotonically increasing sequence
+ * number.  No retries are needed — the counter is race-condition-free.
  *
  * @param {Object}   params
  * @param {string}   params.applicantType     'Student' | 'Faculty' | …
  * @param {string}   params.reimbursementType 'NPTEL' | 'Hackathon' | …
  * @param {string}  [params.academicYear]     '2025-2026' or '2026'
  * @param {string}   params.department        'Information Technology' | …
- * @param {Object[]} Models                   Mongoose models to scan
  * @returns {Promise<string>}
  */
-async function generateApplicationId(params, Models) {
+async function generateApplicationId(params) {
   const {
     applicantType = 'Student',
     reimbursementType = 'NPTEL',
@@ -236,15 +202,15 @@ async function generateApplicationId(params, Models) {
     department
   } = params;
 
-  const modelArray = Array.isArray(Models) ? Models : [Models];
-
   const rolePrefix = getApplicantPrefix(applicantType);
   const deptCode = getDepartmentCode(department);
   const formCode = getCategoryCode(reimbursementType);
   const year = extractYear(academicYear);
 
-  const maxSeq = await findMaxSequence(year, modelArray);
-  const sequence = String(maxSeq + 1).padStart(3, '0');
+  // Atomic increment — guaranteed unique across all concurrent requests
+  const counterKey = `global_app_id_${year}`;
+  const seq = await getNextSequence(counterKey);
+  const sequence = String(seq).padStart(3, '0');
 
   const applicationId = `${rolePrefix}-${deptCode}-${formCode}-${year}-${sequence}`;
 
@@ -253,68 +219,9 @@ async function generateApplicationId(params, Models) {
   console.log(`  Department: ${department || '(unknown)'} → ${deptCode}`);
   console.log(`  Form Type : ${reimbursementType} → ${formCode}`);
   console.log(`  Year      : ${academicYear || '(system date)'} → ${year}`);
-  console.log(`  Sequence  : ${sequence} (global)`);
+  console.log(`  Sequence  : ${sequence} (global, atomic)`);
 
   return applicationId;
-}
-
-/**
- * Generate an Application ID **with automatic retry** on duplicate key errors.
- *
- * Call this wrapper instead of `generateApplicationId` when you want
- * built-in protection against two concurrent submissions getting the
- * same sequence number.
- *
- * Usage:
- *   const { applicationId, savedDoc } = await generateApplicationIdWithRetry(
- *     params, Models, buildDocFn
- *   );
- *
- * @param {Object}   params       Same as generateApplicationId
- * @param {Object[]} Models       Mongoose models to scan
- * @param {Function} buildDocFn   (applicationId) => Mongoose document (unsaved)
- * @returns {Promise<{applicationId: string, savedDoc: Object}>}
- */
-async function generateApplicationIdWithRetry(params, Models, buildDocFn) {
-  const modelArray = Array.isArray(Models) ? Models : [Models];
-
-  const {
-    applicantType = 'Student',
-    reimbursementType = 'NPTEL',
-    academicYear,
-    department
-  } = params;
-
-  const rolePrefix = getApplicantPrefix(applicantType);
-  const deptCode = getDepartmentCode(department);
-  const formCode = getCategoryCode(reimbursementType);
-  const year = extractYear(academicYear);
-
-  let lastError = null;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const maxSeq = await findMaxSequence(year, modelArray);
-    const sequence = String(maxSeq + 1 + attempt).padStart(3, '0');
-    const applicationId = `${rolePrefix}-${deptCode}-${formCode}-${year}-${sequence}`;
-
-    try {
-      const doc = buildDocFn(applicationId);
-      const savedDoc = await doc.save();
-
-      console.log(`Generated Application ID: ${applicationId}  (attempt ${attempt + 1})`);
-      return { applicationId, savedDoc };
-    } catch (err) {
-      // MongoDB duplicate key error code = 11000
-      if (err.code === 11000 && err.keyPattern?.applicationId) {
-        console.warn(`Duplicate applicationId ${applicationId}, retrying… (${attempt + 1}/${MAX_RETRIES})`);
-        lastError = err;
-        continue;
-      }
-      throw err; // not a duplicate error — rethrow
-    }
-  }
-
-  throw lastError || new Error('Failed to generate unique Application ID after retries');
 }
 
 /**
@@ -354,13 +261,11 @@ function parseApplicationId(applicationId) {
 // ──────────────────────────────────────────────────────────────
 module.exports = {
   generateApplicationId,
-  generateApplicationIdWithRetry,
   parseApplicationId,
   getApplicantPrefix,
   getDepartmentCode,
   getCategoryCode,
   extractYear,
-  findMaxSequence,
   APPLICANT_PREFIX,
   DEPARTMENT_CODES,
   CATEGORY_CODES
