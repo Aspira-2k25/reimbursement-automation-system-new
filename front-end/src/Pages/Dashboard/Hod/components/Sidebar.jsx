@@ -151,7 +151,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                     transition-all duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-[#65CCB8] focus:ring-offset-2
                     ${isActive
-                      ? 'bg-[#65CCB8]/20 text-[#2d7048] border border-[#65CCB8] shadow-sm'
+                      ? 'bg-[#65CCB8]/20 text-[#3B945E] border border-[#65CCB8] shadow-sm'
                       : isHovered
                         ? 'bg-gray-50 text-gray-900'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'

@@ -102,7 +102,6 @@ const HODLayout = ({ children }) => {
       division: f.division,
       studentId: f.studentId,
       facultyId: f.facultyId,
-      jobTitle: f.jobTitle,
       name: f.name,
       remarks: f.remarks,
       academicYear: f.academicYear,

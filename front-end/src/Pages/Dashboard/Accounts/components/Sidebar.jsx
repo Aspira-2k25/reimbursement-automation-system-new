@@ -56,7 +56,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="w-10 h-10 bg-gradient-to-r from-[#57BA98] via-[#3B945E] to-[#2F6F52] rounded-xl flex items-center justify-center shadow-inner">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))' }}>
                   <Wallet className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
@@ -92,7 +92,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <User className="w-4 h-4 text-white" />
               </div>
             </motion.div>
@@ -105,7 +105,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-[#57BA98] to-[#3B945E] rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AC'}
                 </span>
@@ -142,10 +142,10 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
                 ${isActive
-                  ? 'bg-gradient-to-r from-[#E8F7F2] to-[#D7F1E7] text-[#3B945E] border border-[#B7E4D5]'
+                  ? 'bg-[#65CCB8]/20 text-[#3B945E] border border-[#65CCB8] shadow-sm'
                   : isHovered
-                    ? 'bg-gray-50 text-gray-700'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-gray-50 text-gray-900'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }
               `}
               whileHover={{ scale: 1.02 }}
