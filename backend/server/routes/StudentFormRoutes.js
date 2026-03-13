@@ -86,9 +86,9 @@ router.post(
         });
       }
 
-      // Parse numeric fields
-      const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
-      const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
+      // Parse numeric fields — preserving EXACT user input without rounding
+      const amount = req.body.amount ? Number(req.body.amount) : undefined;
+      const marks = req.body.marks ? Number(req.body.marks) : undefined;
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
