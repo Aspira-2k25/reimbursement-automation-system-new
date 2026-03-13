@@ -9,7 +9,7 @@ const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 const { validateUploadedFiles } = require("../middleware/multer");
-const { generateApplicationId, generateApplicationIdWithRetry } = require("../utils/applicationIdGenerator");
+const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
 const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES, buildDepartmentFilter } = require('../utils/formHelpers');
@@ -90,33 +90,33 @@ router.post(
       const amount = req.body.amount ? parseInt(req.body.amount, 10) : undefined;
       const marks = req.body.marks ? parseFloat(req.body.marks) : undefined;
 
-      // Generate Application ID and save with retry for duplicate prevention
+      // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
-      const { savedDoc: newStudentForm } = await generateApplicationIdWithRetry(
-        {
-          applicantType: 'Student',
-          reimbursementType: req.body.reimbursementType || 'NPTEL',
-          academicYear: req.body.academicYear,
-          department: req.body.department
-        },
-        [StudentForm, Form],
-        (applicationId) => new StudentForm({
-          ...req.body,
-          amount,
-          marks,
-          applicationId,
-          userId,
-          status: "Pending",
-          documents: [
-            nptelResultUpload
-              ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
-              : null,
-            idCardUpload
-              ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
-              : null,
-          ].filter(Boolean),
-        })
-      );
+      const applicationId = await generateApplicationId({
+        applicantType: 'Student',
+        reimbursementType: req.body.reimbursementType || 'NPTEL',
+        academicYear: req.body.academicYear,
+        department: req.body.department
+      });
+
+      const newStudentForm = new StudentForm({
+        ...req.body,
+        amount,
+        marks,
+        applicationId,
+        userId,
+        status: "Pending",
+        documents: [
+          nptelResultUpload
+            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+            : null,
+          idCardUpload
+            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+            : null,
+        ].filter(Boolean),
+      });
+
+      await newStudentForm.save();
 
       // submission notification
       await notificationService.createNotification({
