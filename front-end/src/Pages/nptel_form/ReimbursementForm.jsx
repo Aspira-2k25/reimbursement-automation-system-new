@@ -218,8 +218,13 @@ const ReimbursementForm = () => {
       const formDataToSend = new FormData();
 
       //append all text fields - SECURITY: Sanitize before sending
+      // Skip sanitization for numeric fields to prevent any value modification
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, sanitizeInput(formData[key]));
+        if (key === 'amount' || key === 'marks') {
+          formDataToSend.append(key, formData[key]);
+        } else {
+          formDataToSend.append(key, sanitizeInput(formData[key]));
+        }
       });
 
       // Set applicantType based on user role
