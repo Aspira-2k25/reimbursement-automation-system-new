@@ -4,7 +4,7 @@ import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { passwordAPI } from '../../services/api';
 import apshahLogo from '../../assets/images/Apshah_logo.png';
-import websiteLogo from '../../assets/images/Website_logo.png';
+// import websiteLogo from '../../assets/images/Website_logo.png';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -64,7 +64,7 @@ export default function ForgotPassword() {
 
         {/* Content */}
         <motion.div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center" {...fadeInUp}>
-          <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 object-contain drop-shadow-lg mb-6 lg:mb-8" />
+          {/* <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 object-contain drop-shadow-lg mb-6 lg:mb-8" /> */}
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 leading-tight">
             Forgot Password?
           </h1>
@@ -106,7 +106,7 @@ export default function ForgotPassword() {
               /* Form State */
               <>
                 <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
-                  <img src={websiteLogo} alt="Reimbursement System Logo" className="h-20 w-20 sm:h-24 sm:w-24 mb-5 object-contain drop-shadow-md" />
+                  {/* <img src={websiteLogo} alt="Reimbursement System Logo" className="h-20 w-20 sm:h-24 sm:w-24 mb-5 object-contain drop-shadow-md" /> */}
                   <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>Reset Password</h2>
                   <p className="text-gray-500 text-sm">Enter your registered email to receive a reset link</p>
                 </div>

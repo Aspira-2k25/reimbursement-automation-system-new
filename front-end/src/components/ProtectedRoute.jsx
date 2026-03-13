@@ -15,9 +15,7 @@ const ProtectedRoute = ({ children }) => {
     return <LoadingSpinner />;
   }
 
-  // Allow direct access to admin dashboard for testing purposes
-  // NOTE: Remove this exception for production use
-  if (!isAuthenticated() && !location.pathname.startsWith('/dashboard/admin')) {
+  if (!isAuthenticated()) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

@@ -6,7 +6,7 @@ import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
 import { useAuth } from "../../../../context/AuthContext.jsx"
 import apshahLogo from "../../../../assets/images/Apshah_logo.png"
-import websiteLogo from "../../../../assets/images/Website_logo.png"
+// import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 function initials(name) {
   return name
@@ -149,6 +149,14 @@ export default function Navbar() {
 
           {/* Right section with notifications and profile */}
           <div className="flex items-center gap-2 sm:gap-4">
+
+            {/* System Logo */}
+            {/* <div className="hidden sm:flex items-center gap-2 mr-2">
+              <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
+              <span className="font-semibold text-white/95 text-sm">
+                Reimbursement Portal
+              </span>
+            </div> */}
 
             {/* Notification menu */}
             <div className="relative">
