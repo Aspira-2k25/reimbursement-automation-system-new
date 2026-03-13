@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const he = require('he'); // HTML entity encoder for XSS prevention
 
 // HTML sanitization helper
@@ -7,34 +7,12 @@ const sanitizeHtml = (str) => {
   return he.encode(String(str));
 };
 
-//create transporter
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY || '');
 
-const createTransporter = () => {
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, ''); // Trim whitespace and strip surrounding quotes
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: user,
-      pass: pass,
-    },
-    tls: {
-      // Always reject unauthorized certificates in production
-      // Only allow insecure connections in development for testing
-      rejectUnauthorized: process.env.NODE_ENV !== 'development'
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-  });
-};
-
-/** Returns true if SMTP is configured enough to attempt sending. */
+/** Returns true if Resend is configured enough to attempt sending. */
 const isSmtpConfigured = () => {
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').trim();
-  return Boolean(user && pass);
+  return Boolean(process.env.RESEND_API_KEY);
 };
 
 //email template
@@ -286,26 +264,27 @@ const emailTemplates = {
 
 const sendEmail = async (to, subject, html) => {
   if (!isSmtpConfigured()) {
-    console.warn('Email not sent: SMTP_USER or SMTP_PASS not set. Set both in Render env to enable email.');
-    return { success: false, error: 'SMTP not configured' };
+    console.warn('Email not sent: RESEND_API_KEY not set. Set it in Render env to enable email.');
+    return { success: false, error: 'Resend not configured' };
   }
   try {
-    const transporter = createTransporter();
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const { data, error } = await resend.emails.send({
+      from: `Reimbursement System <${fromEmail}>`,
+      to: [to],
+      subject: subject,
+      html: html,
+    });
 
-    const mailOptions = {
-      from: `"Reimbursement System" <${process.env.SMTP_USER}>`,
-      to,
-      subject,
-      html,
-    };
+    if (error) {
+      console.error('Resend API error:', error);
+      return { success: false, error: error.message };
+    }
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    console.log('Email sent successfully:', data.id);
+    return { success: true, messageId: data.id };
   } catch (error) {
-    // Gmail SMTP from Render often fails (connection timeout): cloud IPs can be blocked by Google.
-    // Use a transactional provider (SendGrid, Resend, Mailgun) for reliable delivery from production.
-    console.error('Error sending email:', error.message || error);
+    console.error('Error sending email via Resend:', error.message || error);
     return { success: false, error: error.message };
   }
 };
