@@ -10,7 +10,6 @@ const FormSchema = new mongoose.Schema({
     name: { type: String, required: true },
     facultyId: { type: String }, // Faculty ID number
     email: { type: String, required: true },
-    jobTitle: { type: String },
     department: { type: String }, // Department for HOD filtering
     academicYear: { type: String },
     amount: { type: Number },
