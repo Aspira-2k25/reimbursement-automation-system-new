@@ -346,5 +346,60 @@
       "role": "Coordinator",
       "department": "Information Technology"
     }
+  },
+  {
+    "timestamp": "2026-03-13T10:01:04.768Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:03:41.712Z",
+    "level": "INFO",
+    "message": "Staff record updated",
+    "data": {
+      "id": "3",
+      "updates": {
+        "username": "nirmala123",
+        "name": "Nirmala Patole",
+        "department": "Information Technology",
+        "role": "HOD",
+        "email": "nim91@gmail.com"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:04:46.850Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:05:16.133Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:15:43.177Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "Information Technology"
+    }
   }
 ]

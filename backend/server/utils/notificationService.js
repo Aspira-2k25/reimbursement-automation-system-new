@@ -29,7 +29,7 @@ const createNotification = async (notificationData, sendEmailNotification = true
     // Send email in background so HTTP response is not blocked (avoids ~60s SMTP timeout delaying form submit/approve)
     if (sendEmailNotification && notificationData.userEmail) {
       if (!emailService.isSmtpConfigured()) {
-        console.warn('Notification saved but email skipped: SMTP_USER/SMTP_PASS not set on server.');
+        console.warn('Notification saved but email skipped: RESEND_API_KEY not set on server.');
       } else {
       const sendEmailInBackground = async () => {
         try {
