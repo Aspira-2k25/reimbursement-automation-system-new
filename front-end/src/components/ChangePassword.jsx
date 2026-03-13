@@ -59,8 +59,8 @@ export default function ChangePassword() {
       setIsLoading(false);
       return;
     }
-    if (formData.newPassword.length < 6) {
-      setError('New password must be at least 6 characters long');
+    if (formData.newPassword.length < 8) {
+      setError('New password must be at least 8 characters long');
       setIsLoading(false);
       return;
     }
@@ -170,12 +170,12 @@ export default function ChangePassword() {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type={showPassword.new ? "text" : "password"}
-                placeholder="Enter new password (min 6 characters)"
+                placeholder="Enter new password (min 8 characters)"
                 value={formData.newPassword}
                 onChange={(e) => handleChange('newPassword', e.target.value)}
                 className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:border-[#3B945E] transition-all text-sm"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
                 {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -195,7 +195,7 @@ export default function ChangePassword() {
                 onChange={(e) => handleChange('confirmPassword', e.target.value)}
                 className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:border-[#3B945E] transition-all text-sm"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
                 {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
