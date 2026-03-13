@@ -91,11 +91,11 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
   }, [])
 
   return (
-    <nav className="shadow-sm" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)' }}>
+    <nav className="shadow-sm" style={{ background: 'linear-gradient(135deg, color-mix(in oklab, #3B945E 70%, white) 0%, color-mix(in oklab, #57BA98 85%, white) 100%)', borderBottom: '1px solid color-mix(in oklab, #3B945E 35%, white)' }}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between lg:justify-normal h-16">
-          {/* Left Section: Logo - Flex-1 to push center items to true center */}
-          <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3">
+        <div className="flex items-center justify-between h-16 relative">
+          {/* Left Section: Logo */}
+          <div className="flex items-center justify-start gap-2 sm:gap-3">
             <img
               src={apshahLogo}
               alt="A.P. Shah Logo"
@@ -108,7 +108,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
           {/* Center Section: Navigation - Centered and spacious */}
           {/* Enhanced with sliding toggle animation */}
-          <div className="hidden lg:grid grid-cols-4 relative p-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10" style={{ width: 'max-content', minWidth: '680px' }}>
+          <div className="hidden lg:grid grid-cols-4 absolute left-1/2 -translate-x-1/2 p-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10" style={{ width: 'max-content', minWidth: '680px' }}>
             {/* Sliding animation block */}
             <div
               className="absolute top-1.5 bottom-1.5 rounded-xl shadow-sm border border-white/20 backdrop-blur-sm transition-all duration-300 ease-out z-0"
@@ -140,16 +140,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             })}
           </div>
 
-          {/* Right Section: Profile & Notifications - Flex-1 to balance the left side */}
-          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4">
-
-            {/* System Logo */}
-            <div className="hidden sm:flex items-center gap-2 mr-2">
-              <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
-              <span className="font-semibold text-white/95 text-sm">
-                Reimbursement Portal
-              </span>
-            </div>
+          {/* Right Section: Profile & Notifications */}
+          <div className="flex items-center justify-end gap-2 sm:gap-4">
 
             <NotificationMenu
               notifications={notifications}

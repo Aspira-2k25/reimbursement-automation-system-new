@@ -138,10 +138,7 @@ export default function ViewForm() {
                   <label className="block text-sm font-medium text-gray-600">Faculty ID</label>
                   <div className="mt-1 text-gray-900">{formData.facultyId}</div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Job Title</label>
-                  <div className="mt-1 text-gray-900">{formData.jobTitle}</div>
-                </div>
+
               </>
             ) : (
               <>

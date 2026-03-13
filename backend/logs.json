@@ -461,5 +461,15 @@
       "role": "Student",
       "department": ""
     }
+  },
+  {
+    "timestamp": "2026-03-13T17:45:16.797Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
   }
 ]
