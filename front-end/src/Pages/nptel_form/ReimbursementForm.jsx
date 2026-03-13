@@ -50,7 +50,6 @@ const ReimbursementForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     facultyId: '',
-    jobTitle: '',
     department: '',
     email: '',
     amount: '',
@@ -84,10 +83,7 @@ const ReimbursementForm = () => {
       newErrors.facultyId = 'Faculty ID is required';
     }
 
-    // Job Title validation
-    if (!formData.jobTitle.trim()) {
-      newErrors.jobTitle = 'Job Title is required';
-    }
+
 
     // Department validation
     if (!formData.department) {
@@ -424,22 +420,7 @@ const ReimbursementForm = () => {
                 {errors.facultyId && <p className="text-red-500 text-xs mt-1">{errors.facultyId}</p>}
               </div>
 
-              <div>
-                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Title *
-                </label>
-                <input
-                  type="text"
-                  id="jobTitle"
-                  name="jobTitle"
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.jobTitle ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                />
-                {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
-              </div>
+
 
               {/* Department Field */}
               <div>

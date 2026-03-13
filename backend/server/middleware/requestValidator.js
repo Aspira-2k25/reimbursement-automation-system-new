@@ -13,7 +13,6 @@ const FIELD_LENGTH_LIMITS = {
   rejectionRemarks: 1000,
   accountsComments: 1000,
   department: 50,
-  jobTitle: 100,
   studentId: 50,
   division: 20,
   academicYear: 20,

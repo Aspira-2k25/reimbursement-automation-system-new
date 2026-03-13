@@ -208,6 +208,7 @@ export default function ApplyReimbursement() {
         updatedDate: f.updatedAt || new Date().toISOString(),
         description: f.remarks || f.name || "Reimbursement Request",
         documents: f.documents || [],
+        department: f.department || "N/A",
       }))
 
       setRequests(mappedRequests)
@@ -400,6 +401,7 @@ export default function ApplyReimbursement() {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -412,6 +414,7 @@ export default function ApplyReimbursement() {
                       <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="px-4 py-3 font-medium text-slate-900 text-sm">{r.id}</td>
                         <td className="px-4 py-3 text-slate-700 text-sm">{r.category}</td>
+                        <td className="px-4 py-3 text-slate-700 text-sm">{r.department}</td>
                         <td className="px-4 py-3">
                           <StatusBadge status={r.status} />
                         </td>
