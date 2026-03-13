@@ -174,16 +174,6 @@ export const authAPI = {
       throw error.response?.data || { error: 'Network error' };
     }
   },
-
-  // Change password
-  changePassword: async ({ oldPassword, newPassword }) => {
-    try {
-      const response = await api.put('/auth/change-password', { oldPassword, newPassword });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
-    }
-  },
 };
 
 // Password management API functions
