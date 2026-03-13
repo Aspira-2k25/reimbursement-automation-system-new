@@ -237,5 +237,229 @@
       "role": "Principal",
       "department": "Information Technology"
     }
+  },
+  {
+    "timestamp": "2026-03-12T18:14:56.771Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Alok K.N. Sahoo",
+      "role": "Principal",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:18:11.817Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Alok K.N. Sahoo",
+      "role": "Principal",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:23:19.918Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:35:42.444Z",
+    "level": "INFO",
+    "message": "New staff created",
+    "data": {
+      "id": 3,
+      "username": "nirmala123"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:36:02.434Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:37:22.932Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:37:31.683Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:37:51.611Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "Coordinator",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-12T18:43:12.856Z",
+    "level": "INFO",
+    "message": "Submitted a reimbursement application",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "Coordinator",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T08:04:40.363Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "Coordinator",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T08:09:14.084Z",
+    "level": "INFO",
+    "message": "Submitted a reimbursement application",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "Coordinator",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:01:04.768Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:03:41.712Z",
+    "level": "INFO",
+    "message": "Staff record updated",
+    "data": {
+      "id": "3",
+      "updates": {
+        "username": "nirmala123",
+        "name": "Nirmala Patole",
+        "department": "Information Technology",
+        "role": "HOD",
+        "email": "nim91@gmail.com"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:04:46.850Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:05:16.133Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T10:15:43.177Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Nirmala Patole",
+      "role": "HOD",
+      "department": "Information Technology"
+    }
+  },
+  {
+    "timestamp": "2026-03-13T13:16:48.485Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-13T13:23:47.436Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-13T13:24:47.425Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-13T13:25:07.633Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-13T17:04:56.176Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-13T17:05:14.201Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_50_APOORVA PURANIK",
+      "role": "Student",
+      "department": ""
+    }
   }
 ]

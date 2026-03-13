@@ -346,6 +346,8 @@ app.get('/api/csrf-token', csrfProtection, (req, res) => {
 
 // Admin logs - returns recent activity logs (excludes admin user actions)
 app.get('/api/admin/logs',
+  authMiddleware.verifyToken,
+  authMiddleware.requireRole(['Admin']),
   (req, res) => {
     try {
       const allLogs = logger.getLogs();

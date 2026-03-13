@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const he = require('he'); // HTML entity encoder for XSS prevention
 
 // HTML sanitization helper
@@ -7,34 +7,12 @@ const sanitizeHtml = (str) => {
   return he.encode(String(str));
 };
 
-//create transporter
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY || '');
 
-const createTransporter = () => {
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, ''); // Trim whitespace and strip surrounding quotes
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: user,
-      pass: pass,
-    },
-    tls: {
-      // Always reject unauthorized certificates in production
-      // Only allow insecure connections in development for testing
-      rejectUnauthorized: process.env.NODE_ENV !== 'development'
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-  });
-};
-
-/** Returns true if SMTP is configured enough to attempt sending. */
+/** Returns true if Resend is configured enough to attempt sending. */
 const isSmtpConfigured = () => {
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').trim();
-  return Boolean(user && pass);
+  return Boolean(process.env.RESEND_API_KEY);
 };
 
 //email template
@@ -65,7 +43,7 @@ const emailTemplates = {
           <div class="content">
             <p>Dear ${sanitizeHtml(formData.name)},</p>
             <p>Your reimbursement application has been <span class="status-badge">APPROVED</span> at the ${sanitizeHtml(phase)} phase.</p>
-            
+
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
               <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
@@ -73,9 +51,9 @@ const emailTemplates = {
               <div class="detail-row"><strong>Current Status:</strong> ${sanitizeHtml(formData.status)}</div>
               ${formData.remarks ? `<div class="detail-row"><strong>Remarks:</strong> ${sanitizeHtml(formData.remarks)}</div>` : ''}
             </div>
-            
+
             <p>Your application will proceed to the next phase of review.</p>
-            
+
             <div class="footer">
               <p>This is an automated notification. Please do not reply to this email.</p>
               <p>Reimbursement Automation System</p>
@@ -113,14 +91,14 @@ const emailTemplates = {
           <div class="content">
             <p>Dear ${sanitizeHtml(formData.name)},</p>
             <p>We regret to inform you that your reimbursement application has been <span class="status-badge">REJECTED</span> at the ${sanitizeHtml(phase)} phase.</p>
-            
+
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
               <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
               <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Status:</strong> ${sanitizeHtml(formData.status)}</div>
             </div>
-            
+
             ${remarks ? `
               <div class="remarks-box">
                 <strong>Reason for Rejection:</strong>
@@ -128,7 +106,7 @@ const emailTemplates = {
               </div>
             ` : ''}
             <p>If you have any questions or concerns, please contact your coordinator.</p>
-            
+
             <div class="footer">
               <p>This is an automated notification. Please do not reply to this email.</p>
               <p>Reimbursement Automation System</p>
@@ -165,16 +143,16 @@ const emailTemplates = {
           <div class="content">
             <p>Dear ${sanitizeHtml(formData.name)},</p>
             <p>Your reimbursement application has been <span class="status-badge">SUBMITTED</span> successfully.</p>
-            
+
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
               <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
               <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Status:</strong> Pending</div>
             </div>
-            
+
             <p>Your application is now under review by the initial coordinator.</p>
-            
+
             <div class="footer">
               <p>This is an automated notification. Please do not reply to this email.</p>
               <p>Reimbursement Automation System</p>
@@ -211,7 +189,7 @@ const emailTemplates = {
           <div class="content">
             <p>Hello,</p>
             <p>We received a request to reset your password for the Reimbursement System. Click the button below to set a new password:</p>
-            
+
             <div style="text-align: center;">
               <a href="${sanitizeHtml(resetLink)}" class="btn">Reset Password</a>
             </div>
@@ -258,7 +236,7 @@ const emailTemplates = {
           <div class="content">
             <p>Hello,</p>
             <p>Your OTP for password change is:</p>
-            
+
             <div class="otp-box">
               <div class="otp-code">${sanitizeHtml(otp)}</div>
             </div>
@@ -282,30 +260,31 @@ const emailTemplates = {
 
 };
 
-// send email function 
+// send email function
 
 const sendEmail = async (to, subject, html) => {
   if (!isSmtpConfigured()) {
-    console.warn('Email not sent: SMTP_USER or SMTP_PASS not set. Set both in Render env to enable email.');
-    return { success: false, error: 'SMTP not configured' };
+    console.warn('Email not sent: RESEND_API_KEY not set. Set it in Render env to enable email.');
+    return { success: false, error: 'Resend not configured' };
   }
   try {
-    const transporter = createTransporter();
+    const fromEmail = process.env.RESEND_FROM_EMAIL || '';
+    const { data, error } = await resend.emails.send({
+      from: `Reimbursement System <${fromEmail}>`,
+      to: [to],
+      subject: subject,
+      html: html,
+    });
 
-    const mailOptions = {
-      from: `"Reimbursement System" <${process.env.SMTP_USER}>`,
-      to,
-      subject,
-      html,
-    };
+    if (error) {
+      console.error('Resend API error:', error);
+      return { success: false, error: error.message };
+    }
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    console.log('Email sent successfully:', data.id);
+    return { success: true, messageId: data.id };
   } catch (error) {
-    // Gmail SMTP from Render often fails (connection timeout): cloud IPs can be blocked by Google.
-    // Use a transactional provider (SendGrid, Resend, Mailgun) for reliable delivery from production.
-    console.error('Error sending email:', error.message || error);
+    console.error('Error sending email via Resend:', error.message || error);
     return { success: false, error: error.message };
   }
 };
