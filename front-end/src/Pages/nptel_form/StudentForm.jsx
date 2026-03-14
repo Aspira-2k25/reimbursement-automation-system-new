@@ -202,8 +202,13 @@ const StudentNptelForm = () => {
       const formDataToSend = new FormData();
 
       // SECURITY: Sanitize all text fields before sending
+      // Skip sanitization for numeric fields to prevent any value modification
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, sanitizeInput(formData[key]));
+        if (key === 'amount' || key === 'marks') {
+          formDataToSend.append(key, formData[key]);
+        } else {
+          formDataToSend.append(key, sanitizeInput(formData[key]));
+        }
       });
 
       // SECURITY: Use refs instead of direct DOM access
@@ -268,7 +273,7 @@ const StudentNptelForm = () => {
         // Re-enable button on error so user can retry
         setIsSubmitting(false);
       }
-    } catch (err) {
+    } catch  {
       toast.error("Form submission failed. Please try again.");
       // Re-enable button on error so user can retry
       setIsSubmitting(false);

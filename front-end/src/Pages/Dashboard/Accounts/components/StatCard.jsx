@@ -1,74 +1,52 @@
-import React from 'react'
-import { motion } from 'framer-motion'
+import React from "react"
+import { motion } from "framer-motion"
 
-const StatCard = ({ title, value, subtitle, icon: Icon, color = 'teal', onClick }) => {
-  const colorConfig = {
-    teal: {
-      bg: 'bg-gradient-to-br from-[#E8F7F2] to-[#D7F1E7]',
-      border: 'border-[#B7E4D5]',
-      iconBg: 'bg-[#CFF3E5]',
-      iconColor: 'text-[#3B945E]',
-      valueColor: 'text-[#3B945E]',
-      titleColor: 'text-slate-700',
-      subtitleColor: 'text-slate-500',
-      hoverBg: 'hover:from-[#DFF7EF] hover:to-[#CBEFE1]'
-    },
-    green: {
-      bg: 'bg-gradient-to-br from-green-50 to-emerald-50',
-      border: 'border-green-200',
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600',
-      valueColor: 'text-green-700',
-      titleColor: 'text-gray-700',
-      subtitleColor: 'text-gray-500',
-      hoverBg: 'hover:from-green-100 hover:to-emerald-100'
-    },
-    blue: {
-      bg: 'bg-gradient-to-br from-blue-50 to-indigo-50',
-      border: 'border-blue-200',
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
-      valueColor: 'text-blue-700',
-      titleColor: 'text-gray-700',
-      subtitleColor: 'text-gray-500',
-      hoverBg: 'hover:from-blue-100 hover:to-indigo-100'
-    }
+export default function StatCard({ title, value, icon: Icon, color = 'teal', subtitle, onClick }) {
+  const colorClasses = {
+    teal: "text-white",
+    blue: "text-white",
+    orange: "text-white",
+    green: "text-white",
+    red: "text-white",
   }
 
-  const colors = colorConfig[color] || colorConfig.teal
-
-  return (
+  const CardContent = () => (
     <motion.div
-      className={`
-        relative p-5 rounded-xl border shadow-sm cursor-pointer transition-all duration-300
-        ${colors.bg} ${colors.border} ${colors.hoverBg}
-      `}
-      onClick={onClick}
-      whileHover={{ scale: 1.02, y: -2 }}
+      className="bg-white rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300"
+      style={{ border: '1px solid var(--color-light-teal)' }}
+      whileHover={{ y: -2, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2 }}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className={`text-sm font-medium ${colors.titleColor}`}>{title}</p>
-          <p className={`text-2xl font-bold mt-1 ${colors.valueColor}`}>{value}</p>
-          {subtitle && (
-            <p className={`text-xs mt-1 ${colors.subtitleColor}`}>{subtitle}</p>
-          )}
-        </div>
-
-        {Icon && (
-          <div className={`p-2.5 rounded-lg ${colors.iconBg}`}>
-            <Icon className={`w-5 h-5 ${colors.iconColor}`} />
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--color-dark-gray)' }}>{title}</p>
+          <div className="flex items-center gap-2 mt-1 sm:mt-2">
+            <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--color-dark-gray)' }}>{value}</p>
           </div>
+          <p className="text-xs sm:text-sm mt-1 truncate" style={{ color: 'var(--color-dark-gray)' }}>{subtitle}</p>
+        </div>
+        {Icon && (
+          <motion.div
+            className={`p-2 sm:p-3 rounded-full ${colorClasses[color] || colorClasses.teal} flex-shrink-0 ml-2 sm:ml-3`}
+            style={{ backgroundColor: 'var(--color-medium-teal)' }}
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+          </motion.div>
         )}
       </div>
-
-      {/* Decorative element */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-1 rounded-b-xl bg-gradient-to-r from-[#57BA98] to-[#3B945E] opacity-50"
-      />
     </motion.div>
   )
-}
 
-export default StatCard
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="w-full text-left focus:outline-none focus:ring-2 focus:ring-[#57BA98] focus:ring-offset-2 rounded-lg">
+        <CardContent />
+      </button>
+    )
+  }
+
+  return <CardContent />
+}

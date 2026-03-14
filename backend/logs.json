@@ -463,33 +463,33 @@
     }
   },
   {
-    "timestamp": "2026-03-13T17:10:56.094Z",
+    "timestamp": "2026-03-13T17:45:16.797Z",
     "level": "INFO",
-    "message": "User logged in",
+    "message": "User logged in via Google",
     "data": {
-      "user": "Admin",
-      "role": "Admin",
-      "department": "IT"
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
     }
   },
   {
-    "timestamp": "2026-03-13T17:50:40.765Z",
+    "timestamp": "2026-03-13T17:56:37.963Z",
     "level": "INFO",
-    "message": "User logged in",
+    "message": "User logged out",
     "data": {
-      "user": "Admin",
-      "role": "Admin",
-      "department": "IT"
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
     }
   },
   {
-    "timestamp": "2026-03-13T19:28:42.598Z",
+    "timestamp": "2026-03-13T17:56:55.745Z",
     "level": "INFO",
     "message": "User logged in",
     "data": {
-      "user": "Admin",
-      "role": "Admin",
-      "department": "IT"
+      "user": "Gourish Pednekar",
+      "role": "Accounts",
+      "department": ""
     }
   }
 ]

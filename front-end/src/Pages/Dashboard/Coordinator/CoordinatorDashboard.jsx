@@ -77,7 +77,6 @@ export default function CoordinatorDashboard() {
     studentName: f.name || 'N/A',
     studentId: f.studentId || 'N/A',
     facultyId: f.facultyId,
-    jobTitle: f.jobTitle,
     category: f.reimbursementType || f.category || "NPTEL",
     status: f.status || "Pending",
     amount: f.amount ? `₹${f.amount.toLocaleString()}` : '₹0',
@@ -460,7 +459,7 @@ export default function CoordinatorDashboard() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-moss-lime)]/10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10 page-content">
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
