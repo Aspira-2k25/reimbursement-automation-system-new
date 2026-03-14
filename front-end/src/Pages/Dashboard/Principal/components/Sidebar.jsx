@@ -58,7 +58,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-inner">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))' }}>
                   <div className="w-5 h-5 bg-white rounded-md opacity-95"></div>
                 </div>
                 <div className="flex flex-col">
@@ -94,7 +94,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <User className="w-4 h-4 text-white" />
               </div>
             </motion.div>
@@ -107,7 +107,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'P'}
                 </span>
@@ -147,7 +147,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                     transition-all duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
                     ${isActive
-                      ? 'bg-green-600/10 text-green-800 border border-green-200 shadow-sm'
+                      ? 'bg-[#65CCB8]/20 text-[#3B945E] border border-[#65CCB8] shadow-sm'
                       : isHovered
                         ? 'bg-gray-50 text-gray-900'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -156,7 +156,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 >
                   <Icon className={`
                     w-5 h-5 flex-shrink-0 transition-colors duration-200
-                    ${isActive ? 'text-green-600' : 'text-gray-500'}
+                    ${isActive ? 'text-[#3B945E]' : 'text-gray-500'}
                   `} />
 
                   <AnimatePresence>

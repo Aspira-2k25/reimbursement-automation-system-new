@@ -8,11 +8,11 @@ const sanitizeHtml = (str) => {
 };
 
 // Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY || '');
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 /** Returns true if Resend is configured enough to attempt sending. */
 const isSmtpConfigured = () => {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.RESEND_API_KEY && resend);
 };
 
 //email template

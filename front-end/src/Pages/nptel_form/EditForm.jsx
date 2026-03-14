@@ -6,6 +6,16 @@ import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
 import { useAuth } from '../../context/AuthContext'; // Import useAuth   
 
+// Department options
+const DEPARTMENTS = [
+  "Computer Engineering",
+  "Information Technology",
+  "CSE AI and ML",
+  "CSE Data Science",
+  "Civil Engineering",
+  "Mechanical Engineering"
+];
+
 export default function EditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -84,15 +94,12 @@ export default function EditForm() {
       newErrors.name = 'Name is required';
     }
 
-    // For faculty forms: validate facultyId and jobTitle
+    // For faculty forms: validate facultyId
     // For student forms: validate studentId and division
     const isFacultyForm = formData?.applicantType && formData.applicantType !== 'Student';
     if (isFacultyForm) {
       if (!formData.facultyId?.trim()) {
         newErrors.facultyId = 'Faculty ID is required';
-      }
-      if (!formData.jobTitle?.trim()) {
-        newErrors.jobTitle = 'Job Title is required';
       }
     } else {
       if (!formData.studentId?.trim()) {
@@ -107,6 +114,10 @@ export default function EditForm() {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.department?.trim()) {
+      newErrors.department = 'Department is required';
     }
 
     if (!formData.academicYear?.trim()) {
@@ -333,21 +344,6 @@ export default function EditForm() {
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Job Title *</label>
-                  <input
-                    type="text"
-                    name="jobTitle"
-                    value={formData?.jobTitle || ''}
-                    onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                      ${errors.jobTitle ? 'border-red-300' : 'border-gray-300'}
-                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                  />
-                  {errors.jobTitle && (
-                    <p className="mt-2 text-sm text-red-600">{errors.jobTitle}</p>
-                  )}
-                </div>
               </>
             ) : (
               <>
@@ -384,6 +380,28 @@ export default function EditForm() {
                 </div>
               </>
             )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Department *</label>
+              <select
+                name="department"
+                value={formData?.department || ''}
+                onChange={handleChange}
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                  ${errors.department ? 'border-red-300' : 'border-gray-300'}
+                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+              >
+                <option value="">Select Department</option>
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              {errors.department && (
+                <p className="mt-2 text-sm text-red-600">{errors.department}</p>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Email *</label>
