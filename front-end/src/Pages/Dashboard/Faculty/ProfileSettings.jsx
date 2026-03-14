@@ -2,7 +2,6 @@ import React from "react"
 import { toast } from "react-hot-toast"
 import "../Dashboard.css"
 import { useProfile } from "./ProfileContext"
-import ChangePassword from '../../../components/ChangePassword'
 
 /**
  * Faculty ProfileSettings Component
@@ -142,11 +141,6 @@ export default function ProfileSettings() {
             </button>
           </div>
         </form>
-
-        {/* Security Settings */}
-        <div className="mt-6 max-w-2xl mx-auto px-4">
-          <ChangePassword />
-        </div>
 
       </div>
     </main>

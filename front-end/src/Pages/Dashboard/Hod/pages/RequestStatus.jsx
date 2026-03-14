@@ -72,7 +72,7 @@ const RequestStatus = () => {
   const [deleteItem, setDeleteItem] = useState(null)
 
   // Fetch HOD's own forms on mount
-  const fetchRequests = async () => {
+  const fetchRequests = async (isRetry = false) => {
     try {
       setLoading(true)
       const data = await facultyFormsAPI.listMine()
@@ -98,7 +98,12 @@ const RequestStatus = () => {
       setError(null)
     } catch (err) {
       console.error('Failed to load requests:', err)
-      setError('Failed to load your requests. Please try again.')
+      if (!isRetry) {
+        // One lightweight retry avoids transient failures during route transitions.
+        await new Promise(resolve => setTimeout(resolve, 400))
+        return fetchRequests(true)
+      }
+      setError(err?.error || 'Failed to load your requests. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -172,7 +177,7 @@ const RequestStatus = () => {
   const handleDelete = async (item) => {
     try {
       // SECURITY: Use centralized API service with httpOnly cookies
-      await facultyFormsAPI.deleteById(item.id);
+      await facultyFormsAPI.deleteById(item._id || item.id);
       toast.success('Request deleted successfully')
       setDeleteItem(null)
       fetchRequests() // Refresh the list
@@ -326,7 +331,7 @@ const RequestStatus = () => {
                       {/* View */}
                       <button
                         className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
-                        onClick={() => navigate(`/faculty-form/view/${r.id}`)}
+                        onClick={() => navigate(`/faculty-form/view/${r._id || r.id}`)}
                         title="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -334,7 +339,7 @@ const RequestStatus = () => {
                       {/* Edit */}
                       <button
                         className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => navigate(`/faculty-form/edit/${r.id}`)}
+                        onClick={() => navigate(`/faculty-form/edit/${r._id || r.id}`)}
                         title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
                         disabled={r.status !== 'Under Principal'}
                       >

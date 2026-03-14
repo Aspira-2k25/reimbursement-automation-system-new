@@ -1,5 +1,6 @@
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialHodData } from '../data/mockData'
@@ -26,6 +27,7 @@ export const useHODContext = () => {
 }
 
 const HODLayout = ({ children }) => {
+  const location = useLocation()
   const { user } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
@@ -217,6 +219,27 @@ const HODLayout = ({ children }) => {
       })
     }
   }, [user])
+
+  // Keep HOD internal tab state aligned with direct URL navigation.
+  // This is important when returning from shared edit/view pages.
+  useEffect(() => {
+    const path = location.pathname.toLowerCase()
+    if (!path.startsWith('/dashboard/hod')) return
+
+    if (path.includes('/request-status')) {
+      setActiveTab('request-status')
+      return
+    }
+
+    if (path.includes('/profile')) {
+      setActiveTab('profile')
+      return
+    }
+
+    if (path.endsWith('/dashboard/hod') || path.endsWith('/dashboard/hod/')) {
+      setActiveTab('home')
+    }
+  }, [location.pathname])
 
   // Function to render content based on active tab
   const renderContent = () => {
