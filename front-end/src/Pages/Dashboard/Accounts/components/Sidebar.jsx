@@ -18,7 +18,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
     { id: 'home', label: 'Reimbursement Dashboard', icon: Home },
     { id: 'reimbursed', label: 'Reimbursed List', icon: CheckCircle },
     { id: 'profile', label: 'Profile Settings', icon: Settings },
-    { id: 'change-password', label: 'Change Password', icon: KeyRound }
+    // { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleTabClick = useCallback((tabId) => {
