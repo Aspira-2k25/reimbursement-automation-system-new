@@ -74,6 +74,10 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const logout = useCallback(async () => {
+    // Clear local session first so UI exits authenticated routes immediately.
+    localStorage.removeItem('user');
+    setUser(null);
+
     try {
       // CSRF: ensure token is available for cookie-authenticated logout
       if (!getCsrfToken()) {
@@ -89,10 +93,6 @@ export const AuthProvider = ({ children }) => {
       });
     } catch {
       // Silently handle logout errors - user is logged out locally anyway
-    } finally {
-      // Clear local storage
-      localStorage.removeItem('user');
-      setUser(null);
     }
   }, []);
 

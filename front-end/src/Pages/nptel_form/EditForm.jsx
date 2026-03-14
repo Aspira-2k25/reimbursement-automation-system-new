@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
-import { useAuth } from '../../context/AuthContext'; // Import useAuth   
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
 // Department options
 const DEPARTMENTS = [
@@ -20,13 +19,37 @@ export default function EditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const navigateBack = useBackNavigation();
   const { user } = useAuth(); // Get authenticated user
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
   const [, setIsStudentForm] = useState(false);
+
+  const navigateToRoleRequests = React.useCallback(() => {
+    const userRole = user?.role?.toLowerCase();
+    if (userRole === 'coordinator') {
+      navigate('/dashboard/coordinator');
+      return;
+    }
+    if (userRole === 'faculty') {
+      navigate('/dashboard/faculty/requests');
+      return;
+    }
+    if (userRole === 'hod') {
+      navigate('/dashboard/hod/request-status');
+      return;
+    }
+    if (userRole === 'principal') {
+      navigate('/dashboard/principal');
+      return;
+    }
+    if (userRole === 'accounts') {
+      navigate('/dashboard/accounts');
+      return;
+    }
+    navigate('/dashboard/requests');
+  }, [navigate, user?.role]);
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -67,7 +90,7 @@ export default function EditForm() {
 
         if (form.status !== requiredStatus) {
           toast.error('This form can no longer be edited. Once an approver acts on a form, editing is permanently locked.');
-          navigateBack();
+          navigateToRoleRequests();
           return;
         }
 
@@ -76,7 +99,7 @@ export default function EditForm() {
       } catch (err) {
         console.error('Error fetching form:', err);
         toast.error(err.error || 'Failed to fetch form details');
-        navigateBack();
+        navigateToRoleRequests();
       } finally {
         setLoading(false);
       }
@@ -85,7 +108,7 @@ export default function EditForm() {
     if (user) {
       fetchForm();
     }
-  }, [id, user, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, user, location.pathname, navigateToRoleRequests]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -262,14 +285,7 @@ export default function EditForm() {
       await api.updateById(id, formDataToSend);
 
       toast.success('Changes saved successfully!');
-      // Navigate based on user role
-      if (userRole === 'coordinator') {
-        navigate('/dashboard/coordinator');
-      } else if (userRole === 'faculty') {
-        navigate('/dashboard/faculty/requests');
-      } else {
-        navigate('/dashboard/requests');
-      }
+      navigateToRoleRequests();
     } catch (err) {
       console.error('Error updating form:', err);
       const msg = err?.error === 'Network error'
@@ -294,7 +310,7 @@ export default function EditForm() {
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
         <div className="mb-4">
           <button
-            onClick={navigateBack}
+            onClick={navigateToRoleRequests}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -592,7 +608,7 @@ export default function EditForm() {
           <div className="flex justify-end gap-4">
             <button
               type="button"
-              onClick={navigateBack}
+              onClick={navigateToRoleRequests}
               disabled={saving}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50"
             >
