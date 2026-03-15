@@ -4,13 +4,19 @@
  */
 
 const mongoose = require('mongoose');
+const { DEPARTMENT_LIST } = require('../constants/statusEnums');
 
 // Department aliases for flexible matching between short codes and full names
 const DEPARTMENT_ALIASES = {
     'IT': 'Information Technology',
+    'INFOTECH': 'Information Technology',
     'CE': 'Computer Engineering',
+    'COMPS': 'Computer Engineering',
+    'COMP': 'Computer Engineering',
     'AIML': 'CSE AI and ML',
+    'AI ML': 'CSE AI and ML',
     'DS': 'CSE Data Science',
+    'DATA SCIENCE': 'CSE Data Science',
     'CIVIL': 'Civil Engineering',
     'MECH': 'Mechanical Engineering',
 };
@@ -113,6 +119,61 @@ const buildDepartmentFilter = (userRole, userDepartment) => {
     return {};
 };
 
+/**
+ * Get the standardized full name for a department alias or variant.
+ * @param {string} dept
+ * @returns {string}
+ */
+const getNormalizedDepartment = (dept) => {
+    if (!dept) return '';
+    const trimmed = dept.trim();
+    const upper = trimmed.toUpperCase();
+    
+    // Check if it's a known short code alias
+    if (DEPARTMENT_ALIASES[upper]) {
+        return DEPARTMENT_ALIASES[upper];
+    }
+    
+    // Check if it matches a full name with different casing
+    for (const fullName of Object.values(DEPARTMENT_ALIASES)) {
+        if (fullName.toLowerCase() === trimmed.toLowerCase()) {
+            return fullName;
+        }
+    }
+
+    for (const fullName of DEPARTMENT_LIST) {
+        if (fullName.toLowerCase() === trimmed.toLowerCase()) {
+            return fullName;
+        }
+    }
+    
+    return trimmed;
+};
+
+/**
+ * Check whether the user can access a form based on role and department.
+ * Coordinators and HODs are restricted to their own normalized department variants.
+ * @param {string} userRole
+ * @param {string} userDepartment
+ * @param {string} formDepartment
+ * @returns {boolean}
+ */
+const hasDepartmentAccess = (userRole, userDepartment, formDepartment) => {
+    const role = (userRole || '').toLowerCase();
+    if (!['coordinator', 'hod'].includes(role)) {
+        return true;
+    }
+    if (!userDepartment || !formDepartment) {
+        return false;
+    }
+
+    const allowed = new Set(
+        getDepartmentVariants(getNormalizedDepartment(userDepartment)).map((d) => d.toLowerCase())
+    );
+
+    return allowed.has(getNormalizedDepartment(formDepartment).toLowerCase());
+};
+
 module.exports = {
     DEPARTMENT_ALIASES,
     sanitizeString,
@@ -120,4 +181,6 @@ module.exports = {
     isValidObjectId,
     getDepartmentVariants,
     buildDepartmentFilter,
+    getNormalizedDepartment,
+    hasDepartmentAccess,
 };

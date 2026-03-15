@@ -10,6 +10,7 @@ import FacultyManagement from './FacultyManagement'
 import Dashboard from './Dashboard'
 import AdminLogs from './AdminLogs'
 import ChangePassword from '../../../../components/ChangePassword'
+import { normalizeDepartment } from '../../../../utils/departmentNormalization'
 
 // Context for sharing Admin state across components
 const AdminContext = createContext()
@@ -96,20 +97,21 @@ const AdminLayout = () => {
   // Filter faculty based on search and filters
   const filteredFaculty = useMemo(() => {
     return staffList.filter(faculty => {
+      const isActive = faculty.is_active !== false
       const matchesSearch = !searchQuery ||
         faculty.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         faculty.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         faculty.email?.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchesDepartment = departmentFilter === 'All' || faculty.department === departmentFilter
+      const matchesDepartment = departmentFilter === 'All' || normalizeDepartment(faculty.department) === departmentFilter
 
-      return matchesSearch && matchesDepartment
+      return isActive && matchesSearch && matchesDepartment
     })
   }, [staffList, searchQuery, departmentFilter])
 
   // Get unique departments
   const departments = useMemo(() => {
-    const depts = new Set(staffList.map(f => f.department).filter(Boolean))
+    const depts = new Set(staffList.map(f => normalizeDepartment(f.department)).filter(Boolean))
     return ['All', ...Array.from(depts)]
   }, [staffList])
 
@@ -130,12 +132,12 @@ const AdminLayout = () => {
     try {
       if (editingStaff) {
         // Update existing
-        await adminAPI.updateFaculty(editingStaff.id, formData)
-        toast.success('Staff updated successfully')
+        const response = await adminAPI.updateFaculty(editingStaff.id, formData)
+        toast.success(response?.message || 'Staff updated successfully')
       } else {
         // Create new
-        await adminAPI.createFaculty(formData)
-        toast.success('Staff created successfully')
+        const response = await adminAPI.createFaculty(formData)
+        toast.success(response?.message || 'Staff created successfully')
       }
       setShowModal(false)
       setEditingStaff(null)
@@ -153,7 +155,7 @@ const AdminLayout = () => {
     }
     try {
       await adminAPI.deleteFaculty(id)
-      toast.success('Staff deleted successfully')
+      toast.success('Staff removed successfully')
       fetchStaff()
     } catch (error) {
       console.error('Error deleting staff:', error)

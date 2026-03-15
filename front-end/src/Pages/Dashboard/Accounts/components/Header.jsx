@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle, CheckCheck } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useAccountsContext } from '../pages/AccountsLayout'
 import { useAuth } from '../../../../context/AuthContext.jsx'
@@ -60,8 +60,8 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     setShowNotifications(false)
   }, [showProfileMenu])
 
-  const handleLogout = useCallback(() => {
-    logout()
+  const handleLogout = useCallback(async () => {
+    await logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
     navigate('/')

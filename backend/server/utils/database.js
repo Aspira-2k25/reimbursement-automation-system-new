@@ -1,4 +1,7 @@
 const pool = require('../config/database');
+const bcrypt = require('bcryptjs');
+
+const BCRYPT_HASH_PATTERN = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 
 // Helper to check if pool is initialized
 function ensurePool() {
@@ -263,7 +266,25 @@ const dbUtils = {
   // Update staff by ID (admin controlled)
   updateStaffById: async (id, updates) => {
     try {
-      const allowed = ['username', 'name', 'email', 'role', 'department', 'employee_id', 'is_active'];
+      // Validate password updates to avoid hashing invalid values like null/empty strings
+      if (updates && Object.prototype.hasOwnProperty.call(updates, 'password')) {
+        const rawPassword = updates.password;
+        const passwordStr = rawPassword == null ? '' : String(rawPassword);
+        const trimmed = passwordStr.trim();
+
+        // Reject empty / whitespace-only passwords
+        if (trimmed.length === 0) {
+          throw new Error('Password cannot be empty.');
+        }
+
+        // As a last line of defense, enforce a minimal password length
+        // when the value is not already a bcrypt hash.
+        if (!BCRYPT_HASH_PATTERN.test(passwordStr) && trimmed.length < 8) {
+          throw new Error('Password must be at least 8 characters long.');
+        }
+      }
+
+      const allowed = ['username', 'name', 'email', 'role', 'department', 'employee_id', 'is_active', 'password'];
       const fields = allowed.filter((k) => updates[k] !== undefined);
 
       if (fields.length === 0) {
@@ -271,7 +292,19 @@ const dbUtils = {
       }
 
       const setClauses = fields.map((field, idx) => `${field} = $${idx + 2}`);
-      const values = fields.map((field) => updates[field]);
+      const values = [];
+      for (const field of fields) {
+        if (field === 'password') {
+          const passwordValue = String(updates[field]);
+          if (BCRYPT_HASH_PATTERN.test(passwordValue)) {
+            values.push(passwordValue);
+          } else {
+            values.push(await bcrypt.hash(passwordValue, 10));
+          }
+        } else {
+          values.push(updates[field]);
+        }
+      }
 
       const query = `
         UPDATE staff

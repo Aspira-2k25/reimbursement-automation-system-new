@@ -8,6 +8,7 @@ import { initialAccountsData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
 import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
 import ProfileSettings from './ProfileSettings'
 import ReimbursedList from './ReimbursedList'
@@ -119,7 +120,7 @@ const AccountsLayout = () => {
         phone: user.phone,
         joinDate: user.joinDate,
         employeeId: user.employeeId || user.id,
-        department: user.department || 'Accounts'
+        department: resolveDepartment(user.department) || 'Accounts'
       })
     }
   }, [user])

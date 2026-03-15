@@ -101,7 +101,7 @@ const FacultyModal = () => {
         name: formData.name.trim(),
         username: formData.username.trim(),
         email: formData.email.trim(),
-        department: formData.department,
+        department: formData.department || null,
         role: formData.role || 'Faculty'
       }
 
@@ -184,8 +184,7 @@ const FacultyModal = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              disabled={!!editingStaff}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${errors.username ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.username ? 'border-red-500' : 'border-gray-300'
                 }`}
             />
             {errors.username && <p className="text-red-600 text-xs mt-1">{errors.username}</p>}
@@ -266,6 +265,9 @@ const FacultyModal = () => {
                 }`}
               placeholder={editingStaff ? 'Leave blank to keep current' : 'Min 6 characters'}
             />
+            {editingStaff && !errors.password && (
+              <p className="text-xs text-gray-500 mt-1">Enter a new password only if you want to change it.</p>
+            )}
             {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password}</p>}
           </div>
 

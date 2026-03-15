@@ -6,6 +6,7 @@ import { initialPrincipalData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
 import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
 import DepartmentRoster from './DepartmentRoster'
@@ -92,7 +93,8 @@ const PrincipalLayout = ({ children }) => {
         email: userEmail,
         phone: user.phone,
         joinDate: user.joinDate,
-        employeeId: user.employeeId || user.id
+        employeeId: user.employeeId || user.id,
+        department: resolveDepartment(user.department)
       })
     }
   }, [user])
@@ -190,11 +192,11 @@ const PrincipalLayout = ({ children }) => {
     const total = allRequests.length
     const pending = allRequests.filter(r => r.status === 'Under Principal').length
     // Include all post-approval statuses for accurate counting
-    const approvedStatuses = ['Approved', 'Reimbursed', 'Disbursed']
+    const approvedStatuses = ['Approved', 'Reimbursed']
     const approved = allRequests.filter(r => approvedStatuses.includes(r.status)).length
     const rejected = allRequests.filter(r => r.status === 'Rejected').length
     const approvedAmount = allRequests
-      .filter(r => approvedStatuses.includes(r.status))
+      .filter(r => r.status === 'Reimbursed')
       .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
 
     const processedRequests = approved + rejected

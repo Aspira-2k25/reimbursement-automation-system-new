@@ -12,7 +12,7 @@ const { validateUploadedFiles } = require("../middleware/multer");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES, buildDepartmentFilter } = require('../utils/formHelpers');
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, DEPARTMENT_ALIASES, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
 
 
 // POST /api/student-forms/submit
@@ -92,15 +92,24 @@ router.post(
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
+      const tokenDepartment = req.user?.department;
+      const bodyDepartment = req.body.department;
+      const normalizedDepartment = getNormalizedDepartment(tokenDepartment || bodyDepartment);
+      if (!normalizedDepartment) {
+        return res.status(400).json({
+          error: 'Department is not configured for your account. Please contact administrator.'
+        });
+      }
       const applicationId = await generateApplicationId({
         applicantType: 'Student',
         reimbursementType: req.body.reimbursementType || 'NPTEL',
         academicYear: req.body.academicYear,
-        department: req.body.department
+        department: normalizedDepartment
       });
 
       const newStudentForm = new StudentForm({
         ...req.body,
+        department: normalizedDepartment,
         amount,
         marks,
         applicationId,
@@ -211,11 +220,11 @@ router.get(
         return res.status(403).json({ error: "Forbidden: Only coordinators, HODs, and principals can access this endpoint" });
       }
 
-      // Fetch forms with status "Under HOD", "Under Principal", "Approved", "Reimbursed", or "Disbursed"
+      // Fetch forms with post-coordinator statuses
       const deptFilter = buildDepartmentFilter(userRole, req.user.department);
       const query = {
         $and: [
-          { status: { $in: ["Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed"] } },
+          { status: { $in: ["Under HOD", "Under Principal", "Approved", "Reimbursed"] } },
           deptFilter
         ]
       };
@@ -414,6 +423,10 @@ router.post(
         return res.status(403).json({ error: "Forbidden" });
       }
 
+      if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+        return res.status(403).json({ error: 'Not authorized for this department' });
+      }
+
       // Only owner can update documents when form is Pending
       if (form.status !== 'Pending' && !isAdmin) {
         return res.status(403).json({ error: "Cannot update documents for this form status" });
@@ -507,6 +520,10 @@ router.get(
         return res.status(403).json({ error: "Forbidden" });
       }
 
+      if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+        return res.status(403).json({ error: 'Not authorized for this department' });
+      }
+
       return res.json({ form });
     } catch (err) {
       console.error("Error fetching form by id:", err);
@@ -563,6 +580,10 @@ router.put(
         return res.status(403).json({ error: "Forbidden", message: "You can only edit your own applications." });
       }
 
+      if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+        return res.status(403).json({ error: 'Not authorized for this department' });
+      }
+
       // Determine allowed fields based on user role and form status
       let allowedUpdates = [];
 
@@ -571,7 +592,7 @@ router.put(
         // (before Coordinator takes any action). Once approved/rejected, editing is locked.
         if (form.status === 'Pending') {
           allowedUpdates = [
-            'name', 'studentId', 'division', 'department', 'email', 'academicYear',
+            'name', 'studentId', 'division', 'email', 'academicYear',
             'amount', 'accountName', 'ifscCode', 'accountNumber',
             'courseName', 'marks',
             'remarks', 'documents', 'reimbursementType'
@@ -626,9 +647,6 @@ router.put(
         } else if (form.status === 'Reimbursed') {
           // Already reimbursed, no further updates allowed
           return res.status(400).json({ error: 'This request has already been reimbursed' });
-        } else if (form.status === 'Disbursed') {
-          // Already disbursed (legacy), no further updates allowed
-          return res.status(400).json({ error: 'This request has already been processed' });
         } else {
           return res.status(403).json({ error: 'Accounts can only process requests with status "Approved"' });
         }
@@ -782,10 +800,19 @@ router.delete(
       const formUserId = String(form.userId);
 
       const isOwner = formUserId === userId;
-      const isAuthorizedRole = ['coordinator', 'hod', 'principal'].includes(userRole);
 
-      if (!isOwner && !isAuthorizedRole) {
-        return res.status(403).json({ error: "Forbidden: Not authorized to delete this form" });
+      if (!isOwner) {
+        return res.status(403).json({ error: "Forbidden: Only the form owner can delete this form" });
+      }
+
+      if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+        return res.status(403).json({ error: 'Not authorized for this department' });
+      }
+
+      if (form.status !== 'Pending') {
+        return res.status(409).json({
+          error: 'Form cannot be deleted after review has started. Use workflow actions instead.'
+        });
       }
 
       // Delete associated files from Cloudinary

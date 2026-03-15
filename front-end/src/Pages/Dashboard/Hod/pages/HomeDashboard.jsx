@@ -242,7 +242,7 @@ const HomeDashboard = () => {
               Welcome back, {userProfile?.fullName || 'HOD'} 👋
             </h1>
             <p className="text-green-100 mb-4 text-sm sm:text-base">
-              Head of Department • {userProfile?.department || 'Civil Engineering'}
+              Head of Department • {userProfile?.department || 'Department not set'}
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
               <div className="flex items-center gap-2">

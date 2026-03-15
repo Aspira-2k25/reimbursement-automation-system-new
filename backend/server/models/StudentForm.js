@@ -21,7 +21,7 @@ const StudentFormSchema = new mongoose.Schema({
     courseName: { type: String, required: true }, // NPTEL Course Name for reimbursement
     marks: { type: Number, required: true }, // NPTEL course marks (0-100)
     reimbursementType: { type: String, default: "NPTEL" },
-    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed", "Rejected"] },
+    status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Rejected"] },
     // Track which role rejected the application (for workflow visibility)
     rejectedBy: { type: String, enum: ["Coordinator", "HOD", "Principal", "Accounts", null], default: null },
     rejectionRemarks: { type: String }, // Reason for rejection

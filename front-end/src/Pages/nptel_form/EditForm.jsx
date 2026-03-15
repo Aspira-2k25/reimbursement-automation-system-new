@@ -5,16 +5,6 @@ import { toast } from 'react-hot-toast';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
-// Department options
-const DEPARTMENTS = [
-  "Computer Engineering",
-  "Information Technology",
-  "CSE AI and ML",
-  "CSE Data Science",
-  "Civil Engineering",
-  "Mechanical Engineering"
-];
-
 export default function EditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -74,6 +64,11 @@ export default function EditForm() {
 
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures
+
+        const sessionDepartment = user?.department || '';
+        if (sessionDepartment) {
+          form.department = sessionDepartment;
+        }
 
         // Check if the form is still editable based on its status
         // Student forms: editable only at "Pending"
@@ -242,6 +237,9 @@ export default function EditForm() {
       const { status: _status, _id: _oid, __v: _v, applicantType: _at, applicationId: _aid, userId: _uid, createdAt: _ca, updatedAt: _ua, documents: _docs, rejectedBy: _rb, rejectionRemarks: _rr, ...editableFields } = formData;
       const formDataToSend = { ...editableFields };
 
+      // Enforce trusted session-derived department in update payload.
+      formDataToSend.department = user?.department || formData.department;
+
       // Convert amount to number explicitly
       formDataToSend.amount = parseFloat(formData.amount);
 
@@ -399,21 +397,15 @@ export default function EditForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Department *</label>
-              <select
+              <input
+                type="text"
                 name="department"
                 value={formData?.department || ''}
-                onChange={handleChange}
+                readOnly
                 className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
                   ${errors.department ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              >
-                <option value="">Select Department</option>
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+                  bg-gray-100 text-gray-600 cursor-not-allowed sm:text-sm`}
+              />
               {errors.department && (
                 <p className="mt-2 text-sm text-red-600">{errors.department}</p>
               )}

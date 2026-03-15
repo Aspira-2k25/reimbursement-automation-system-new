@@ -11,7 +11,7 @@ const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
 const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES, buildDepartmentFilter } = require('../utils/formHelpers');
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, DEPARTMENT_ALIASES, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
 
 // POST /api/forms/submit
 router.post(
@@ -83,15 +83,22 @@ router.post(
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: F-COMP-NPT-2026-001 (Faculty, Comp Dept, NPTEL, 2026, Global Sequence 1)
+      const normalizedDepartment = getNormalizedDepartment(req.user?.department);
+      if (!normalizedDepartment) {
+        return res.status(400).json({
+          error: 'Department is not configured for your account. Please contact administrator.'
+        });
+      }
       const applicationId = await generateApplicationId({
         applicantType: applicantType,
         reimbursementType: req.body.reimbursementType || 'NPTEL',
         academicYear: req.body.academicYear,
-        department: req.body.department || req.user.department
+        department: normalizedDepartment
       });
 
       const newForm = new Form({
         ...req.body,
+        department: normalizedDepartment,
         amount,
         marks,
         applicationId,
@@ -234,18 +241,18 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    let query = { status: { $in: ["Under Principal", "Approved", "Reimbursed", "Disbursed"] } };
+    let query = { status: { $in: ["Under Principal", "Approved", "Reimbursed"] } };
 
-    // Faculty/Coordinator: only see their own forms
-    if (['faculty', 'coordinator'].includes(userRole)) {
+    // Faculty: only see their own forms
+    if (userRole === 'faculty') {
       query.userId = String(userId);
     }
-    // HOD: only see forms from their department
-    else if (userRole === 'hod') {
+    // Coordinator/HOD: only see forms from their department
+    else if (['coordinator', 'hod'].includes(userRole)) {
       const deptFilter = buildDepartmentFilter(userRole, userDepartment);
       query = {
         $and: [
-          { status: { $in: ["Under Principal", "Approved", "Reimbursed", "Disbursed"] } },
+          { status: { $in: ["Under Principal", "Approved", "Reimbursed"] } },
           deptFilter
         ]
       };
@@ -402,6 +409,11 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
     }
+
+    if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+      return res.status(403).json({ error: 'Not authorized for this department' });
+    }
+
     res.json({ form });
   } catch (err) {
     console.error("Error retrieving form:", err);
@@ -455,6 +467,10 @@ router.put(
         return res.status(403).json({ error: "Not authorized to edit this form" });
       }
 
+      if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+        return res.status(403).json({ error: 'Not authorized for this department' });
+      }
+
       // Upload new files if provided (parallel with old file cleanup)
       const updateUploadPromises = [];
       if (req.files?.nptelResult?.[0]) {
@@ -506,7 +522,7 @@ router.put(
         // Faculty/Coordinator forms start at "Under HOD", HOD forms start at "Under Principal".
         const initialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
         if (form.status === initialStatus) {
-          allowedUpdates = ['name', 'email', 'facultyId', 'department', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
+          allowedUpdates = ['name', 'email', 'facultyId', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
         } else {
           return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
         }
@@ -542,8 +558,6 @@ router.put(
             statusValidation = ['Reimbursed', 'Rejected'];
           } else if (form.status === 'Reimbursed') {
             return res.status(400).json({ error: 'This form has already been reimbursed' });
-          } else if (form.status === 'Disbursed') {
-            return res.status(400).json({ error: 'This form has already been processed' });
           } else {
             return res.status(403).json({ error: 'Accounts can only process forms with status "Approved"' });
           }
@@ -707,9 +721,22 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
     const tokenUserId = req.user.userId || req.user.email || req.user.id;
     const formUserId = form.userId;
 
-    // Check if user is authorized to delete this form (normalize to strings for comparison)
-    if (String(formUserId) !== String(tokenUserId)) {
-      return res.status(403).json({ error: "Not authorized to delete this form" });
+    const userRole = req.user.role?.toLowerCase();
+    const isOwner = String(formUserId) === String(tokenUserId);
+
+    if (!isOwner) {
+      return res.status(403).json({ error: "Only the form owner can delete this form" });
+    }
+
+    if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
+      return res.status(403).json({ error: 'Not authorized for this department' });
+    }
+
+    const deletableStatuses = ['Under HOD'];
+    if (!deletableStatuses.includes(form.status)) {
+      return res.status(409).json({
+        error: 'Form cannot be deleted after review has started. Use workflow actions instead.'
+      });
     }
 
     // Delete files from Cloudinary if they exist

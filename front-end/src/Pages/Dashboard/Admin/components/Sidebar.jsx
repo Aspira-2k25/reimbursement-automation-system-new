@@ -1,5 +1,4 @@
 import React from 'react'
-import { motion } from 'framer-motion'
 import { useAdminContext } from '../pages/AdminLayout'
 import {
   LayoutGrid,
@@ -25,17 +24,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 
   return (
-    <motion.div
-      animate={{ width: isCollapsed ? 80 : 280 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="bg-white border-r border-gray-200 flex flex-col h-screen overflow-y-auto"
-    >
+    <div className="bg-white border-r border-gray-200 flex flex-col h-screen overflow-y-auto" style={{ width: isCollapsed ? 80 : 280, transition: 'width 0.3s ease-in-out' }}>
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-gray-200">
         {!isCollapsed && (
@@ -88,7 +83,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           {!isCollapsed && <span>Logout</span>}
         </button>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
