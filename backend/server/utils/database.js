@@ -263,7 +263,7 @@ const dbUtils = {
   // Update staff by ID (admin controlled)
   updateStaffById: async (id, updates) => {
     try {
-      const allowed = ['username', 'name', 'email', 'role', 'department', 'employee_id', 'is_active'];
+      const allowed = ['username', 'name', 'email', 'role', 'department', 'employee_id', 'is_active', 'password'];
       const fields = allowed.filter((k) => updates[k] !== undefined);
 
       if (fields.length === 0) {
