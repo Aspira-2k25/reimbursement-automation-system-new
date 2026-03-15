@@ -110,7 +110,7 @@ export default function Navbar() {
               ].join(" ")}
             />
 
-            {navItems.slice(0, 2).map((item, index) => (
+            {navItems.slice(0, 2).map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -238,14 +238,15 @@ export default function Navbar() {
                     </div>
                   </button>
                   <button
-                    onClick={() => {
-                      logout()
+                    onClick={async () => {
+                      await logout()
                       handleClose()
                       navigate("/")
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        await logout()
                         handleClose()
                         navigate("/")
                       }

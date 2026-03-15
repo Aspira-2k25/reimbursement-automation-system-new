@@ -152,7 +152,7 @@ export function calculateStats(requests = []) {
 
   // Count by status
   const pendingStatuses = ['Pending', 'Under HOD', 'Under Coordinator']
-  const postHodStatuses = ['Under Principal', 'Approved', 'Reimbursed', 'Disbursed']
+  const postHodStatuses = ['Under Principal', 'Approved', 'Reimbursed']
 
   const pending = requests.filter(r => pendingStatuses.includes(r.status)).length
   const underPrincipal = requests.filter(r => r.status === 'Under Principal').length
@@ -162,7 +162,7 @@ export function calculateStats(requests = []) {
   // Calculate amounts
   const totalAmount = requests.reduce((sum, r) => sum + parseAmount(r.amount), 0)
   const approvedAmount = requests
-    .filter(r => postHodStatuses.includes(r.status))
+    .filter(r => r.status === 'Reimbursed')
     .reduce((sum, r) => sum + parseAmount(r.amount), 0)
   const pendingAmount = requests
     .filter(r => pendingStatuses.includes(r.status))

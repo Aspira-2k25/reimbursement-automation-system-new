@@ -190,11 +190,11 @@ const PrincipalLayout = ({ children }) => {
     const total = allRequests.length
     const pending = allRequests.filter(r => r.status === 'Under Principal').length
     // Include all post-approval statuses for accurate counting
-    const approvedStatuses = ['Approved', 'Reimbursed', 'Disbursed']
+    const approvedStatuses = ['Approved', 'Reimbursed']
     const approved = allRequests.filter(r => approvedStatuses.includes(r.status)).length
     const rejected = allRequests.filter(r => r.status === 'Rejected').length
     const approvedAmount = allRequests
-      .filter(r => approvedStatuses.includes(r.status))
+      .filter(r => r.status === 'Reimbursed')
       .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
 
     const processedRequests = approved + rejected

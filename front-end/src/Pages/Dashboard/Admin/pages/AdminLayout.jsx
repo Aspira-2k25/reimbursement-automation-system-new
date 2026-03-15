@@ -11,6 +11,26 @@ import Dashboard from './Dashboard'
 import AdminLogs from './AdminLogs'
 import ChangePassword from '../../../../components/ChangePassword'
 
+const DEPARTMENT_ALIASES = {
+  'IT': 'Information Technology',
+  'CE': 'Computer Engineering',
+  'AIML': 'CSE AI and ML',
+  'DS': 'CSE Data Science',
+  'CIVIL': 'Civil Engineering',
+  'MECH': 'Mechanical Engineering',
+}
+
+const normalizeDepartment = (dept) => {
+  if (!dept) return ''
+  const trimmed = dept.trim()
+  const upper = trimmed.toUpperCase()
+  if (DEPARTMENT_ALIASES[upper]) return DEPARTMENT_ALIASES[upper]
+  for (const fullName of Object.values(DEPARTMENT_ALIASES)) {
+    if (fullName.toLowerCase() === trimmed.toLowerCase()) return fullName
+  }
+  return trimmed
+}
+
 // Context for sharing Admin state across components
 const AdminContext = createContext()
 
@@ -101,7 +121,7 @@ const AdminLayout = () => {
         faculty.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         faculty.email?.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchesDepartment = departmentFilter === 'All' || faculty.department === departmentFilter
+      const matchesDepartment = departmentFilter === 'All' || normalizeDepartment(faculty.department) === departmentFilter
 
       return matchesSearch && matchesDepartment
     })
@@ -109,7 +129,7 @@ const AdminLayout = () => {
 
   // Get unique departments
   const departments = useMemo(() => {
-    const depts = new Set(staffList.map(f => f.department).filter(Boolean))
+    const depts = new Set(staffList.map(f => normalizeDepartment(f.department)).filter(Boolean))
     return ['All', ...Array.from(depts)]
   }, [staffList])
 
