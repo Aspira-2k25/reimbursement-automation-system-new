@@ -1,8 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { fetchCsrfToken, getCsrfToken } from '../services/api';
-
-// Use env var for API URL - same as api.js
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+import { fetchCsrfToken, getCsrfToken, API_BASE_URL } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -18,6 +15,38 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const normalizeUser = useCallback((rawUser) => {
+    if (!rawUser) return null;
+    return {
+      ...rawUser,
+      id: rawUser.id || rawUser.userId || rawUser.email,
+      department: rawUser.department || '',
+    };
+  }, []);
+
+  const refreshUserProfile = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const normalized = normalizeUser(data?.user);
+      if (normalized) {
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
+      }
+      return normalized;
+    } catch {
+      return null;
+    }
+  }, [normalizeUser]);
+
   // Check if user is logged in on app start
   useEffect(() => {
     const initAuth = async () => {
@@ -26,13 +55,19 @@ export const AuthProvider = ({ children }) => {
 
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        try {
+          setUser(normalizeUser(JSON.parse(storedUser)));
+        } catch {
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+        await refreshUserProfile();
       }
       setLoading(false);
     };
 
     initAuth();
-  }, []);
+  }, [normalizeUser, refreshUserProfile]);
 
   // Login function
   const login = async (username, email, password) => {
@@ -56,11 +91,15 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       // Store only user data (token is in httpOnly cookie)
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setUser(data.user);
+      const normalizedUser = normalizeUser(data.user);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      setUser(normalizedUser);
 
       // Refresh CSRF token after login since session changed
       await fetchCsrfToken();
+
+      // Ensure we have the latest profile fields (department, etc.) from backend session
+      await refreshUserProfile();
 
       return data;
     } catch (error) {
@@ -113,8 +152,10 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
       // Store only user data (token is in httpOnly cookie)
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setUser(data.user);
+      const normalizedUser = normalizeUser(data.user);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      setUser(normalizedUser);
+      await refreshUserProfile();
       return data;
     } catch (error) {
       // Enhanced error handling
@@ -137,6 +178,7 @@ export const AuthProvider = ({ children }) => {
     loginWithGoogle,
     logout,
     isAuthenticated,
+    refreshUserProfile,
   };
 
   return (

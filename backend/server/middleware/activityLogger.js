@@ -26,47 +26,50 @@ function getActivityMessage(req) {
     // with accurate user details, so we skip them here.
     if (path.startsWith('/api/auth/profile') && method === 'PUT') return 'Updated profile';
 
+    // Extract ID if available
+    const urlParts = path.split('/');
+    const possibleId = urlParts[urlParts.length - 1];
+    const formId = (possibleId && possibleId.length > 5 && possibleId !== 'submit') ? possibleId : null;
+
     // ── Faculty forms ──
     if (path === '/api/forms/submit' && method === 'POST') {
-        return 'Submitted a reimbursement application';
+        return { message: 'Submitted a reimbursement application', formId };
     }
     if (path.startsWith('/api/forms/') && method === 'PUT') {
         const status = req.body?.status;
-        if (status === 'Under Principal') return 'Approved an application (forwarded to Principal)';
-        if (status === 'Approved') return 'Approved an application';
-        if (status === 'Rejected') return 'Rejected an application';
-        if (status === 'Reimbursed') return 'Marked an application as reimbursed';
-        if (status === 'Disbursed') return 'Marked an application as disbursed';
-        return 'Updated a reimbursement application';
+        if (status === 'Under Principal') return { message: 'Approved an application (forwarded to Principal)', formId };
+        if (status === 'Approved') return { message: 'Approved an application', formId };
+        if (status === 'Rejected') return { message: 'Rejected an application', formId };
+        if (status === 'Reimbursed') return { message: 'Marked an application as reimbursed', formId };
+        return { message: 'Updated a reimbursement application', formId };
     }
     if (path.startsWith('/api/forms/') && method === 'DELETE') {
-        return 'Deleted a reimbursement application';
+        return { message: 'Deleted a reimbursement application', formId };
     }
 
     // ── Student forms ──
     if (path === '/api/student-forms/submit' && method === 'POST') {
-        return 'Submitted a student reimbursement application';
+        return { message: 'Submitted a student reimbursement application', formId };
     }
     if (path.startsWith('/api/student-forms/') && method === 'PUT') {
         const status = req.body?.status;
-        if (status === 'Under HOD') return 'Approved a student application (forwarded to HOD)';
-        if (status === 'Under Principal') return 'Approved a student application (forwarded to Principal)';
-        if (status === 'Approved') return 'Approved a student application';
-        if (status === 'Rejected') return 'Rejected a student application';
-        if (status === 'Reimbursed') return 'Marked a student application as reimbursed';
-        if (status === 'Disbursed') return 'Marked a student application as disbursed';
-        return 'Updated a student reimbursement application';
+        if (status === 'Under HOD') return { message: 'Approved a student application (forwarded to HOD)', formId };
+        if (status === 'Under Principal') return { message: 'Approved a student application (forwarded to Principal)', formId };
+        if (status === 'Approved') return { message: 'Approved a student application', formId };
+        if (status === 'Rejected') return { message: 'Rejected a student application', formId };
+        if (status === 'Reimbursed') return { message: 'Marked a student application as reimbursed', formId };
+        return { message: 'Updated a student reimbursement application', formId };
     }
     if (path.startsWith('/api/student-forms/') && method === 'DELETE') {
-        return 'Deleted a student reimbursement application';
+        return { message: 'Deleted a student reimbursement application', formId };
     }
 
     // ── Users / uploads ──
-    if (path.startsWith('/api/users') && method === 'PUT') return 'Updated user settings';
-    if (path.startsWith('/api/users') && method === 'POST') return 'Uploaded a document';
+    if (path.startsWith('/api/users') && method === 'PUT') return { message: 'Updated user settings' };
+    if (path.startsWith('/api/users') && method === 'POST') return { message: 'Uploaded a document' };
 
     // ── Notification routes ──
-    if (path.includes('/notifications') && method === 'PUT') return 'Marked notifications as read';
+    if (path.includes('/notifications') && method === 'PUT') return { message: 'Marked notifications as read' };
 
     // Skip GET requests and anything not matched
     if (method === 'GET') return null;
@@ -98,17 +101,20 @@ function activityLogger(req, res, next) {
             const userRole = req.user?.role?.toLowerCase();
             if (userRole === 'admin') return;
 
-            const activity = getActivityMessage(req);
-            if (!activity) return;
+            const activityData = getActivityMessage(req);
+            if (!activityData) return;
+            
+            const activityMessage = activityData.message || activityData;
 
             const userName = req.user?.name || req.user?.username || req.user?.email || 'Unknown';
             const userRoleDisplay = req.user?.role || 'Unknown';
             const department = req.user?.department || '';
 
-            logger.info(activity, {
+            logger.info(activityMessage, {
                 user: userName,
                 role: userRoleDisplay,
                 department: department,
+                formId: activityData.formId || undefined
             });
         } catch (e) {
             // Never let logging errors affect the application

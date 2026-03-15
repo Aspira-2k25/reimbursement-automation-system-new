@@ -1,20 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { getCsrfToken} from '../../services/api';
+import { getCsrfToken, API_BASE_URL } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import apshahLogo from '../../assets/images/Apshah_logo.png';
 import websiteLogo from '../../assets/images/Website_logo.png';
 import { toast } from 'react-hot-toast';
-
-// Department options
-const DEPARTMENTS = [
-  "Computer Engineering",
-  "Information Technology",
-  "CSE AI and ML",
-  "CSE Data Science",
-  "Civil Engineering",
-  "Mechanical Engineering"
-];
+import { resolveDepartment } from '../../utils/departmentResolver';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -45,6 +37,8 @@ const validateFile = (file) => {
 
 const StudentNptelForm = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
@@ -64,6 +58,13 @@ const StudentNptelForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nptelFileRef = useRef(null);
   const idCardFileRef = useRef(null);
+
+  React.useEffect(() => {
+    const department = resolveDepartment(user?.department);
+    if (department) {
+      setFormData(prev => ({ ...prev, department }));
+    }
+  }, [user?.department]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -211,6 +212,9 @@ const StudentNptelForm = () => {
         }
       });
 
+      // Enforce trusted department resolved from current session/profile state.
+      formDataToSend.set('department', resolveDepartment());
+
       // SECURITY: Use refs instead of direct DOM access
       const nptelFile = nptelFileRef.current?.files[0];
       const idCardFile = idCardFileRef.current?.files[0];
@@ -237,8 +241,6 @@ const StudentNptelForm = () => {
       }
 
       formDataToSend.append("reimbursementType", "NPTEL");
-
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
       // SECURITY: Use httpOnly cookies instead of localStorage token
       const csrfToken = getCsrfToken();
@@ -389,22 +391,14 @@ const StudentNptelForm = () => {
                 <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
                   Department *
                 </label>
-                <select
+                <input
+                  type="text"
                   id="department"
                   name="department"
                   value={formData.department}
-                  onChange={handleChange}
-                  required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                >
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
+                  readOnly
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
                 {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 

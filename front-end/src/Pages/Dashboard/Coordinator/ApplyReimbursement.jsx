@@ -259,7 +259,8 @@ export default function ApplyReimbursement() {
     )
     const rejected = requests.filter(r => r.status === "Rejected")
 
-    const totalDisbursed = approved.reduce((sum, r) => sum + (r.amount || 0), 0)
+    const disbursed = requests.filter(r => r.status === "Reimbursed")
+    const totalDisbursed = disbursed.reduce((sum, r) => sum + (r.amount || 0), 0)
 
     return {
       total: requests.length,

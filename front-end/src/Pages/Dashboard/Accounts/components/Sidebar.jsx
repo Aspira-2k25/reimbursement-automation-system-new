@@ -117,9 +117,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 {userProfile?.designation && (
                   <div className="text-xs text-gray-500 truncate">{userProfile.designation}</div>
                 )}
-                {userProfile?.department && (
-                  <div className="text-xs text-[#3B945E] truncate">{userProfile.department}</div>
-                )}
+                <div className="text-xs text-[#3B945E] truncate">{userProfile?.department || 'Department not set'}</div>
               </div>
             </motion.div>
           )}

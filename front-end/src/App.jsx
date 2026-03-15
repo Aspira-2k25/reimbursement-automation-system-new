@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
+import { Toaster } from 'react-hot-toast'
 
 // Lazy load pages for code splitting and better performance
 const LoginPage = lazy(() => import('./Pages/Login/Login'))
@@ -16,7 +17,30 @@ const ForgotPassword = lazy(() => import('./Pages/Login/ForgotPassword'))
 const ResetPassword = lazy(() => import('./Pages/Login/ResetPassword'))
 
 function App() {
-
+  const toastConfig = {
+    position: "top-right",
+    toastOptions: {
+      style: {
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        color: '#1e293b',
+        borderRadius: '16px',
+        padding: '16px 20px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+      },
+      success: {
+        iconTheme: {
+          primary: '#10b981',
+          secondary: '#fff',
+        },
+      },
+      duration: 3000,
+    }
+  }
 
   return (
 
@@ -40,6 +64,7 @@ function App() {
           {/* Catch-all route MUST be last */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Toaster {...toastConfig} />
       </Suspense>
     </BrowserRouter>
   )

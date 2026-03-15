@@ -61,12 +61,12 @@ const AllDepartmentOverview = () => {
   // Build departments data with real data for HOD's department
   const allDepartmentsData = useMemo(() => {
     const departments = [...initialHodData.allDepartmentsData]
-    const userDept = userProfile?.department || 'Information Technology'
+    const userDept = userProfile?.department || ''
 
     // Find the HOD's department using flexible matching
     let ownDeptIndex = departments.findIndex(dept => isDepartmentMatch(dept.name, userDept))
 
-    // If no match found, default to first department (IT)
+    // If no match found, default to first department in static list
     if (ownDeptIndex === -1) {
       console.log('No department match found for:', userDept, '- defaulting to first')
       ownDeptIndex = 0
@@ -184,7 +184,7 @@ const AllDepartmentOverview = () => {
         <div className="flex items-center gap-2 text-sm text-green-700 bg-green-100 px-3 py-2 rounded-lg">
           <CheckCircle className="w-4 h-4" />
           <span>
-            Your Department: <strong>{userProfile?.department || 'Information Technology'}</strong> — Showing real-time data
+            Your Department: <strong>{userProfile?.department || 'Department not set'}</strong> — Showing real-time data
           </span>
         </div>
       </div>

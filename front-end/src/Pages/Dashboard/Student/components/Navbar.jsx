@@ -138,7 +138,7 @@ export default function Navbar() {
               ].join(" ")}
             />
 
-            {navItems.slice(0, 2).map((item, index) => (
+            {navItems.slice(0, 2).map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -211,7 +211,7 @@ export default function Navbar() {
                 <div className="hidden sm:flex flex-col text-left">
                   <span className="text-sm font-semibold text-white">{profile.name}</span>
                   <span className="text-xs text-white/80">
-                    {profile.role} • {profile.department}
+                    {profile.role} • {profile.department || 'Department not set'}
                   </span>
                 </div>
                 <ChevronDown className={`h-4 w-4 text-white/80 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
