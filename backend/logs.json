@@ -801,5 +801,153 @@
       "role": "HOD",
       "department": "Information Technology"
     }
+  },
+  {
+    "timestamp": "2026-03-15T12:43:12.480Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-15T12:43:18.918Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-15T12:43:28.424Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-15T12:43:31.873Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-15T12:43:40.254Z",
+    "level": "INFO",
+    "message": "User logged in via Google",
+    "data": {
+      "user": "B_61_ALOK KN SAHOO",
+      "role": "Student",
+      "department": ""
+    }
+  },
+  {
+    "timestamp": "2026-03-15T13:47:39.579Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:29:41.961Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:30:01.326Z",
+    "level": "INFO",
+    "message": "Staff record updated",
+    "data": {
+      "id": "3",
+      "updates": {
+        "username": "nirmala123",
+        "name": "Nirmala Patole",
+        "department": "Information Technology",
+        "role": "HOD",
+        "email": "nim91@gmail.com",
+        "password": "$2b$10$zW0/qVd16k5crjmxArO9s.rnRoNEMPzbFxevaZFGmF7WEjLGJ8Mim"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:31:09.006Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:33:11.628Z",
+    "level": "INFO",
+    "message": "User logged in",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:33:46.587Z",
+    "level": "INFO",
+    "message": "Staff record updated",
+    "data": {
+      "id": "3",
+      "updates": {
+        "username": "nirmala123",
+        "name": "Nirmala Patole",
+        "department": "Information Technology",
+        "role": "HOD",
+        "email": "nim91@gmail.com",
+        "password": "$2b$10$pN6TujBEWxvoqoF7Inzpl.K9TWV0bHj5U5lTq1EYTtSn9eku6wDBq"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:34:48.422Z",
+    "level": "INFO",
+    "message": "Staff record updated",
+    "data": {
+      "id": "3",
+      "updates": {
+        "username": "nirmala123",
+        "name": "Nirmala Patole",
+        "department": "Information Technology",
+        "role": "HOD",
+        "email": "nim91@gmail.com",
+        "password": "$2b$10$CPg5CHAVXVSQIgNHh5adUuQpJjNEW0eeLExOXz8CBWy6kOQDJjJJu"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-03-15T14:37:42.781Z",
+    "level": "INFO",
+    "message": "User logged out",
+    "data": {
+      "user": "Admin",
+      "role": "Admin",
+      "department": "IT"
+    }
   }
 ]
