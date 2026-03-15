@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import apshahLogo from "../../assets/images/Apshah_logo.png";
 import websiteLogo from "../../assets/images/Website_logo.png";
 import { getCsrfToken, fetchCsrfToken, API_BASE_URL } from '../../services/api';
+import { resolveDepartment } from '../../utils/departmentResolver';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -38,19 +39,6 @@ const ReimbursementForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const resolveDepartment = React.useCallback(() => {
-    if (user?.department) return user.department;
-
-    try {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (storedUser?.department) return storedUser.department;
-    } catch {
-      // ignore parse errors
-    }
-
-    return '';
-  }, [user?.department]);
-
   const [formData, setFormData] = useState({
     name: '',
     facultyId: '',
@@ -73,11 +61,11 @@ const ReimbursementForm = () => {
   const idCardFileRef = useRef(null);
 
   React.useEffect(() => {
-    const department = resolveDepartment();
+    const department = resolveDepartment(user?.department);
     if (department) {
       setFormData(prev => ({ ...prev, department: department }));
     }
-  }, [resolveDepartment]);
+  }, [user?.department]);
 
   const validateForm = () => {
     const newErrors = {};

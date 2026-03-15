@@ -19,11 +19,7 @@ const ViewEditForm = ({ mode = 'view' }) => {
       try {
         // SECURITY: Use centralized API service with httpOnly cookies
         const data = await studentFormsAPI.getById(id);
-        const fetchedForm = data.form;
-        if (user?.department) {
-          fetchedForm.department = user.department;
-        }
-        setFormData(fetchedForm);
+        setFormData(data.form);
       } catch (error) {
         toast.error(error.error || 'Failed to fetch form');
         if (error.status === 401) {
@@ -81,7 +77,6 @@ const ViewEditForm = ({ mode = 'view' }) => {
       // SECURITY: Use centralized API service with httpOnly cookies
       const payload = {
         ...formData,
-        department: user?.department || formData.department,
       };
       await studentFormsAPI.updateById(id, payload);
       toast.success('Changes saved successfully!');

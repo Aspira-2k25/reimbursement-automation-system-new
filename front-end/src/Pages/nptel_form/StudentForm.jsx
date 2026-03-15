@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import apshahLogo from '../../assets/images/Apshah_logo.png';
 import websiteLogo from '../../assets/images/Website_logo.png';
 import { toast } from 'react-hot-toast';
+import { resolveDepartment } from '../../utils/departmentResolver';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -38,26 +39,6 @@ const StudentNptelForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const resolveDepartment = React.useCallback(() => {
-    if (user?.department) return user.department;
-
-    try {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (storedUser?.department) return storedUser.department;
-    } catch {
-      // ignore parse errors
-    }
-
-    try {
-      const studentProfile = JSON.parse(localStorage.getItem('student_profile_settings') || '{}');
-      if (studentProfile?.department) return studentProfile.department;
-    } catch {
-      // ignore parse errors
-    }
-
-    return '';
-  }, [user?.department]);
-
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
@@ -79,11 +60,11 @@ const StudentNptelForm = () => {
   const idCardFileRef = useRef(null);
 
   React.useEffect(() => {
-    const department = resolveDepartment();
+    const department = resolveDepartment(user?.department);
     if (department) {
       setFormData(prev => ({ ...prev, department }));
     }
-  }, [resolveDepartment]);
+  }, [user?.department]);
 
   const validateForm = () => {
     const newErrors = {};
