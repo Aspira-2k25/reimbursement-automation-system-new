@@ -1,6 +1,7 @@
 import React from "react"
 import { useLocation, Link, useNavigate } from "react-router-dom"
 import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
+import toast from "react-hot-toast"
 import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
 import { useAuth } from "../../../../context/AuthContext.jsx"
@@ -247,16 +248,19 @@ export default function Navbar() {
                     </div>
                   </button>
                   <button
-                    onClick={() => {
-                      logout()
+                    onClick={async () => {
+                      toast.dismiss()
+                      await logout()
                       handleClose()
-                      navigate("/")
+                      navigate("/", { replace: true })
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        toast.dismiss()
+                        await logout()
                         handleClose()
-                        navigate("/")
+                        navigate("/", { replace: true })
                       }
                     }}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-rose-50/60 active:bg-rose-100/60 rounded-lg transition-colors duration-150 focus:outline-none"

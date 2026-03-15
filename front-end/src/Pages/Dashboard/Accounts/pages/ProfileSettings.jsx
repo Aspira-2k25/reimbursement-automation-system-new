@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import {
   User,
   Mail,
@@ -15,7 +15,7 @@ import { useAccountsContext } from './AccountsLayout'
 import { authAPI } from '../../../../services/api'
 
 const ProfileSettings = () => {
-  const { userProfile, setUserProfile } = useAccountsContext()
+  const { userProfile, setUserProfile, setActiveTab } = useAccountsContext()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     fullName: userProfile?.fullName || '',
@@ -53,23 +53,23 @@ const ProfileSettings = () => {
   }, [formData, setUserProfile])
 
   const handleChangePassword = useCallback(() => {
-    toast('Password change functionality would be implemented here')
-  }, [])
+    setActiveTab('change-password')
+  }, [setActiveTab])
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div
+      <Motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <h2 className="text-2xl font-bold text-gray-900">Profile Settings</h2>
         <p className="text-gray-600 mt-1">Manage your account information</p>
-      </motion.div>
+      </Motion.div>
 
       {/* Profile Form */}
-      <motion.div
+      <Motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -186,10 +186,10 @@ const ProfileSettings = () => {
             </button>
           </div>
         </form>
-      </motion.div>
+      </Motion.div>
 
       {/* Security Settings - Change Password */}
-      <motion.div
+      <Motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -212,7 +212,7 @@ const ProfileSettings = () => {
             </div>
           </button>
         </div>
-      </motion.div>
+      </Motion.div>
     </div>
   )
 }

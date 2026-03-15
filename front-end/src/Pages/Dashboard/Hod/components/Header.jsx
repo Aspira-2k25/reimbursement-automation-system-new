@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle, Check, CheckCheck } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useHODContext } from '../pages/HODLayout'
 import { useAuth } from '../../../../context/AuthContext'
