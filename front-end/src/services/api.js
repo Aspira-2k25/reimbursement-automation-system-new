@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Use env var on Vercel; fallback to localhost for dev
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// Use configured backend URL, fallback to local in dev and same-origin /api in prod.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
 
 // SECURITY: Request timeout configuration
 const REQUEST_TIMEOUT = 30000; // 30 seconds
@@ -458,9 +458,9 @@ export const adminAPI = {
   }
   ,
   // Get recent server logs (requires admin role)
-  getLogs: async () => {
+  getLogs: async (params = {}) => {
     try {
-      const res = await api.get('/admin/logs');
+      const res = await api.get('/admin/logs', { params });
       return res.data; // { logs: [...] }
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };

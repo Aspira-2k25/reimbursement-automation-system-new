@@ -8,10 +8,24 @@ const AdminLogs = () => {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  
+  // Filtering state
+  const [filterRole, setFilterRole] = useState('All')
+  const [filterDepartment, setFilterDepartment] = useState('All')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const fetchLogs = useCallback(async () => {
     try {
-      const res = await adminAPI.getLogs()
+      const params = {
+        role: filterRole,
+        department: filterDepartment,
+        startDate,
+        endDate,
+        limit: 200,
+        page: 1
+      }
+      const res = await adminAPI.getLogs(params)
       setLogs(res.logs || [])
       setError(null)
     } catch (err) {
@@ -20,7 +34,7 @@ const AdminLogs = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filterRole, filterDepartment, startDate, endDate])
 
   // Initial fetch + polling
   useEffect(() => {
@@ -40,15 +54,19 @@ const AdminLogs = () => {
     })
   }
 
-  // Format log data into a readable line
   const formatDetails = (data) => {
     if (!data) return ''
     const parts = []
     if (data.user) parts.push(data.user)
     if (data.role) parts.push(`(${data.role})`)
     if (data.department) parts.push(`• ${data.department}`)
+    if (data.formId) parts.push(`• Form ID: ${data.formId}`)
     return parts.join(' ')
   }
+
+  // Derive unique roles and departments for filter dropdowns
+  const uniqueRoles = ['All', ...new Set(logs.map(l => l.data?.role).filter(Boolean))]
+  const uniqueDepartments = ['All', ...new Set(logs.map(l => l.data?.department).filter(Boolean))]
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
@@ -62,8 +80,46 @@ const AdminLogs = () => {
           Refresh
         </button>
       </div>
-      <div className="text-sm text-gray-500 mb-4">
-        Showing activities performed by all users (auto-refreshes every {POLL_INTERVAL / 1000}s).
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+        <div className="text-sm text-gray-500 flex-1">
+          Showing activities performed by all users (auto-refreshes every {POLL_INTERVAL / 1000}s).
+        </div>
+        
+        <div className="flex flex-wrap gap-2">
+          <input 
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            className="border rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
+          />
+          <span className="text-gray-400 self-center">-</span>
+          <input 
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            className="border rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
+          />
+
+          <select 
+            value={filterRole} 
+            onChange={e => setFilterRole(e.target.value)}
+            className="border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
+          >
+            {uniqueRoles.map(r => (
+              <option key={r} value={r}>{r === 'All' ? 'All Roles' : r}</option>
+            ))}
+          </select>
+          
+          <select 
+            value={filterDepartment} 
+            onChange={e => setFilterDepartment(e.target.value)}
+            className="border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
+          >
+            {uniqueDepartments.map(d => (
+              <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading && logs.length === 0 ? (
