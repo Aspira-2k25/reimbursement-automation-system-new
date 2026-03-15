@@ -732,7 +732,7 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized for this department' });
     }
 
-    const deletableStatuses = ['Under HOD', null, undefined];
+    const deletableStatuses = ['Under HOD'];
     if (!deletableStatuses.includes(form.status)) {
       return res.status(409).json({
         error: 'Form cannot be deleted after review has started. Use workflow actions instead.'

@@ -595,7 +595,7 @@ authController.updateStaffById = async (req, res) => {
       is_active
     };
     if (password) {
-      updates.password = await bcrypt.hash(password, 10);
+      updates.password = password;
     }
 
     const updated = await dbUtils.updateStaffById(id, updates);
