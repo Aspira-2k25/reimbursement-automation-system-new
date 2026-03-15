@@ -555,21 +555,45 @@ authController.updateStaffById = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    const normalizedUsername = typeof username === 'string' ? username.toLowerCase().trim() : undefined;
+    const normalizedEmail = typeof email === 'string' ? email.toLowerCase().trim() : undefined;
+    const staffId = parseInt(id);
+
     // Check if username/email conflict with another record
-    if (username) {
-      const existing = await prisma.staff.findUnique({ where: { username } });
-      if (existing && existing.id !== parseInt(id)) {
+    if (normalizedUsername) {
+      const existing = await prisma.staff.findFirst({
+        where: {
+          username: normalizedUsername,
+          is_active: true,
+          NOT: { id: staffId }
+        }
+      });
+      if (existing) {
         return res.status(409).json({ error: 'Username already taken' });
       }
     }
-    if (email) {
-      const existing = await prisma.staff.findUnique({ where: { email } });
-      if (existing && existing.id !== parseInt(id)) {
+    if (normalizedEmail) {
+      const existing = await prisma.staff.findFirst({
+        where: {
+          email: normalizedEmail,
+          is_active: true,
+          NOT: { id: staffId }
+        }
+      });
+      if (existing) {
         return res.status(409).json({ error: 'Email already taken' });
       }
     }
 
-    const updates = { username, name, department: department ? getNormalizedDepartment(department) : undefined, role, email, employee_id, is_active };
+    const updates = {
+      username: normalizedUsername,
+      name,
+      department: department ? getNormalizedDepartment(department) : undefined,
+      role,
+      email: normalizedEmail,
+      employee_id,
+      is_active
+    };
     if (password) {
       updates.password = await bcrypt.hash(password, 10);
     }
@@ -611,38 +635,98 @@ authController.createFaculty = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Check if user already exists by username
-    const existingUserByUsername = await prisma.staff.findUnique({
-      where: { username: username.toLowerCase().trim() }
+    const normalizedUsername = username.toLowerCase().trim();
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
+    // Check if username is used by an active account.
+    const existingActiveByUsername = await prisma.staff.findFirst({
+      where: { username: normalizedUsername, is_active: true }
     });
-    if (existingUserByUsername) {
+    if (existingActiveByUsername) {
       return res.status(409).json({
         error: 'User with this username already exists'
       });
     }
 
-    // Check if email already exists
-    if (email) {
-      const existingUserByEmail = await prisma.staff.findUnique({
-        where: { email: email.toLowerCase().trim() }
+    // Check if email is used by an active account.
+    if (normalizedEmail) {
+      const existingActiveByEmail = await prisma.staff.findFirst({
+        where: { email: normalizedEmail, is_active: true }
       });
-      if (existingUserByEmail) {
+      if (existingActiveByEmail) {
         return res.status(409).json({
           error: 'User with this email already exists'
         });
       }
     }
 
+    // Reuse an inactive record if username or email match a deactivated account.
+    const inactiveByUsername = await prisma.staff.findFirst({
+      where: { username: normalizedUsername, is_active: false }
+    });
+    const inactiveByEmail = normalizedEmail
+      ? await prisma.staff.findFirst({
+        where: { email: normalizedEmail, is_active: false }
+      })
+      : null;
+
+    if (inactiveByUsername && inactiveByEmail && inactiveByUsername.id !== inactiveByEmail.id) {
+      return res.status(409).json({
+        error: 'Username and email belong to different inactive accounts. Use one identity and retry.'
+      });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    const reactivationTarget = inactiveByUsername || inactiveByEmail;
+
+    if (reactivationTarget) {
+      const reactivatedStaff = await prisma.staff.update({
+        where: { id: reactivationTarget.id },
+        data: {
+          username: normalizedUsername,
+          name: name.trim(),
+          password: hashedPassword,
+          email: normalizedEmail,
+          department: department ? getNormalizedDepartment(department) : null,
+          role: role || 'Faculty',
+          employee_id: employee_id || null,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          department: true,
+          role: true,
+          email: true,
+          employee_id: true,
+          is_active: true,
+          created_at: true,
+        }
+      });
+
+      logger.info('Inactive staff reactivated by Admin', {
+        id: reactivatedStaff.id,
+        username: reactivatedStaff.username,
+        user: req.user?.username || 'Admin',
+        role: 'Admin'
+      });
+
+      return res.status(201).json({
+        message: 'Staff member reactivated successfully',
+        staff: reactivatedStaff
+      });
+    }
 
     // Create new faculty
     const newFaculty = await prisma.staff.create({
       data: {
-        username: username.toLowerCase().trim(),
+        username: normalizedUsername,
         name: name.trim(),
         password: hashedPassword,
-        email: email ? email.toLowerCase().trim() : null,
+        email: normalizedEmail,
         department: department ? getNormalizedDepartment(department) : null,
         role: role || 'Faculty',
         employee_id: employee_id || null,
@@ -689,7 +773,7 @@ authController.createFaculty = async (req, res) => {
   }
 };
 
-// Delete faculty member by ID (soft delete - set is_active to false)
+// Delete faculty member by ID (soft delete)
 authController.deleteFaculty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -697,7 +781,7 @@ authController.deleteFaculty = async (req, res) => {
       return res.status(400).json({ error: 'Staff ID required' });
     }
 
-    // Soft delete - set is_active to false
+    // Soft delete - mark as inactive so history is preserved.
     const updated = await dbUtils.updateStaffById(id, { is_active: false });
     if (!updated) {
       return res.status(404).json({ error: 'Staff member not found' });
@@ -709,7 +793,7 @@ authController.deleteFaculty = async (req, res) => {
       role: 'Admin' 
     });
 
-    res.json({ message: 'Faculty member deleted successfully' });
+    res.json({ message: 'Staff member deleted successfully' });
   } catch (error) {
     console.error('deleteFaculty error:', error);
     res.status(500).json({ error: 'Internal server error' });

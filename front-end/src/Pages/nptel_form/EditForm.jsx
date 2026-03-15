@@ -65,6 +65,11 @@ export default function EditForm() {
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures
 
+        const sessionDepartment = user?.department || '';
+        if (sessionDepartment) {
+          form.department = sessionDepartment;
+        }
+
         // Check if the form is still editable based on its status
         // Student forms: editable only at "Pending"
         // Faculty/Coordinator forms: editable only at "Under HOD"
@@ -231,6 +236,9 @@ export default function EditForm() {
       // Only send editable fields — strip status, _id, applicantType, etc.
       const { status: _status, _id: _oid, __v: _v, applicantType: _at, applicationId: _aid, userId: _uid, createdAt: _ca, updatedAt: _ua, documents: _docs, rejectedBy: _rb, rejectionRemarks: _rr, ...editableFields } = formData;
       const formDataToSend = { ...editableFields };
+
+      // Enforce trusted session-derived department in update payload.
+      formDataToSend.department = user?.department || formData.department;
 
       // Convert amount to number explicitly
       formDataToSend.amount = parseFloat(formData.amount);

@@ -266,7 +266,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                           {userProfile?.email || 'No email set'}
                         </div>
                         <div className="text-xs text-[#3B945E] truncate">
-                          {userProfile?.department || 'Civil Engineering'}
+                          {userProfile?.department || 'Department not set'}
                         </div>
                       </div>
                     </div>

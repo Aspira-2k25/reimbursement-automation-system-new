@@ -150,6 +150,30 @@ const getNormalizedDepartment = (dept) => {
     return trimmed;
 };
 
+/**
+ * Check whether the user can access a form based on role and department.
+ * Coordinators and HODs are restricted to their own normalized department variants.
+ * @param {string} userRole
+ * @param {string} userDepartment
+ * @param {string} formDepartment
+ * @returns {boolean}
+ */
+const hasDepartmentAccess = (userRole, userDepartment, formDepartment) => {
+    const role = (userRole || '').toLowerCase();
+    if (!['coordinator', 'hod'].includes(role)) {
+        return true;
+    }
+    if (!userDepartment || !formDepartment) {
+        return false;
+    }
+
+    const allowed = new Set(
+        getDepartmentVariants(getNormalizedDepartment(userDepartment)).map((d) => d.toLowerCase())
+    );
+
+    return allowed.has(getNormalizedDepartment(formDepartment).toLowerCase());
+};
+
 module.exports = {
     DEPARTMENT_ALIASES,
     sanitizeString,
@@ -158,4 +182,5 @@ module.exports = {
     getDepartmentVariants,
     buildDepartmentFilter,
     getNormalizedDepartment,
+    hasDepartmentAccess,
 };

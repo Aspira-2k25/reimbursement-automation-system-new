@@ -14,6 +14,8 @@ const AdminLogs = () => {
   const [filterDepartment, setFilterDepartment] = useState('All')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [allRoles, setAllRoles] = useState([])
+  const [allDepartments, setAllDepartments] = useState([])
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -64,9 +66,30 @@ const AdminLogs = () => {
     return parts.join(' ')
   }
 
-  // Derive unique roles and departments for filter dropdowns
-  const uniqueRoles = ['All', ...new Set(logs.map(l => l.data?.role).filter(Boolean))]
-  const uniqueDepartments = ['All', ...new Set(logs.map(l => l.data?.department).filter(Boolean))]
+  useEffect(() => {
+    if (!logs || logs.length === 0) return
+
+    setAllRoles((prev) => {
+      const next = new Set(prev)
+      logs.forEach((l) => {
+        const role = l?.data?.role
+        if (role) next.add(role)
+      })
+      return Array.from(next)
+    })
+
+    setAllDepartments((prev) => {
+      const next = new Set(prev)
+      logs.forEach((l) => {
+        const dept = l?.data?.department
+        if (dept) next.add(dept)
+      })
+      return Array.from(next)
+    })
+  }, [logs])
+
+  const uniqueRoles = ['All', ...allRoles]
+  const uniqueDepartments = ['All', ...allDepartments]
 
   return (
     <div className="bg-white rounded-lg shadow p-4">

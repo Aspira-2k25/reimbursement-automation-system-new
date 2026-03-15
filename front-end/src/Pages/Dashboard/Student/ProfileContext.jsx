@@ -1,18 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext.jsx'
+import { resolveDepartment } from '../../../utils/departmentResolver'
 
 // Create the Profile Context
 const ProfileContext = createContext()
-
-// Available departments for dropdown
-export const DEPARTMENTS = [
-  "Computer Engineering",
-  "Civil Engineering",
-  "Mechanical Engineering",
-  "CSE AI and ML",
-  "CSE Data Science",
-  "Information Technology"
-]
 
 // LocalStorage key for persisting profile settings
 const PROFILE_STORAGE_KEY = 'student_profile_settings'
@@ -20,9 +11,9 @@ const PROFILE_STORAGE_KEY = 'student_profile_settings'
 // Default profile data
 const defaultProfile = {
   name: "Student",
-  department: "", // Empty by default - user must select
+  department: "",
   role: "Student",
-  departmentSet: false // Track if user has explicitly set their department
+  departmentSet: false
 }
 
 /**
@@ -49,10 +40,11 @@ export function ProfileProvider({ children }) {
   useEffect(() => {
     if (user) {
       setProfile(prev => {
-        // If department was already set by user, keep it
-        // Otherwise use the one from user auth or leave empty
-        const savedDept = prev.departmentSet ? prev.department : (user.department || "")
-        const isDeptSet = prev.departmentSet || (user.department && user.department !== "")
+        // Keep user-selected department if explicitly set; otherwise prefill from auth session.
+        const nextDepartment = prev.departmentSet
+          ? prev.department
+          : resolveDepartment(user.department, prev.department)
+        const isDepartmentSet = prev.departmentSet || Boolean(nextDepartment)
 
         // If user previously customized their name, keep it
         // Otherwise use the Google/auth name
@@ -63,10 +55,10 @@ export function ProfileProvider({ children }) {
         return {
           ...prev,
           name: savedName,
-          department: savedDept,
+          department: nextDepartment,
           role: user.role || prev.role || "Student",
           email: user.email || null,
-          departmentSet: isDeptSet
+          departmentSet: isDepartmentSet,
         }
       })
     }
@@ -79,7 +71,7 @@ export function ProfileProvider({ children }) {
         name: profile.name,
         nameCustomized: profile.nameCustomized || false,
         department: profile.department,
-        departmentSet: profile.departmentSet
+        departmentSet: profile.departmentSet || false,
       }))
     } catch {
       // Silently handle localStorage errors
@@ -92,15 +84,14 @@ export function ProfileProvider({ children }) {
    */
   const updateProfile = (updates) => {
     setProfile(prevProfile => {
-      const newProfile = {
+      const next = {
         ...prevProfile,
-        ...updates
+        ...updates,
       }
-      // If department is being updated, mark it as set
-      if (updates.department && updates.department !== "") {
-        newProfile.departmentSet = true
+      if (updates.department && updates.department !== '') {
+        next.departmentSet = true
       }
-      return newProfile
+      return next
     })
   }
 

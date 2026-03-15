@@ -183,7 +183,7 @@ export default function Navbar() {
                 <div className="hidden sm:flex flex-col text-left">
                   <span className="text-sm font-semibold text-white">{profile.name}</span>
                   <span className="text-xs text-white/80">
-                    {profile.role} • {profile.department}
+                    {profile.role} • {profile.department || 'Department not set'}
                   </span>
                   {profile.designation && (
                     <span className="text-xs text-white/70">{profile.designation}</span>

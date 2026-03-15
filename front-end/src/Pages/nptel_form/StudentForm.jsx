@@ -7,16 +7,6 @@ import apshahLogo from '../../assets/images/Apshah_logo.png';
 import websiteLogo from '../../assets/images/Website_logo.png';
 import { toast } from 'react-hot-toast';
 
-// Department options
-const DEPARTMENTS = [
-  "Computer Engineering",
-  "Information Technology",
-  "CSE AI and ML",
-  "CSE Data Science",
-  "Civil Engineering",
-  "Mechanical Engineering"
-];
-
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
@@ -47,6 +37,27 @@ const validateFile = (file) => {
 const StudentNptelForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const resolveDepartment = React.useCallback(() => {
+    if (user?.department) return user.department;
+
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (storedUser?.department) return storedUser.department;
+    } catch {
+      // ignore parse errors
+    }
+
+    try {
+      const studentProfile = JSON.parse(localStorage.getItem('student_profile_settings') || '{}');
+      if (studentProfile?.department) return studentProfile.department;
+    } catch {
+      // ignore parse errors
+    }
+
+    return '';
+  }, [user?.department]);
+
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
@@ -68,10 +79,11 @@ const StudentNptelForm = () => {
   const idCardFileRef = useRef(null);
 
   React.useEffect(() => {
-    if (user?.department) {
-      setFormData(prev => ({ ...prev, department: user.department }));
+    const department = resolveDepartment();
+    if (department) {
+      setFormData(prev => ({ ...prev, department }));
     }
-  }, [user?.department]);
+  }, [resolveDepartment]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -218,6 +230,9 @@ const StudentNptelForm = () => {
           formDataToSend.append(key, sanitizeInput(formData[key]));
         }
       });
+
+      // Enforce trusted department resolved from current session/profile state.
+      formDataToSend.set('department', resolveDepartment());
 
       // SECURITY: Use refs instead of direct DOM access
       const nptelFile = nptelFileRef.current?.files[0];

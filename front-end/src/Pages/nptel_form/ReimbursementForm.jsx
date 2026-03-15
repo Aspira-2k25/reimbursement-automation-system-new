@@ -7,16 +7,6 @@ import apshahLogo from "../../assets/images/Apshah_logo.png";
 import websiteLogo from "../../assets/images/Website_logo.png";
 import { getCsrfToken, fetchCsrfToken, API_BASE_URL } from '../../services/api';
 
-// Department options
-const DEPARTMENTS = [
-  "Computer Engineering",
-  "Information Technology",
-  "CSE AI and ML",
-  "CSE Data Science",
-  "Civil Engineering",
-  "Mechanical Engineering"
-];
-
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
@@ -47,6 +37,20 @@ const validateFile = (file) => {
 const ReimbursementForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const resolveDepartment = React.useCallback(() => {
+    if (user?.department) return user.department;
+
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (storedUser?.department) return storedUser.department;
+    } catch {
+      // ignore parse errors
+    }
+
+    return '';
+  }, [user?.department]);
+
   const [formData, setFormData] = useState({
     name: '',
     facultyId: '',
@@ -69,10 +73,11 @@ const ReimbursementForm = () => {
   const idCardFileRef = useRef(null);
 
   React.useEffect(() => {
-    if (user?.department) {
-      setFormData(prev => ({ ...prev, department: user.department }));
+    const department = resolveDepartment();
+    if (department) {
+      setFormData(prev => ({ ...prev, department: department }));
     }
-  }, [user?.department]);
+  }, [resolveDepartment]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -232,6 +237,9 @@ const ReimbursementForm = () => {
           formDataToSend.append(key, sanitizeInput(formData[key]));
         }
       });
+
+      // Enforce trusted department resolved from current session state.
+      formDataToSend.set('department', resolveDepartment());
 
       // Set applicantType based on user role
       const userRole = user?.role || 'Faculty';

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext.jsx'
+import { resolveDepartment } from '../../../utils/departmentResolver'
 
 // Create the Profile Context
 const ProfileContext = createContext()
@@ -25,7 +26,7 @@ export function ProfileProvider({ children }) {
     if (user) {
       setProfile({
         name: user.name || user.username || "Faculty",
-        department: user.department || "",
+        department: resolveDepartment(user.department),
         designation: user.designation || "",
         role: user.role || "Faculty",
         email: user.email || null

@@ -14,6 +14,7 @@ import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide-react"
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
+import { resolveDepartment } from "../../../utils/departmentResolver"
 
 // SECURITY: Input sanitization helper to prevent XSS
 const sanitizeInput = (input) => {
@@ -52,7 +53,7 @@ export default function CoordinatorDashboard() {
     if (user) {
       setUserProfile({
         fullName: user.name || user.username || "Coordinator",
-        department: user.department || "Computer Science",
+        department: resolveDepartment(user.department),
         designation: user.designation || "Class Coordinator",
         role: user.role || "Coordinator",
         email: user.email || null

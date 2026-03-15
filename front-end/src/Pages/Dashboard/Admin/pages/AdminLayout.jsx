@@ -13,9 +13,14 @@ import ChangePassword from '../../../../components/ChangePassword'
 
 const DEPARTMENT_ALIASES = {
   'IT': 'Information Technology',
+  'INFOTECH': 'Information Technology',
   'CE': 'Computer Engineering',
+  'COMPS': 'Computer Engineering',
+  'COMP': 'Computer Engineering',
   'AIML': 'CSE AI and ML',
+  'AI ML': 'CSE AI and ML',
   'DS': 'CSE Data Science',
+  'DATA SCIENCE': 'CSE Data Science',
   'CIVIL': 'Civil Engineering',
   'MECH': 'Mechanical Engineering',
 }
@@ -116,6 +121,7 @@ const AdminLayout = () => {
   // Filter faculty based on search and filters
   const filteredFaculty = useMemo(() => {
     return staffList.filter(faculty => {
+      const isActive = faculty.is_active !== false
       const matchesSearch = !searchQuery ||
         faculty.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         faculty.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,7 +129,7 @@ const AdminLayout = () => {
 
       const matchesDepartment = departmentFilter === 'All' || normalizeDepartment(faculty.department) === departmentFilter
 
-      return matchesSearch && matchesDepartment
+      return isActive && matchesSearch && matchesDepartment
     })
   }, [staffList, searchQuery, departmentFilter])
 
@@ -150,12 +156,12 @@ const AdminLayout = () => {
     try {
       if (editingStaff) {
         // Update existing
-        await adminAPI.updateFaculty(editingStaff.id, formData)
-        toast.success('Staff updated successfully')
+        const response = await adminAPI.updateFaculty(editingStaff.id, formData)
+        toast.success(response?.message || 'Staff updated successfully')
       } else {
         // Create new
-        await adminAPI.createFaculty(formData)
-        toast.success('Staff created successfully')
+        const response = await adminAPI.createFaculty(formData)
+        toast.success(response?.message || 'Staff created successfully')
       }
       setShowModal(false)
       setEditingStaff(null)
@@ -173,7 +179,7 @@ const AdminLayout = () => {
     }
     try {
       await adminAPI.deleteFaculty(id)
-      toast.success('Staff deleted successfully')
+      toast.success('Staff removed successfully')
       fetchStaff()
     } catch (error) {
       console.error('Error deleting staff:', error)
