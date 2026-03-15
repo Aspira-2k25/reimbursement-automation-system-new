@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendOtpEmail } = require('../utils/emailService');
 
 // Token expiry: 15 minutes, OTP expiry: 5 minutes
@@ -113,10 +114,27 @@ const passwordController = {
       // Hash new password
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
+      // Get staff details for logging
+      const staffToUpdate = await prisma.staff.findUnique({
+        where: { email: resetToken.email },
+        select: { id: true, name: true, username: true, email: true, role: true, department: true }
+      });
+
+      if (!staffToUpdate) {
+        console.error('Staff not found for email in reset token:', resetToken.email);
+        return res.status(404).json({ error: 'User not found for password reset.' });
+      }
+
       // Update password in staff table
       await prisma.staff.update({
-        where: { email: resetToken.email },
+        where: { id: staffToUpdate.id },
         data: { password: hashedPassword }
+      });
+
+      logger.info('User reset password successfully', {
+        user: staffToUpdate.name || staffToUpdate.username || staffToUpdate.email,
+        role: staffToUpdate.role || 'Unknown',
+        department: staffToUpdate.department || ''
       });
 
       // Delete the used token (single-use)
@@ -243,6 +261,12 @@ const passwordController = {
       await prisma.staff.update({
         where: { id: staff.id },
         data: { password: hashedPassword }
+      });
+
+      logger.info('User changed password successfully', {
+        user: staff.name || req.user?.username || staff.email || 'Unknown',
+        role: req.user?.role || 'Unknown',
+        department: req.user?.department || ''
       });
 
       // Delete used OTP (single-use)

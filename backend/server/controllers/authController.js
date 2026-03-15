@@ -5,6 +5,7 @@ const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
 const logger = require('../utils/logger');
 const { addToBlacklist } = require('../utils/tokenBlacklist');
+const { getNormalizedDepartment } = require('../utils/formHelpers');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -195,7 +196,7 @@ const authController = {
           name: name.trim(),
           password: hashedPassword, // Store hashed password, not plain text
           email: email ? email.trim() : null,
-          department: department || null,
+          department: department ? getNormalizedDepartment(department) : null,
           role: role || 'Faculty',
           employee_id: employee_id || null,
           is_active: true,
@@ -290,7 +291,7 @@ const authController = {
 
       const updated = await dbUtils.updateStaffProfile(userId, {
         name,
-        department,
+        department: department ? getNormalizedDepartment(department) : undefined,
         email
       });
 
@@ -427,7 +428,7 @@ authController.createUser = async (req, res) => {
         name: name.trim(),
         password: hashedPassword,
         email: email ? email.trim() : null,
-        department: department || null,
+        department: department ? getNormalizedDepartment(department) : null,
         role: role || 'Faculty',
         employee_id: employee_id || null,
         is_active: true,
@@ -568,7 +569,7 @@ authController.updateStaffById = async (req, res) => {
       }
     }
 
-    const updates = { username, name, department, role, email, employee_id, is_active };
+    const updates = { username, name, department: department ? getNormalizedDepartment(department) : undefined, role, email, employee_id, is_active };
     if (password) {
       updates.password = await bcrypt.hash(password, 10);
     }
@@ -577,7 +578,12 @@ authController.updateStaffById = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ error: 'No fields to update or staff not found' });
     }
-    logger.info(`Staff record updated`, { id, updates });
+    logger.info(`Staff record updated by Admin`, { 
+      id, 
+      updates: { ...updates, password: updates.password ? '[HIDDEN]' : undefined },
+      user: req.user?.username || 'Admin',
+      role: 'Admin'
+    });
     res.json({ message: 'Staff updated successfully', staff: updated });
   } catch (error) {
     console.error('updateStaffById error:', error);
@@ -637,7 +643,7 @@ authController.createFaculty = async (req, res) => {
         name: name.trim(),
         password: hashedPassword,
         email: email ? email.toLowerCase().trim() : null,
-        department: department || null,
+        department: department ? getNormalizedDepartment(department) : null,
         role: role || 'Faculty',
         employee_id: employee_id || null,
         is_active: true,
@@ -655,7 +661,12 @@ authController.createFaculty = async (req, res) => {
       }
     });
 
-    logger.info(`New staff created`, { id: newFaculty.id, username: newFaculty.username });
+    logger.info(`New staff created by Admin`, { 
+      id: newFaculty.id, 
+      username: newFaculty.username,
+      user: req.user?.username || 'Admin',
+      role: 'Admin' 
+    });
     res.status(201).json({
       message: 'Faculty member created successfully',
       staff: newFaculty
@@ -691,6 +702,12 @@ authController.deleteFaculty = async (req, res) => {
     if (!updated) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
+
+    logger.info(`Staff deleted by Admin`, { 
+      id,
+      user: req.user?.username || 'Admin',
+      role: 'Admin' 
+    });
 
     res.json({ message: 'Faculty member deleted successfully' });
   } catch (error) {

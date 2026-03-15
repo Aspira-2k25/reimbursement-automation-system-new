@@ -16,6 +16,7 @@
  */
 
 const { getNextSequence } = require('../models/Counter');
+const { getNormalizedDepartment } = require('./formHelpers');
 
 // ──────────────────────────────────────────────────────────────
 // Role prefixes
@@ -31,45 +32,12 @@ const APPLICANT_PREFIX = {
 // Department codes  (add new departments here)
 // ──────────────────────────────────────────────────────────────
 const DEPARTMENT_CODES = {
-  // Information Technology
-  'information technology': 'IT',
-  'it': 'IT',
-  'infotech': 'IT',
-
-  // Computer Engineering
-  'computer engineering': 'COMP',
-  'computer engg': 'COMP',
-  'comps': 'COMP',
-  'comp': 'COMP',
-  'ce': 'COMP',
-
-  // CSE AI and ML
-  'cse ai and ml': 'AIML',
-  'cse aiml': 'AIML',
-  'aiml': 'AIML',
-  'ai ml': 'AIML',
-  'artificial intelligence': 'AIML',
-
-  // CSE Data Science
-  'cse data science': 'DS',
-  'cse ds': 'DS',
-  'data science': 'DS',
-  'ds': 'DS',
-
-  // Civil Engineering
-  'civil engineering': 'CIVIL',
-  'civil engg': 'CIVIL',
-  'civil': 'CIVIL',
-
-  // Mechanical Engineering
-  'mechanical engineering': 'MECH',
-  'mechanical engg': 'MECH',
-  'mechanical': 'MECH',
-  'mech': 'MECH',
-
-  // Fallback
-  'other': 'OTH',
-  'unknown': 'UNK'
+  'Information Technology': 'IT',
+  'Computer Engineering': 'COMP',
+  'CSE AI and ML': 'AIML',
+  'CSE Data Science': 'DS',
+  'Civil Engineering': 'CIVIL',
+  'Mechanical Engineering': 'MECH',
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -118,22 +86,17 @@ function getApplicantPrefix(applicantType) {
  */
 function getDepartmentCode(department) {
   if (!department) return 'UNK';
-  const dept = department.toLowerCase().trim();
-
-  // Exact match
-  if (DEPARTMENT_CODES[dept]) return DEPARTMENT_CODES[dept];
-
-  // Partial match
-  for (const [key, code] of Object.entries(DEPARTMENT_CODES)) {
-    if (dept.includes(key) || key.includes(dept)) return code;
+  const normalizedDepartment = getNormalizedDepartment(department);
+  if (DEPARTMENT_CODES[normalizedDepartment]) {
+    return DEPARTMENT_CODES[normalizedDepartment];
   }
 
   // Auto-generate from initials (max 4 chars)
-  const words = department.split(/\s+/).filter(Boolean);
+  const words = normalizedDepartment.split(/\s+/).filter(Boolean);
   if (words.length > 1) {
     return words.map(w => w[0].toUpperCase()).join('').substring(0, 4);
   }
-  return department.substring(0, 4).toUpperCase();
+  return normalizedDepartment.substring(0, 4).toUpperCase();
 }
 
 /**
