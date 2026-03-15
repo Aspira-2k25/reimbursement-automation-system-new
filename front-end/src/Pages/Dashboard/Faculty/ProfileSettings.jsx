@@ -12,14 +12,12 @@ export default function ProfileSettings() {
 
   // State for form inputs
   const [name, setName] = React.useState(profile.name)
-  const [dept, setDept] = React.useState(profile.department)
   const [designation, setDesignation] = React.useState(profile.designation)
   const [isLoading, setIsLoading] = React.useState(false)
 
   // Sync form state with profile context when profile changes
   React.useEffect(() => {
     setName(profile.name)
-    setDept(profile.department)
     setDesignation(profile.designation)
   }, [profile])
 
@@ -38,13 +36,12 @@ export default function ProfileSettings() {
       // Update profile in context
       updateProfile({
         name: name,
-        department: dept,
         designation: designation
       })
 
       // Show success message
       toast.success("Faculty profile updated successfully!")
-    } catch (error) {
+    } catch {
       toast.error("Failed to update profile. Please try again.")
     } finally {
       setIsLoading(false)
@@ -57,7 +54,6 @@ export default function ProfileSettings() {
   const handleReset = () => {
     resetProfile()
     setName(profile.name)
-    setDept(profile.department)
     setDesignation(profile.designation)
     toast.success("Form reset to default values")
   }
@@ -69,7 +65,7 @@ export default function ProfileSettings() {
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold">Faculty Profile Settings</h1>
           <p className="text-slate-600 mt-1 text-sm sm:text-base">
-            Update your faculty information. Changes reflect across the portal instantly.
+            Update your faculty information. Department is synced from your authenticated profile.
           </p>
         </div>
 
@@ -94,9 +90,8 @@ export default function ProfileSettings() {
             <span className="text-sm text-slate-600">Department</span>
             <input
               className="input w-full"
-              value={dept}
-              onChange={(e) => setDept(e.target.value)}
-              required
+              value={profile.department || 'Not assigned'}
+              readOnly
             />
           </label>
 

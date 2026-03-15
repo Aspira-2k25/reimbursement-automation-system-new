@@ -11,20 +11,7 @@ const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
 const dbUtils = require('../utils/database');
 const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, getDepartmentVariants, DEPARTMENT_ALIASES, buildDepartmentFilter, getNormalizedDepartment } = require('../utils/formHelpers');
-
-const hasDepartmentAccess = (userRole, userDepartment, formDepartment) => {
-  const role = (userRole || '').toLowerCase();
-  if (!['coordinator', 'hod'].includes(role)) {
-    return true;
-  }
-  if (!userDepartment || !formDepartment) {
-    return false;
-  }
-
-  const allowed = new Set(getDepartmentVariants(getNormalizedDepartment(userDepartment)).map((d) => d.toLowerCase()));
-  return allowed.has(getNormalizedDepartment(formDepartment).toLowerCase());
-};
+const { sanitizeString, sanitizeApplicationId, isValidObjectId, DEPARTMENT_ALIASES, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
 
 // POST /api/forms/submit
 router.post(
@@ -96,7 +83,12 @@ router.post(
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: F-COMP-NPT-2026-001 (Faculty, Comp Dept, NPTEL, 2026, Global Sequence 1)
-      const normalizedDepartment = getNormalizedDepartment(req.body.department || req.user.department);
+      const normalizedDepartment = getNormalizedDepartment(req.user?.department);
+      if (!normalizedDepartment) {
+        return res.status(400).json({
+          error: 'Department is not configured for your account. Please contact administrator.'
+        });
+      }
       const applicationId = await generateApplicationId({
         applicantType: applicantType,
         reimbursementType: req.body.reimbursementType || 'NPTEL',
@@ -731,14 +723,20 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
 
     const userRole = req.user.role?.toLowerCase();
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
 
-    if (!isOwner && !isAuthorizedRole) {
-      return res.status(403).json({ error: "Not authorized to delete this form" });
+    if (!isOwner) {
+      return res.status(403).json({ error: "Only the form owner can delete this form" });
     }
 
     if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
       return res.status(403).json({ error: 'Not authorized for this department' });
+    }
+
+    const deletableStatuses = ['Under HOD', null, undefined];
+    if (!deletableStatuses.includes(form.status)) {
+      return res.status(409).json({
+        error: 'Form cannot be deleted after review has started. Use workflow actions instead.'
+      });
     }
 
     // Delete files from Cloudinary if they exist

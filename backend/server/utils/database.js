@@ -1,4 +1,7 @@
 const pool = require('../config/database');
+const bcrypt = require('bcryptjs');
+
+const BCRYPT_HASH_PATTERN = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 
 // Helper to check if pool is initialized
 function ensurePool() {
@@ -271,7 +274,19 @@ const dbUtils = {
       }
 
       const setClauses = fields.map((field, idx) => `${field} = $${idx + 2}`);
-      const values = fields.map((field) => updates[field]);
+      const values = [];
+      for (const field of fields) {
+        if (field === 'password') {
+          const passwordValue = String(updates[field]);
+          if (BCRYPT_HASH_PATTERN.test(passwordValue)) {
+            values.push(passwordValue);
+          } else {
+            values.push(await bcrypt.hash(passwordValue, 10));
+          }
+        } else {
+          values.push(updates[field]);
+        }
+      }
 
       const query = `
         UPDATE staff

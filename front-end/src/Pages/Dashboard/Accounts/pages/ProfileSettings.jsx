@@ -21,7 +21,7 @@ const ProfileSettings = () => {
     fullName: userProfile?.fullName || '',
     email: userProfile?.email || '',
     designation: userProfile?.designation || '',
-    department: userProfile?.department || 'Accounts'
+    department: userProfile?.department || ''
   })
 
   const handleChange = useCallback((field, value) => {
@@ -86,7 +86,7 @@ const ProfileSettings = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{formData.fullName || 'Accounts User'}</h3>
               <p className="text-sm text-gray-500">{formData.designation || 'Accounts Officer'}</p>
-              <p className="text-xs text-[#3B945E] mt-1">{formData.department}</p>
+              <p className="text-xs text-[#3B945E] mt-1">{formData.department || 'Department not set'}</p>
             </div>
           </div>
 

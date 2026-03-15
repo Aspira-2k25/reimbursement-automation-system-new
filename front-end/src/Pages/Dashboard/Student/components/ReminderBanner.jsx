@@ -18,7 +18,7 @@ export default function ReminderBanner() {
   const { profile } = useProfile()
   const [deadlineDismissed, setDeadlineDismissed] = React.useState(false)
 
-  // Check if department needs to be set
+  // Check if department needs to be selected in profile setup
   const needsDepartment = !profile.departmentSet || !profile.department
 
   // Build the dynamic reminder message
@@ -45,7 +45,7 @@ export default function ReminderBanner() {
                   <div className="h-1 w-1 rounded-full" style={{ backgroundColor: '#d97706' }}></div>
                   <span className="text-sm" style={{ color: '#b45309' }}>Profile Setup</span>
                 </div>
-                <p className="mt-1 font-medium" style={{ color: '#b45309' }}>Please select your department to complete your profile setup</p>
+                <p className="mt-1 font-medium" style={{ color: '#b45309' }}>Please select your department to complete your profile setup.</p>
               </div>
             </div>
             <button

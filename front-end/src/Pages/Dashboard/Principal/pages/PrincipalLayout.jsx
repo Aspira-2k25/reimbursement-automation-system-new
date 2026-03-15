@@ -6,6 +6,7 @@ import { initialPrincipalData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
 import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
 import DepartmentRoster from './DepartmentRoster'
@@ -92,7 +93,8 @@ const PrincipalLayout = ({ children }) => {
         email: userEmail,
         phone: user.phone,
         joinDate: user.joinDate,
-        employeeId: user.employeeId || user.id
+        employeeId: user.employeeId || user.id,
+        department: resolveDepartment(user.department)
       })
     }
   }, [user])

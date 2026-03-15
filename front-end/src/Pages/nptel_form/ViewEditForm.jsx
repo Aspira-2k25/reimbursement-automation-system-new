@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { studentFormsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const ViewEditForm = ({ mode = 'view' }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
@@ -17,7 +19,11 @@ const ViewEditForm = ({ mode = 'view' }) => {
       try {
         // SECURITY: Use centralized API service with httpOnly cookies
         const data = await studentFormsAPI.getById(id);
-        setFormData(data.form);
+        const fetchedForm = data.form;
+        if (user?.department) {
+          fetchedForm.department = user.department;
+        }
+        setFormData(fetchedForm);
       } catch (error) {
         toast.error(error.error || 'Failed to fetch form');
         if (error.status === 401) {
@@ -73,7 +79,11 @@ const ViewEditForm = ({ mode = 'view' }) => {
 
     try {
       // SECURITY: Use centralized API service with httpOnly cookies
-      await studentFormsAPI.updateById(id, formData);
+      const payload = {
+        ...formData,
+        department: user?.department || formData.department,
+      };
+      await studentFormsAPI.updateById(id, payload);
       toast.success('Changes saved successfully!');
       navigate('/dashboard/requests');
     } catch (error) {
@@ -156,13 +166,10 @@ const ViewEditForm = ({ mode = 'view' }) => {
               <input
                 type="text"
                 name="department"
-                value={formData.department || ''}
-                onChange={handleChange}
-                disabled={mode !== 'edit'}
-                className={`w-full px-3 py-2 border rounded-md ${mode === 'edit'
-                    ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    : 'bg-gray-50 border-gray-200'
-                  }`}
+                value={user?.department || formData.department || ''}
+                readOnly
+                disabled
+                className="w-full px-3 py-2 border rounded-md bg-gray-50 border-gray-200"
               />
             </div>
 
