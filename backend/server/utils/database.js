@@ -266,6 +266,24 @@ const dbUtils = {
   // Update staff by ID (admin controlled)
   updateStaffById: async (id, updates) => {
     try {
+      // Validate password updates to avoid hashing invalid values like null/empty strings
+      if (updates && Object.prototype.hasOwnProperty.call(updates, 'password')) {
+        const rawPassword = updates.password;
+        const passwordStr = rawPassword == null ? '' : String(rawPassword);
+        const trimmed = passwordStr.trim();
+
+        // Reject empty / whitespace-only passwords
+        if (trimmed.length === 0) {
+          throw new Error('Password cannot be empty.');
+        }
+
+        // As a last line of defense, enforce a minimal password length
+        // when the value is not already a bcrypt hash.
+        if (!BCRYPT_HASH_PATTERN.test(passwordStr) && trimmed.length < 8) {
+          throw new Error('Password must be at least 8 characters long.');
+        }
+      }
+
       const allowed = ['username', 'name', 'email', 'role', 'department', 'employee_id', 'is_active', 'password'];
       const fields = allowed.filter((k) => updates[k] !== undefined);
 
