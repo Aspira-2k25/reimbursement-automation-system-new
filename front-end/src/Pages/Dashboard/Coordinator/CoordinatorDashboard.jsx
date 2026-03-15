@@ -193,7 +193,8 @@ export default function CoordinatorDashboard() {
     const pendingRequests = studentRequests.filter((req) => req.status === "Pending")
 
     // Calculate total disbursed amount for approved requests
-    const totalDisbursed = approvedRequests.reduce((sum, req) => {
+    const disbursedRequests = approvedRequests.filter(req => req.status === 'Reimbursed')
+    const totalDisbursed = disbursedRequests.reduce((sum, req) => {
       const amount = parseFloat(String(req.amount || '0').replace(/[₹,]/g, ''))
       return sum + (isNaN(amount) ? 0 : amount)
     }, 0)

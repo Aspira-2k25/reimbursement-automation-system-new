@@ -60,8 +60,8 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     setShowNotifications(false)
   }, [showProfileMenu])
 
-  const handleLogout = useCallback(() => {
-    logout()
+  const handleLogout = useCallback(async () => {
+    await logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
     navigate('/')

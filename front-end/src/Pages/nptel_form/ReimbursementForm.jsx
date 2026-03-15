@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apshahLogo from "../../assets/images/Apshah_logo.png";
 import websiteLogo from "../../assets/images/Website_logo.png";
-import { getCsrfToken, fetchCsrfToken } from '../../services/api';
+import { getCsrfToken, fetchCsrfToken, API_BASE_URL } from '../../services/api';
 
 // Department options
 const DEPARTMENTS = [
@@ -67,6 +67,12 @@ const ReimbursementForm = () => {
   // SECURITY: Use refs for file inputs instead of direct DOM access
   const nptelFileRef = useRef(null);
   const idCardFileRef = useRef(null);
+
+  React.useEffect(() => {
+    if (user?.department) {
+      setFormData(prev => ({ ...prev, department: user.department }));
+    }
+  }, [user?.department]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -265,8 +271,6 @@ const ReimbursementForm = () => {
         headers['X-CSRF-Token'] = getCsrfToken();
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
       const doSubmit = () =>
         fetch(`${API_BASE_URL}/forms/submit`, {
           method: "POST",
@@ -432,22 +436,14 @@ const ReimbursementForm = () => {
                 <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
                   Department *
                 </label>
-                <select
+                <input
+                  type="text"
                   id="department"
                   name="department"
                   value={formData.department}
-                  onChange={handleChange}
-                  required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                >
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
+                  readOnly
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
                 {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
