@@ -92,7 +92,9 @@ router.post(
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
-      const normalizedDepartment = getNormalizedDepartment(req.user?.department);
+      const tokenDepartment = req.user?.department;
+      const bodyDepartment = req.body.department;
+      const normalizedDepartment = getNormalizedDepartment(tokenDepartment || bodyDepartment);
       if (!normalizedDepartment) {
         return res.status(400).json({
           error: 'Department is not configured for your account. Please contact administrator.'
