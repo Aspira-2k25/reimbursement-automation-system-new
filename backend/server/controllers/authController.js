@@ -32,8 +32,8 @@ const authController = {
         return res.status(500).json({ error: 'Authentication failed internally' });
       }
 
-      // Update last login time
-      await dbUtils.updateLastLogin(user.id);
+      // Update last login time (fire-and-forget — don't block the response)
+      dbUtils.updateLastLogin(user.id).catch(err => console.error('updateLastLogin failed:', err));
 
       // Generate JWT token with short expiry
       const token = jwt.sign(
