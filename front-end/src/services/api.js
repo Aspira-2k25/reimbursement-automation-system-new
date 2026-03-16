@@ -467,3 +467,27 @@ export const adminAPI = {
     }
   }
 };
+
+// Announcement API — dynamic reminder banner management
+export const announcementAPI = {
+  /** Fetch the currently active announcement for a given role. Any authenticated user. */
+  getActive: async (role) => {
+    try {
+      const params = role ? { role } : {};
+      const res = await api.get('/announcements/active', { params });
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  /** Create or update the global announcement. HOD / Principal / Admin only. */
+  update: async (data) => {
+    try {
+      const res = await api.put('/announcements', data);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
+};

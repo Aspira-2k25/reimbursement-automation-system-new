@@ -54,7 +54,7 @@ async function addToBlacklist(token, expiresInSeconds) {
     return true;
   } catch (error) {
     console.error('Error adding token to blacklist:', error);
-    // Fail secure: if we can't blacklist, assume it's blacklisted
+    // Return false so callers can detect the failure and handle it appropriately
     return false;
   }
 }

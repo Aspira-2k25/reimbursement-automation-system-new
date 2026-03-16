@@ -1,22 +1,11 @@
 import React from "react"
-
-// ============================================
-// CONFIGURABLE REMINDER SETTINGS
-// Update these values to change the reminder dynamically
-// ============================================
-const REMINDER_CONFIG = {
-  title: "FDP Program",
-  deadline: "15th April 2026", // Update this date as needed
-  description: "reimbursement window closes on"
-}
-// ============================================
+import { useAnnouncement } from "../../../../hooks/useAnnouncement"
 
 export default function ReminderBanner() {
   const [dismissed, setDismissed] = React.useState(false)
-  if (dismissed) return null
+  const { announcement } = useAnnouncement()
 
-  // Build the dynamic reminder message
-  const reminderMessage = `${REMINDER_CONFIG.title} ${REMINDER_CONFIG.description} ${REMINDER_CONFIG.deadline}`
+  if (dismissed || !announcement?.isActive || !announcement?.message) return null
 
   return (
     <div className="mx-auto max-w-7xl px-4 md:px-6 py-4">
@@ -37,7 +26,7 @@ export default function ReminderBanner() {
                 <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-dark-gray)' }}></div>
                 <span className="text-sm" style={{ color: 'var(--color-dark-gray)' }}>Faculty Alert</span>
               </div>
-              <p className="mt-1 font-medium" style={{ color: 'var(--color-dark-gray)' }}>{reminderMessage}</p>
+              <p className="mt-1 font-medium" style={{ color: 'var(--color-dark-gray)' }}>{announcement.message}</p>
             </div>
           </div>
           <button
