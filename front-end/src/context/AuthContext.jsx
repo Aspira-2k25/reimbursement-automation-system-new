@@ -50,9 +50,6 @@ export const AuthProvider = ({ children }) => {
   // Check if user is logged in on app start
   useEffect(() => {
     const initAuth = async () => {
-      // Fetch CSRF token for security
-      await fetchCsrfToken();
-
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
@@ -61,7 +58,11 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('user');
           setUser(null);
         }
-        await refreshUserProfile();
+        // Run CSRF refresh and profile sync in parallel — both are needed but independent
+        await Promise.all([fetchCsrfToken(), refreshUserProfile()]);
+      } else {
+        // No stored user — just fetch CSRF token for login form
+        await fetchCsrfToken();
       }
       setLoading(false);
     };
@@ -95,11 +96,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(normalizedUser));
       setUser(normalizedUser);
 
-      // Refresh CSRF token after login since session changed
-      await fetchCsrfToken();
-
-      // Ensure we have the latest profile fields (department, etc.) from backend session
-      await refreshUserProfile();
+      // Refresh CSRF token and profile in parallel — do NOT await them sequentially
+      // The login response already has full user data, so refreshUserProfile is only
+      // needed to sync any server-side updates (run in background, non-blocking).
+      Promise.all([fetchCsrfToken(), refreshUserProfile()]).catch(() => {});
 
       return data;
     } catch (error) {
