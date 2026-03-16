@@ -66,9 +66,10 @@ const connectMongoDB = require('./config/mongo');
 const dbUtils = require('./utils/database');
 const logger = require('./utils/logger');
 
-// Routes / controllers / middleware
-const formRoutes = require('./routes/formRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
+const formRoutes = require('./routes/formRoutes');
 const authRoutes = require('./routes/auth');
 const passwordRoutes = require('./routes/passwordRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
@@ -338,6 +339,12 @@ app.use('/api/forms', csrfProtection, formRoutes);
 
 // Student forms (MongoDB) - Apply CSRF protection to state-changing routes
 app.use('/api/student-forms', csrfProtection, studentFormRoutes);
+
+// Notification routes
+app.use('/api/notifications', notificationRoutes);
+
+// Announcement routes (dynamic reminder banner)
+app.use('/api/announcements', announcementRoutes);
 
 // CSRF token endpoint for frontend
 app.get('/api/csrf-token', csrfProtection, (req, res) => {

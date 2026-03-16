@@ -92,6 +92,7 @@ const HODLayout = ({ children }) => {
       applicantId: f.studentId || f.facultyId || 'N/A',
       applicantType: f.applicantType || 'Student',
       applicantEmail: f.email,
+      department: f.department || 'N/A',
       category: f.reimbursementType || f.category || "NPTEL",
       amount: `₹${amountNum.toLocaleString()}`,
       amountNum: amountNum,
