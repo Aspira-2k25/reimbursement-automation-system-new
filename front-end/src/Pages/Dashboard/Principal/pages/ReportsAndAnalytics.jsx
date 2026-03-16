@@ -15,6 +15,7 @@ import ReportLineChart from '../components/ReportLineChart'
 import ReportPieChart from '../components/ReportPieChart'
 import FilterBar from '../components/FilterBar'
 import { usePrincipalContext } from './PrincipalLayout'
+import { normalizeDepartment } from '../../../../utils/departmentNormalization'
 
 // Helper functions (replacing mockData imports)
 const calculateCollegeStats = (requests) => {
@@ -73,8 +74,8 @@ const ReportsAndAnalytics = () => {
         return false
       }
 
-      // Department filter
-      if (selectedDepartment !== 'All' && request.department !== selectedDepartment) {
+      // Department filter — normalize both sides to handle "IT" vs "Information Technology"
+      if (selectedDepartment !== 'All' && normalizeDepartment(request.department) !== normalizeDepartment(selectedDepartment)) {
         return false
       }
 
