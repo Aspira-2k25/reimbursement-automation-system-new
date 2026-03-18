@@ -121,7 +121,7 @@ if (pool) {
 
 // Graceful shutdown (only relevant for long-running servers, not serverless)
 // In serverless, Vercel manages the lifecycle, so we don't need SIGINT handlers
-if (process.env.NODE_ENV !== 'production' || require.main === module) {
+if (pool && (process.env.NODE_ENV !== 'production' || require.main === module)) {
   process.on('SIGINT', () => {
     pool.end();
     console.log('Database pool has ended');

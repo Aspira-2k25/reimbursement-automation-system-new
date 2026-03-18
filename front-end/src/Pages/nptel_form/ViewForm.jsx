@@ -156,6 +156,10 @@ export default function ViewForm() {
               <label className="block text-sm font-medium text-gray-600">Email</label>
               <div className="mt-1 text-gray-900">{formData.email}</div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600">Department</label>
+              <div className="mt-1 text-gray-900">{formData.department || 'N/A'}</div>
+            </div>
           </div>
 
           <div className="space-y-4">

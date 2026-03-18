@@ -36,8 +36,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
     setIsProfileDropdownOpen(false)
   }, [setActiveTab])
 
-  const handleLogout = useCallback(() => {
-    logout()
+  const handleLogout = useCallback(async () => {
+    await logout()
     toast.success("Logged out successfully")
     setIsProfileDropdownOpen(false)
     navigate("/", { replace: true })

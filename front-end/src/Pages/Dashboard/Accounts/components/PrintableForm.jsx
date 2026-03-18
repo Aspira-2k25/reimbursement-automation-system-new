@@ -37,18 +37,14 @@ const PrintableForm = ({ request }) => {
             left: 0;
             top: 0;
             width: 100%;
-            height: 99vh; /* Force exactly one page height */
-            padding: 10mm;
+            padding: 8mm;
             box-sizing: border-box;
-            overflow: hidden;
+            font-size: 13px;
+            line-height: 1.2;
           }
           @page {
             size: A4;
             margin: 0; /* Removing page margins removes the browser URL/Header/Footer text */
-          }
-          .no-break {
-            page-break-inside: avoid;
-            break-inside: avoid;
           }
         }
       `}</style>
@@ -96,7 +92,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Applicant Information */}
-      <div className="mb-4 no-break">
+      <div className="mb-2">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           1. Applicant Information
         </h3>
@@ -137,7 +133,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Course Details */}
-      <div className="mb-4 no-break">
+      <div className="mb-2">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           2. Course Details
         </h3>
@@ -156,7 +152,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Financial Details */}
-      <div className="mb-4 no-break">
+      <div className="mb-2">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           3. Financial Details
         </h3>
@@ -171,7 +167,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Bank Details */}
-      <div className="mb-4 no-break">
+      <div className="mb-2">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           4. Bank Account Details
         </h3>
@@ -194,7 +190,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Approval History */}
-      <div className="mb-4 no-break">
+      <div className="mb-2">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           5. Approval History
         </h3>
@@ -225,7 +221,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Signature Section */}
-      <div className="mt-8 pt-4 border-t border-gray-400 no-break">
+      <div className="mt-4 pt-2 border-t border-gray-400">
         <div className="grid grid-cols-3 gap-8 text-center">
           <div>
             <div className="border-b border-black mb-1 h-10"></div>
@@ -246,13 +242,13 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Footer */}
-      <div className="mt-4 pt-2 border-t border-gray-300 text-center text-xs text-gray-500 no-break">
+      <div className="mt-2 pt-1 border-t border-gray-300 text-center text-xs text-gray-500">
         <p>This is a computer-generated document. Please verify all details before processing.</p>
         <p className="mt-0.5">Generated on: {new Date().toLocaleString('en-IN')}</p>
       </div>
 
       {/* Office Use Only Section */}
-      <div className="mt-3 p-3 border-2 border-dashed border-gray-400 no-break">
+      <div className="mt-2 p-2 border-2 border-dashed border-gray-400">
         <h4 className="text-xs font-bold mb-2">FOR OFFICE USE ONLY</h4>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>

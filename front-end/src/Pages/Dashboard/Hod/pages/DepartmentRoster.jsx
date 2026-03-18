@@ -135,8 +135,8 @@ const DepartmentRoster = () => {
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold mb-2">
               {userProfile ?
-                (formatDepartmentName(userProfile.department)) || 'Civil Engineering'
-                : 'Civil Engineering'
+                (formatDepartmentName(userProfile.department)) || 'Department not set'
+                : 'Department not set'
               } Department
             </h2>
             <p className="text-indigo-100 mb-4 text-sm sm:text-base">

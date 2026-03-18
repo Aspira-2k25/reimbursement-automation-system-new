@@ -1,28 +1,18 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
 import { useProfile } from "../ProfileContext"
-
-// ============================================
-// CONFIGURABLE REMINDER SETTINGS
-// Update these values to change the reminder dynamically
-// ============================================
-const REMINDER_CONFIG = {
-  title: "Research Grant",
-  deadline: "31st March 2026", // Update this date as needed
-  description: "reimbursement window closes on"
-}
-// ============================================
+import { useAnnouncement } from "../../../../hooks/useAnnouncement"
 
 export default function ReminderBanner() {
   const navigate = useNavigate()
   const { profile } = useProfile()
   const [deadlineDismissed, setDeadlineDismissed] = React.useState(false)
+  const { announcement } = useAnnouncement()
 
-  // Check if department needs to be set
+  // Check if department needs to be selected in profile setup
   const needsDepartment = !profile.departmentSet || !profile.department
 
-  // Build the dynamic reminder message
-  const reminderMessage = `${REMINDER_CONFIG.title} ${REMINDER_CONFIG.description} ${REMINDER_CONFIG.deadline}`
+  const showReminder = !deadlineDismissed && announcement && announcement.isActive && announcement.message
 
   return (
     <div className="mx-auto max-w-7xl px-4 md:px-6 py-4 space-y-3">
@@ -45,7 +35,7 @@ export default function ReminderBanner() {
                   <div className="h-1 w-1 rounded-full" style={{ backgroundColor: '#d97706' }}></div>
                   <span className="text-sm" style={{ color: '#b45309' }}>Profile Setup</span>
                 </div>
-                <p className="mt-1 font-medium" style={{ color: '#b45309' }}>Please select your department to complete your profile setup</p>
+                <p className="mt-1 font-medium" style={{ color: '#b45309' }}>Please select your department to complete your profile setup.</p>
               </div>
             </div>
             <button
@@ -59,8 +49,8 @@ export default function ReminderBanner() {
         </div>
       )}
 
-      {/* Deadline Reminder Banner - Dismissable */}
-      {!deadlineDismissed && (
+      {/* Dynamic Reminder Banner - Dismissable, controlled by HOD/Principal */}
+      {showReminder && (
         <div className="relative overflow-hidden rounded-2xl shadow-sm" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 30%, white)', border: '1px solid color-mix(in oklab, #57BA98 40%, white)' }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, color-mix(in oklab, #65CCB8 15%, white))' }}></div>
           <div className="relative flex items-center justify-between gap-4 p-4">
@@ -78,7 +68,7 @@ export default function ReminderBanner() {
                   <div className="h-1 w-1 rounded-full" style={{ backgroundColor: '#3B945E' }}></div>
                   <span className="text-sm" style={{ color: '#3B945E' }}>Deadline Alert</span>
                 </div>
-                <p className="mt-1 font-medium" style={{ color: '#3B945E' }}>{reminderMessage}</p>
+                <p className="mt-1 font-medium" style={{ color: '#3B945E' }}>{announcement.message}</p>
               </div>
             </div>
             <button

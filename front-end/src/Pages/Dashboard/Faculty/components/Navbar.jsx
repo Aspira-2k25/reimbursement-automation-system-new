@@ -110,7 +110,7 @@ export default function Navbar() {
               ].join(" ")}
             />
 
-            {navItems.slice(0, 2).map((item, index) => (
+            {navItems.slice(0, 2).map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -183,7 +183,7 @@ export default function Navbar() {
                 <div className="hidden sm:flex flex-col text-left">
                   <span className="text-sm font-semibold text-white">{profile.name}</span>
                   <span className="text-xs text-white/80">
-                    {profile.role} • {profile.department}
+                    {profile.role} • {profile.department || 'Department not set'}
                   </span>
                   {profile.designation && (
                     <span className="text-xs text-white/70">{profile.designation}</span>
@@ -238,14 +238,15 @@ export default function Navbar() {
                     </div>
                   </button>
                   <button
-                    onClick={() => {
-                      logout()
+                    onClick={async () => {
+                      await logout()
                       handleClose()
                       navigate("/")
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        await logout()
                         handleClose()
                         navigate("/")
                       }

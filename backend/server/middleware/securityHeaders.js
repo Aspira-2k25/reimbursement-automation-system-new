@@ -27,11 +27,11 @@ const securityHeaders = (req, res, next) => {
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
     // Content Security Policy with nonce-based script execution
-    // Note: 'unsafe-inline' is removed for scripts, kept for styles (needed by some UI libs)
+    // 'unsafe-inline' removed for scripts; use the per-request nonce instead
     // For production, consider using CSP hashes or moving styles to external files
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
+        `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com`,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: https: blob:",
