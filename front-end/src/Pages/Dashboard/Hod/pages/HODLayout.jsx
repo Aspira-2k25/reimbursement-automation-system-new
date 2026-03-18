@@ -7,6 +7,7 @@ import { initialHodData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
 import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
 import ApplyForReimbursement from './ApplyForReimbursement'
@@ -91,6 +92,7 @@ const HODLayout = ({ children }) => {
       applicantId: f.studentId || f.facultyId || 'N/A',
       applicantType: f.applicantType || 'Student',
       applicantEmail: f.email,
+      department: f.department || 'N/A',
       category: f.reimbursementType || f.category || "NPTEL",
       amount: `₹${amountNum.toLocaleString()}`,
       amountNum: amountNum,
@@ -209,7 +211,7 @@ const HODLayout = ({ children }) => {
 
       setUserProfile({
         fullName: user.fullName || user.name,
-        department: user.department,
+        department: resolveDepartment(user.department),
         designation: user.designation || user.role,
         role: user.role,
         email: userEmail,

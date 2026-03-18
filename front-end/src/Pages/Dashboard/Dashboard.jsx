@@ -1,7 +1,7 @@
 import React from "react"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext.jsx"
-import { Toaster, toast } from "react-hot-toast"
+import { toast } from "react-hot-toast"
 import { AnimatePresence, motion } from "framer-motion"
 
 import StudentNavbar from "./Student/components/Navbar"
@@ -74,37 +74,6 @@ export default function Dashboard() {
     }
   }, [location.pathname])
 
-  // Toast configuration with frosted glass effect
-  // Shared across all roles
-  // You can customize the styles as needed
-  // Example usage: toast.success("Message")
-  // Documentation: https://react-hot-toast.com/docs/toast
-  // Frosted glass effect achieved using backdropFilter and semi-transparent background
-
-  const toastConfig = {
-    position: "top-right",
-    toastOptions: {
-      style: {
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        color: '#1e293b',
-        borderRadius: '16px',
-        padding: '16px 20px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-      },
-      success: {
-        iconTheme: {
-          primary: '#10b981',
-          secondary: '#fff',
-        },
-      },
-      duration: 3000,
-    }
-  }
 
   const userRole = user?.role || "Student"
 
@@ -117,7 +86,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <CoordinatorDashboard />
-        <Toaster {...toastConfig} />
       </div>
     )
   }
@@ -138,7 +106,6 @@ export default function Dashboard() {
                 <Route path="*" element={<Navigate to="faculty" replace />} />
               </Routes>
             </AnimatePresence>
-            <Toaster {...toastConfig} />
           </FacultyNotificationProvider>
         </FacultyProfileProvider>
       </div>
@@ -149,7 +116,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <HODDashboard />
-        <Toaster {...toastConfig} />
       </div>
     )
   }
@@ -158,7 +124,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #65CCB8 20%, white) 0%, white 40%)' }}>
         <PrincipalDashboard />
-        <Toaster {...toastConfig} />
       </div>
     )
   }
@@ -167,7 +132,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #F59E0B 15%, white) 0%, white 40%)' }}>
         <AccountsDashboard />
-        <Toaster {...toastConfig} />
       </div>
     )
   }
@@ -178,7 +142,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #8B5CF6 15%, white) 0%, white 40%)' }}>
         <AdminDashboard />
-        <Toaster {...toastConfig} />
       </div>
     )
   }
@@ -199,8 +162,6 @@ export default function Dashboard() {
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
         </AnimatePresence>
-
-        <Toaster {...toastConfig} />
       </div>
     )
 
@@ -228,7 +189,6 @@ export default function Dashboard() {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/20">
           <CoordinatorDashboard />
-          <Toaster {...toastConfig} />
         </div>
       )
 
@@ -240,7 +200,6 @@ export default function Dashboard() {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
           <HODDashboard />
-          <Toaster {...toastConfig} />
         </div>
       )
 
@@ -252,7 +211,6 @@ export default function Dashboard() {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
           <PrincipalDashboard />
-          <Toaster {...toastConfig} />
         </div>
       )
 
@@ -264,7 +222,6 @@ export default function Dashboard() {
       return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50/30 to-orange-50/20">
           <AccountsDashboard />
-          <Toaster {...toastConfig} />
         </div>
       )
 
@@ -276,7 +233,6 @@ export default function Dashboard() {
       return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50/30 to-violet-50/20">
           <AdminDashboard />
-          <Toaster {...toastConfig} />
         </div>
       )
 

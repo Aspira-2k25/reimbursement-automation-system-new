@@ -2,7 +2,16 @@
 import React from "react"
 import { toast } from "react-hot-toast"
 import "../Dashboard.css"
-import { useProfile, DEPARTMENTS } from "./ProfileContext"
+import { useProfile } from "./ProfileContext"
+
+const DEPARTMENTS = [
+  "Computer Engineering",
+  "Civil Engineering",
+  "Mechanical Engineering",
+  "CSE AI and ML",
+  "CSE Data Science",
+  "Information Technology"
+]
 
 /**
  * Student ProfileSettings Component
@@ -29,7 +38,6 @@ export default function ProfileSettings() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Validate department is selected
     if (!dept) {
       toast.error("Please select your department")
       return
@@ -47,7 +55,7 @@ export default function ProfileSettings() {
 
       // Show success message
       toast.success("Profile updated successfully!")
-    } catch (error) {
+    } catch {
       toast.error("Failed to update profile. Please try again.")
     } finally {
       setIsLoading(false)
@@ -60,7 +68,7 @@ export default function ProfileSettings() {
   const handleReset = () => {
     resetProfile()
     setName(profile.name)
-    setDept("")
+    setDept(profile.department)
     toast.success("Form reset to default values")
   }
 
@@ -75,7 +83,6 @@ export default function ProfileSettings() {
           </p>
         </div>
 
-        {/* Department reminder alert - only show if not set */}
         {!profile.departmentSet && (
           <div className="mb-4 p-4 rounded-xl border" style={{ backgroundColor: 'color-mix(in oklab, #f59e0b 15%, white)', borderColor: 'color-mix(in oklab, #f59e0b 40%, white)' }}>
             <div className="flex items-center gap-3">

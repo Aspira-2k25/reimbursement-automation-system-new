@@ -15,6 +15,7 @@ import ReportLineChart from '../components/ReportLineChart'
 import ReportPieChart from '../components/ReportPieChart'
 import FilterBar from '../components/FilterBar'
 import { usePrincipalContext } from './PrincipalLayout'
+import { normalizeDepartment } from '../../../../utils/departmentNormalization'
 
 // Helper functions (replacing mockData imports)
 const calculateCollegeStats = (requests) => {
@@ -23,7 +24,7 @@ const calculateCollegeStats = (requests) => {
   const approved = requests.filter(r => r.status === 'Approved' || r.status === 'Under Principal').length
   const rejected = requests.filter(r => r.status === 'Rejected').length
   const approvedAmount = requests
-    .filter(r => r.status === 'Approved' || r.status === 'Under Principal')
+    .filter(r => r.status === 'Reimbursed')
     .reduce((sum, r) => sum + (parseFloat(String(r.amount).replace(/[₹,]/g, '')) || 0), 0)
 
   return { total, pending, approved, rejected, approvedAmount }
@@ -73,8 +74,8 @@ const ReportsAndAnalytics = () => {
         return false
       }
 
-      // Department filter
-      if (selectedDepartment !== 'All' && request.department !== selectedDepartment) {
+      // Department filter — normalize both sides to handle "IT" vs "Information Technology"
+      if (selectedDepartment !== 'All' && normalizeDepartment(request.department) !== normalizeDepartment(selectedDepartment)) {
         return false
       }
 
@@ -155,8 +156,8 @@ const ReportsAndAnalytics = () => {
         acc[category] = { count: 0, amount: 0 }
       }
       acc[category].count += 1
-      if (request.status === 'Approved') {
-        const amount = parseFloat(request.amount.replace(/[₹,]/g, ''))
+      if (request.status === 'Reimbursed') {
+        const amount = parseFloat(String(request.amount).replace(/[₹,]/g, ''))
         acc[category].amount += isNaN(amount) ? 0 : amount
       }
       return acc
@@ -185,8 +186,8 @@ const ReportsAndAnalytics = () => {
       }
 
       acc[monthName].requests += 1
-      if (request.status === 'Approved') {
-        const amount = parseFloat(request.amount.replace(/[₹,]/g, ''))
+      if (request.status === 'Reimbursed') {
+        const amount = parseFloat(String(request.amount).replace(/[₹,]/g, ''))
         acc[monthName].amount += isNaN(amount) ? 0 : amount
       }
 

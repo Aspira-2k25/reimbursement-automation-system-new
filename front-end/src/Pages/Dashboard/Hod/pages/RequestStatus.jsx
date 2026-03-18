@@ -124,7 +124,7 @@ const RequestStatus = () => {
     ).length
     const rejected = requests.filter(r => r.status === 'Rejected').length
     const totalAmount = requests
-      .filter(r => r.status === 'Approved' || r.status === 'Under Principal')
+      .filter(r => r.status === 'Reimbursed')
       .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
 
     return { total, approved, pending, rejected, totalAmount }
