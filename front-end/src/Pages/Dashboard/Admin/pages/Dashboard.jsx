@@ -5,33 +5,21 @@ import { Users, UserPlus, TrendingUp, Award } from 'lucide-react'
 import FacultyManagement from './FacultyManagement'
 
 const StatCard = ({ title, value, subtitle, icon: Icon, color }) => {
-  const bgColors = {
-    blue: 'bg-blue-50',
-    green: 'bg-green-50',
-    purple: 'bg-purple-50',
-    orange: 'bg-orange-50'
-  }
-  const iconColors = {
-    blue: 'text-blue-600 bg-blue-100',
-    green: 'text-green-600 bg-green-100',
-    purple: 'text-purple-600 bg-purple-100',
-    orange: 'text-orange-600 bg-orange-100'
-  }
-
   return (
     <motion.div
-      className={`${bgColors[color]} rounded-lg p-6 border border-gray-200`}
+      className="bg-white rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300"
+      style={{ border: '1px solid var(--color-light-teal)' }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.3 }}
     >
       <div className="flex justify-between items-start">
-        <div>
-          <p className="text-gray-600 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-          {subtitle && <p className="text-gray-500 text-xs mt-1">{subtitle}</p>}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--color-dark-gray)' }}>{title}</p>
+          <p className="text-3xl font-bold mt-2" style={{ color: 'var(--color-dark-gray)' }}>{value}</p>
+          {subtitle && <p className="text-xs mt-1 truncate" style={{ color: 'var(--color-dark-gray)' }}>{subtitle}</p>}
         </div>
-        <div className={`${iconColors[color]} rounded-lg p-3`}>
-          <Icon className="w-6 h-6" />
+        <div className="rounded-full p-2 sm:p-3 flex-shrink-0 ml-2" style={{ backgroundColor: 'var(--color-medium-teal)' }}>
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
       </div>
     </motion.div>

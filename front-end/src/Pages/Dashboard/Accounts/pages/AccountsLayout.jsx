@@ -1,12 +1,14 @@
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion as Motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialAccountsData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
 import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
 import ProfileSettings from './ProfileSettings'
 import ReimbursedList from './ReimbursedList'
@@ -118,7 +120,7 @@ const AccountsLayout = () => {
         phone: user.phone,
         joinDate: user.joinDate,
         employeeId: user.employeeId || user.id,
-        department: user.department || 'Accounts'
+        department: resolveDepartment(user.department) || 'Accounts'
       })
     }
   }, [user])
@@ -149,7 +151,6 @@ const AccountsLayout = () => {
       division: f.division,
       studentId: f.studentId,
       facultyId: f.facultyId,
-      jobTitle: f.jobTitle,
       name: f.name,
       remarks: f.remarks,
       academicYear: f.academicYear,
@@ -264,7 +265,7 @@ const AccountsLayout = () => {
         status: newStatus,
         accountsComments: comments
       }
-      
+
       // If rejecting, also set rejectionRemarks for workflow visibility
       if (newStatus === 'Rejected') {
         updateData.accountsRemarks = comments
@@ -355,11 +356,23 @@ const AccountsLayout = () => {
       case 'profile':
         return <ProfileSettings />
       case 'change-password':
-        return <ChangePassword />
+        return (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => handleSetActiveTab('profile')}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Profile Settings
+            </button>
+            <ChangePassword />
+          </div>
+        )
       default:
         return <HomeDashboard />
     }
-  }, [activeTab])
+  }, [activeTab, handleSetActiveTab])
 
   // Context value
   const contextValue = useMemo(() => ({
@@ -420,7 +433,7 @@ const AccountsLayout = () => {
 
           <main className="flex-1 p-4 sm:p-6 overflow-auto">
             <AnimatePresence mode="wait">
-              <motion.div
+              <Motion.div
                 key={activeTab}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -428,7 +441,7 @@ const AccountsLayout = () => {
                 transition={{ duration: 0.3 }}
               >
                 {renderActiveTab()}
-              </motion.div>
+              </Motion.div>
             </AnimatePresence>
           </main>
         </div>

@@ -10,7 +10,6 @@ const FormSchema = new mongoose.Schema({
     name: { type: String, required: true },
     facultyId: { type: String }, // Faculty ID number
     email: { type: String, required: true },
-    jobTitle: { type: String },
     department: { type: String }, // Department for HOD filtering
     academicYear: { type: String },
     amount: { type: Number },
@@ -24,7 +23,7 @@ const FormSchema = new mongoose.Schema({
     status: {
         type: String,
         default: "Under HOD",
-        enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Disbursed", "Rejected"]
+        enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Rejected"]
     },
     // Track which role rejected the application (for workflow visibility)
     rejectedBy: { type: String, enum: ["Coordinator", "HOD", "Principal", "Accounts", null], default: null },

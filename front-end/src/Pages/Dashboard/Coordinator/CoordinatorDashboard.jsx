@@ -14,6 +14,7 @@ import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide-react"
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
+import { resolveDepartment } from "../../../utils/departmentResolver"
 
 // SECURITY: Input sanitization helper to prevent XSS
 const sanitizeInput = (input) => {
@@ -52,7 +53,7 @@ export default function CoordinatorDashboard() {
     if (user) {
       setUserProfile({
         fullName: user.name || user.username || "Coordinator",
-        department: user.department || "Computer Science",
+        department: resolveDepartment(user.department),
         designation: user.designation || "Class Coordinator",
         role: user.role || "Coordinator",
         email: user.email || null
@@ -77,7 +78,6 @@ export default function CoordinatorDashboard() {
     studentName: f.name || 'N/A',
     studentId: f.studentId || 'N/A',
     facultyId: f.facultyId,
-    jobTitle: f.jobTitle,
     category: f.reimbursementType || f.category || "NPTEL",
     status: f.status || "Pending",
     amount: f.amount ? `₹${f.amount.toLocaleString()}` : '₹0',
@@ -194,7 +194,8 @@ export default function CoordinatorDashboard() {
     const pendingRequests = studentRequests.filter((req) => req.status === "Pending")
 
     // Calculate total disbursed amount for approved requests
-    const totalDisbursed = approvedRequests.reduce((sum, req) => {
+    const disbursedRequests = approvedRequests.filter(req => req.status === 'Reimbursed')
+    const totalDisbursed = disbursedRequests.reduce((sum, req) => {
       const amount = parseFloat(String(req.amount || '0').replace(/[₹,]/g, ''))
       return sum + (isNaN(amount) ? 0 : amount)
     }, 0)
@@ -460,7 +461,7 @@ export default function CoordinatorDashboard() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-moss-lime)]/10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10 page-content">
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}

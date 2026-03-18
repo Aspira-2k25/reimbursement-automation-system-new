@@ -1,6 +1,7 @@
 import React from "react"
 import { useLocation, Link, useNavigate } from "react-router-dom"
 import { Home, BarChart2, ChevronDown, Settings, LogOut } from "lucide-react"
+import toast from "react-hot-toast"
 import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
 import { useAuth } from "../../../../context/AuthContext.jsx"
@@ -83,7 +84,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{ background: 'linear-gradient(135deg, color-mix(in oklab, #3B945E 70%, white) 0%, color-mix(in oklab, #57BA98 85%, white) 100%)', borderBottom: '1px solid color-mix(in oklab, #3B945E 35%, white)' }}>
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
-        <div className="flex h-14 sm:h-16 items-center justify-between">
+        <div className="flex h-14 sm:h-16 items-center justify-between relative">
           {/* Logo section */}
           <div className="flex items-center gap-2 sm:gap-3">
             <img
@@ -123,7 +124,7 @@ export default function Navbar() {
           </nav>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:grid grid-cols-2 gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
+          <nav className="hidden md:grid grid-cols-2 gap-1 absolute left-1/2 -translate-x-1/2 p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
             <div
               className={[
                 "absolute top-1 bottom-1 rounded-xl sliding-block",
@@ -137,7 +138,7 @@ export default function Navbar() {
               ].join(" ")}
             />
 
-            {navItems.slice(0, 2).map((item, index) => (
+            {navItems.slice(0, 2).map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -210,7 +211,7 @@ export default function Navbar() {
                 <div className="hidden sm:flex flex-col text-left">
                   <span className="text-sm font-semibold text-white">{profile.name}</span>
                   <span className="text-xs text-white/80">
-                    {profile.role} • {profile.department}
+                    {profile.role} • {profile.department || 'Department not set'}
                   </span>
                 </div>
                 <ChevronDown className={`h-4 w-4 text-white/80 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -247,16 +248,19 @@ export default function Navbar() {
                     </div>
                   </button>
                   <button
-                    onClick={() => {
-                      logout()
+                    onClick={async () => {
+                      toast.dismiss()
+                      await logout()
                       handleClose()
-                      navigate("/")
+                      navigate("/", { replace: true })
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        toast.dismiss()
+                        await logout()
                         handleClose()
-                        navigate("/")
+                        navigate("/", { replace: true })
                       }
                     }}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-rose-50/60 active:bg-rose-100/60 rounded-lg transition-colors duration-150 focus:outline-none"

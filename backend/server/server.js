@@ -66,9 +66,10 @@ const connectMongoDB = require('./config/mongo');
 const dbUtils = require('./utils/database');
 const logger = require('./utils/logger');
 
-// Routes / controllers / middleware
-const formRoutes = require('./routes/formRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
+const formRoutes = require('./routes/formRoutes');
 const authRoutes = require('./routes/auth');
 const passwordRoutes = require('./routes/passwordRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');     // existing upload routes (uploads/)
@@ -339,6 +340,12 @@ app.use('/api/forms', csrfProtection, formRoutes);
 // Student forms (MongoDB) - Apply CSRF protection to state-changing routes
 app.use('/api/student-forms', csrfProtection, studentFormRoutes);
 
+// Notification routes
+app.use('/api/notifications', notificationRoutes);
+
+// Announcement routes (dynamic reminder banner)
+app.use('/api/announcements', announcementRoutes);
+
 // CSRF token endpoint for frontend
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
@@ -350,6 +357,20 @@ app.get('/api/admin/logs',
   authMiddleware.requireRole(['Admin']),
   (req, res) => {
     try {
+      const roleFilter = String(req.query.role || 'All');
+      const departmentFilter = String(req.query.department || 'All');
+      const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : null;
+      const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : null;
+      const rawLimit = Number.parseInt(String(req.query.limit || '200'), 10);
+      const rawPage = Number.parseInt(String(req.query.page || '1'), 10);
+      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 200;
+      const page = Number.isFinite(rawPage) ? Math.max(rawPage, 1) : 1;
+
+      if (endDate && !Number.isNaN(endDate.getTime())) {
+        // Include the full end day for date-only filters from the UI.
+        endDate.setHours(23, 59, 59, 999);
+      }
+
       const allLogs = logger.getLogs();
       // Filter to only show activity logs from non-admin users
       const activityLogs = allLogs.filter(log => {
@@ -358,9 +379,38 @@ app.get('/api/admin/logs',
         if (!log.data || !log.data.role) return false;
         // Exclude admin actions
         if (log.data.role?.toLowerCase() === 'admin') return false;
+
+        if (roleFilter !== 'All' && log.data.role !== roleFilter) return false;
+        if (departmentFilter !== 'All' && log.data.department !== departmentFilter) return false;
+
+        if (startDate && !Number.isNaN(startDate.getTime())) {
+          const logDate = new Date(log.timestamp);
+          if (logDate < startDate) return false;
+        }
+
+        if (endDate && !Number.isNaN(endDate.getTime())) {
+          const logDate = new Date(log.timestamp);
+          if (logDate > endDate) return false;
+        }
+
         return true;
       });
-      res.json({ logs: activityLogs });
+
+      const total = activityLogs.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const safePage = Math.min(page, totalPages);
+      const startIndex = (safePage - 1) * limit;
+      const pagedLogs = activityLogs.slice(startIndex, startIndex + limit);
+
+      res.json({
+        logs: pagedLogs,
+        pagination: {
+          total,
+          page: safePage,
+          limit,
+          totalPages
+        }
+      });
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch logs' });
     }

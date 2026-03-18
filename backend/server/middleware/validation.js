@@ -1,6 +1,9 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
 
+const isProd = process.env.NODE_ENV === 'production';
+const isBcryptHash = (value) => typeof value === 'string' && /^\$2[aby]\$/.test(value);
+
 const validationMiddleware = {
   // Validate login input with strict database checks
   validateLogin: async (req, res, next) => {
@@ -69,13 +72,16 @@ const validationMiddleware = {
       // Security: Only accept bcrypt hashed passwords in production
       // For development: also allow plain text passwords
       let isPasswordValid = false;
-      if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
+      if (isBcryptHash(user.password)) {
         // Bcrypt hashed password
         isPasswordValid = await bcrypt.compare(password, user.password);
-      } else {
-        // Plain text password (development only)
+      } else if (!isProd) {
+        // Allow plain-text only in non-production for legacy local/dev accounts
         isPasswordValid = (password === user.password);
-        console.warn(`⚠️ Plain text password used for user: ${user.username}. Hash passwords in production.`);
+        console.warn(`⚠️ Plain text password used for user: ${user.username}. Hash passwords before production.`);
+      } else {
+        // In production, never accept non-hashed passwords
+        console.error(`Blocked non-hashed password login for user: ${user.username}`);
       }
 
       if (!isPasswordValid) {

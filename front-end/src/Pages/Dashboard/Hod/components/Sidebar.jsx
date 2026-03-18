@@ -24,7 +24,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
     { id: 'request-status', label: 'Request Status', icon: Building },
     { id: 'all-departments', label: 'ALL Department\nOverview', icon: Eye },
     { id: 'profile', label: 'Profile Settings', icon: Settings },
-    { id: 'change-password', label: 'Change Password', icon: KeyRound }
+    // { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleTabClick = useCallback((tabId) => {
@@ -123,9 +123,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 {userProfile?.designation && (
                   <div className="text-xs text-gray-500 truncate">{userProfile.designation}</div>
                 )}
-                {userProfile?.department && (
-                  <div className="text-xs text-[#3B945E] truncate">{userProfile.department}</div>
-                )}
+                <div className="text-xs text-[#3B945E] truncate">{userProfile?.department || 'Department not set'}</div>
               </div>
             </motion.div>
           )}
@@ -151,7 +149,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                     transition-all duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-[#65CCB8] focus:ring-offset-2
                     ${isActive
-                      ? 'bg-[#65CCB8]/20 text-[#2d7048] border border-[#65CCB8] shadow-sm'
+                      ? 'bg-[#65CCB8]/20 text-[#3B945E] border border-[#65CCB8] shadow-sm'
                       : isHovered
                         ? 'bg-gray-50 text-gray-900'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'

@@ -72,7 +72,7 @@ const RequestStatus = () => {
   const [deleteItem, setDeleteItem] = useState(null)
 
   // Fetch HOD's own forms on mount
-  const fetchRequests = async () => {
+  const fetchRequests = async (isRetry = false) => {
     try {
       setLoading(true)
       const data = await facultyFormsAPI.listMine()
@@ -91,13 +91,19 @@ const RequestStatus = () => {
         documents: f.documents || [],
         courseName: f.courseName || 'N/A',
         marks: f.marks ?? null,
+        department: f.department || 'N/A',
       })) : []
 
       setRequests(mapped)
       setError(null)
     } catch (err) {
       console.error('Failed to load requests:', err)
-      setError('Failed to load your requests. Please try again.')
+      if (!isRetry) {
+        // One lightweight retry avoids transient failures during route transitions.
+        await new Promise(resolve => setTimeout(resolve, 400))
+        return fetchRequests(true)
+      }
+      setError(err?.error || 'Failed to load your requests. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -118,7 +124,7 @@ const RequestStatus = () => {
     ).length
     const rejected = requests.filter(r => r.status === 'Rejected').length
     const totalAmount = requests
-      .filter(r => r.status === 'Approved' || r.status === 'Under Principal')
+      .filter(r => r.status === 'Reimbursed')
       .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
 
     return { total, approved, pending, rejected, totalAmount }
@@ -171,7 +177,7 @@ const RequestStatus = () => {
   const handleDelete = async (item) => {
     try {
       // SECURITY: Use centralized API service with httpOnly cookies
-      await facultyFormsAPI.deleteById(item.id);
+      await facultyFormsAPI.deleteById(item._id || item.id);
       toast.success('Request deleted successfully')
       setDeleteItem(null)
       fetchRequests() // Refresh the list
@@ -279,6 +285,7 @@ const RequestStatus = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -291,6 +298,7 @@ const RequestStatus = () => {
                 <tr key={r.id} className="hover:bg-slate-50/60">
                   <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
                   <td className="px-4 py-3 text-slate-700">{r.category}</td>
+                  <td className="px-4 py-3 text-slate-700">{r.department}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={r.status} />
                   </td>
@@ -323,7 +331,7 @@ const RequestStatus = () => {
                       {/* View */}
                       <button
                         className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
-                        onClick={() => navigate(`/faculty-form/view/${r.id}`)}
+                        onClick={() => navigate(`/faculty-form/view/${r._id || r.id}`)}
                         title="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -331,7 +339,7 @@ const RequestStatus = () => {
                       {/* Edit */}
                       <button
                         className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => navigate(`/faculty-form/edit/${r.id}`)}
+                        onClick={() => navigate(`/faculty-form/edit/${r._id || r.id}`)}
                         title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
                         disabled={r.status !== 'Under Principal'}
                       >

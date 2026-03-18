@@ -8,11 +8,11 @@ const sanitizeHtml = (str) => {
 };
 
 // Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY || '');
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 /** Returns true if Resend is configured enough to attempt sending. */
 const isSmtpConfigured = () => {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.RESEND_API_KEY && resend);
 };
 
 //email template
@@ -106,6 +106,53 @@ const emailTemplates = {
               </div>
             ` : ''}
             <p>If you have any questions or concerns, please contact your coordinator.</p>
+
+            <div class="footer">
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p>Reimbursement Automation System</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  }),
+
+  reimbursed: (formData) => ({
+    subject: `Reimbursement Disbursed - ${sanitizeHtml(formData.applicationId)}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #0f766e; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+          .content { background-color: #f0fdfa; padding: 20px; border-radius: 0 0 5px 5px; }
+          .status-badge { display: inline-block; padding: 5px 15px; background-color: #0f766e; color: white; border-radius: 20px; font-weight: bold; }
+          .details { margin: 20px 0; }
+          .detail-row { margin: 10px 0; }
+          .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>Reimbursement Completed</h2>
+          </div>
+          <div class="content">
+            <p>Dear ${sanitizeHtml(formData.name)},</p>
+            <p>Your reimbursement application has been <span class="status-badge">REIMBURSED</span> by the Accounts department.</p>
+
+            <div class="details">
+              <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
+              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
+              <div class="detail-row"><strong>Current Status:</strong> ${sanitizeHtml(formData.status || 'Reimbursed')}</div>
+              ${formData.remarks ? `<div class="detail-row"><strong>Accounts Remarks:</strong> ${sanitizeHtml(formData.remarks)}</div>` : ''}
+            </div>
+
+            <p>Congratulations on the successful reimbursement!</p>
 
             <div class="footer">
               <p>This is an automated notification. Please do not reply to this email.</p>
@@ -302,6 +349,12 @@ const sendRejectionEmail = async (formData, phase, remarks) => {
 
 };
 
+//send reimbursed email
+const sendReimbursedEmail = async (formData) => {
+  const template = emailTemplates.reimbursed(formData);
+  return await sendEmail(formData.email, template.subject, template.html);
+};
+
 //send submission email
 const sendSubmissionEmail = async (formData) => {
   const template = emailTemplates.submission(formData);
@@ -324,6 +377,7 @@ module.exports = {
   sendEmail,
   sendApprovalEmail,
   sendRejectionEmail,
+  sendReimbursedEmail,
   sendSubmissionEmail,
   sendPasswordResetEmail,
   sendOtpEmail,

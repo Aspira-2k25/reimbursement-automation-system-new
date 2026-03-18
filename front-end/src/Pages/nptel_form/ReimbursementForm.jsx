@@ -5,17 +5,8 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apshahLogo from "../../assets/images/Apshah_logo.png";
 import websiteLogo from "../../assets/images/Website_logo.png";
-import { getCsrfToken, fetchCsrfToken } from '../../services/api';
-
-// Department options
-const DEPARTMENTS = [
-  "Computer Engineering",
-  "Information Technology",
-  "CSE AI and ML",
-  "CSE Data Science",
-  "Civil Engineering",
-  "Mechanical Engineering"
-];
+import { getCsrfToken, fetchCsrfToken, API_BASE_URL } from '../../services/api';
+import { resolveDepartment } from '../../utils/departmentResolver';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -47,10 +38,10 @@ const validateFile = (file) => {
 const ReimbursementForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [formData, setFormData] = useState({
     name: '',
     facultyId: '',
-    jobTitle: '',
     department: '',
     email: '',
     amount: '',
@@ -69,6 +60,13 @@ const ReimbursementForm = () => {
   const nptelFileRef = useRef(null);
   const idCardFileRef = useRef(null);
 
+  React.useEffect(() => {
+    const department = resolveDepartment(user?.department);
+    if (department) {
+      setFormData(prev => ({ ...prev, department: department }));
+    }
+  }, [user?.department]);
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -84,10 +82,7 @@ const ReimbursementForm = () => {
       newErrors.facultyId = 'Faculty ID is required';
     }
 
-    // Job Title validation
-    if (!formData.jobTitle.trim()) {
-      newErrors.jobTitle = 'Job Title is required';
-    }
+
 
     // Department validation
     if (!formData.department) {
@@ -222,9 +217,17 @@ const ReimbursementForm = () => {
       const formDataToSend = new FormData();
 
       //append all text fields - SECURITY: Sanitize before sending
+      // Skip sanitization for numeric fields to prevent any value modification
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, sanitizeInput(formData[key]));
+        if (key === 'amount' || key === 'marks') {
+          formDataToSend.append(key, formData[key]);
+        } else {
+          formDataToSend.append(key, sanitizeInput(formData[key]));
+        }
       });
+
+      // Enforce trusted department resolved from current session state.
+      formDataToSend.set('department', resolveDepartment());
 
       // Set applicantType based on user role
       const userRole = user?.role || 'Faculty';
@@ -263,8 +266,6 @@ const ReimbursementForm = () => {
       if (getCsrfToken()) {
         headers['X-CSRF-Token'] = getCsrfToken();
       }
-
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
       const doSubmit = () =>
         fetch(`${API_BASE_URL}/forms/submit`, {
@@ -424,44 +425,21 @@ const ReimbursementForm = () => {
                 {errors.facultyId && <p className="text-red-500 text-xs mt-1">{errors.facultyId}</p>}
               </div>
 
-              <div>
-                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Title *
-                </label>
-                <input
-                  type="text"
-                  id="jobTitle"
-                  name="jobTitle"
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.jobTitle ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                />
-                {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
-              </div>
+
 
               {/* Department Field */}
               <div>
                 <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
                   Department *
                 </label>
-                <select
+                <input
+                  type="text"
                   id="department"
                   name="department"
                   value={formData.department}
-                  onChange={handleChange}
-                  required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.department ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                >
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
+                  readOnly
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
                 {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
