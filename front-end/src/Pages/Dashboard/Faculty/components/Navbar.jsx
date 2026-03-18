@@ -82,7 +82,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-20 shadow-lg shadow-slate-900/5" style={{ background: 'linear-gradient(135deg, var(--color-dark-green) 0%, var(--color-medium-teal) 50%, var(--color-light-teal) 100%)', borderBottom: '1px solid var(--color-medium-teal)' }}>
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
-        <div className="flex h-14 sm:h-16 items-center justify-between">
+        <div className="flex h-14 sm:h-16 items-center justify-between relative">
           {/* Logo section */}
           <div className="flex items-center gap-2 sm:gap-3">
             <img
@@ -96,7 +96,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:grid grid-cols-2 gap-1 relative p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
+          <nav className="hidden md:grid grid-cols-2 gap-1 absolute left-1/2 -translate-x-1/2 p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
             <div
               className={[
                 "absolute top-1 bottom-1 rounded-xl sliding-block",
@@ -110,7 +110,7 @@ export default function Navbar() {
               ].join(" ")}
             />
 
-            {navItems.slice(0, 2).map((item, index) => (
+            {navItems.slice(0, 2).map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -183,7 +183,7 @@ export default function Navbar() {
                 <div className="hidden sm:flex flex-col text-left">
                   <span className="text-sm font-semibold text-white">{profile.name}</span>
                   <span className="text-xs text-white/80">
-                    {profile.role} • {profile.department}
+                    {profile.role} • {profile.department || 'Department not set'}
                   </span>
                   {profile.designation && (
                     <span className="text-xs text-white/70">{profile.designation}</span>
@@ -238,14 +238,15 @@ export default function Navbar() {
                     </div>
                   </button>
                   <button
-                    onClick={() => {
-                      logout()
+                    onClick={async () => {
+                      await logout()
                       handleClose()
                       navigate("/")
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        await logout()
                         handleClose()
                         navigate("/")
                       }

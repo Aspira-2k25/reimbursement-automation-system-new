@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Use env var on Vercel; fallback to localhost for dev
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// Use configured backend URL, fallback to local in dev and same-origin /api in prod.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
 
 // SECURITY: Request timeout configuration
 const REQUEST_TIMEOUT = 30000; // 30 seconds
@@ -458,10 +458,34 @@ export const adminAPI = {
   }
   ,
   // Get recent server logs (requires admin role)
-  getLogs: async () => {
+  getLogs: async (params = {}) => {
     try {
-      const res = await api.get('/admin/logs');
+      const res = await api.get('/admin/logs', { params });
       return res.data; // { logs: [...] }
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
+};
+
+// Announcement API — dynamic reminder banner management
+export const announcementAPI = {
+  /** Fetch the currently active announcement for a given role. Any authenticated user. */
+  getActive: async (role) => {
+    try {
+      const params = role ? { role } : {};
+      const res = await api.get('/announcements/active', { params });
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+
+  /** Create or update the global announcement. HOD / Principal / Admin only. */
+  update: async (data) => {
+    try {
+      const res = await api.put('/announcements', data);
+      return res.data;
     } catch (error) {
       throw error.response?.data || { error: 'Network error' };
     }

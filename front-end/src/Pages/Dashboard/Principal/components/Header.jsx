@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle, Check, CheckCheck } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { usePrincipalContext } from '../pages/PrincipalLayout'
 import { useAuth } from '../../../../context/AuthContext'
@@ -60,8 +60,8 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     setShowNotifications(false)
   }, [showProfileMenu])
 
-  const handleLogout = useCallback(() => {
-    logout()
+  const handleLogout = useCallback(async () => {
+    await logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
     navigate('/')
@@ -118,13 +118,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
         {/* Right Section - Notifications & Profile */}
         <div className="flex items-center gap-4">
-          {/* System Logo */}
-          <div className="hidden sm:flex items-center gap-2 mr-2">
-            <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
-            <span className="font-semibold text-sm" style={{ color: 'var(--color-dark-gray)' }}>
-              Reimbursement Portal
-            </span>
-          </div>
+
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>

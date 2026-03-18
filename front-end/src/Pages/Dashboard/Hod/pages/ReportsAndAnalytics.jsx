@@ -130,8 +130,8 @@ const ReportsAndAnalytics = () => {
       }
       acc[category].count += 1
 
-      // Include both Approved AND Under Principal in approved amounts
-      if (request.status === 'Approved' || request.status === 'Under Principal') {
+      // Completed reimbursements are counted only when Accounts marks them reimbursed
+      if (request.status === 'Reimbursed') {
         const amountStr = String(request.amount || '0')
         const amount = parseFloat(amountStr.replace(/[₹,]/g, ''))
         acc[category].amount += isNaN(amount) ? 0 : amount
@@ -176,8 +176,8 @@ const ReportsAndAnalytics = () => {
       }
 
       acc[key].requests += 1
-      // Include both Approved AND Under Principal in amount
-      if (request.status === 'Approved' || request.status === 'Under Principal') {
+      // Completed reimbursements are counted only when Accounts marks them reimbursed
+      if (request.status === 'Reimbursed') {
         const amountStr = String(request.amount || '0')
         const amount = parseFloat(amountStr.replace(/[₹,]/g, ''))
         acc[key].amount += isNaN(amount) ? 0 : amount

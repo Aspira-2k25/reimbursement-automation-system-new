@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "react-hot-toast"
-import ChangePassword from '../../../components/ChangePassword'
+// import ChangePassword from '../../../components/ChangePassword'
 
 // Default user profile fallback (overwritten by actual user data)
 const initialUserData = {
@@ -24,6 +24,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
   }, [userProfile])
 
   const handleInputChange = (field, value) => {
+    if (field === 'department') return;
     setUserData((prev) => ({
       ...prev,
       [field]: value,
@@ -82,8 +83,8 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
               <input
                 type="text"
                 value={userData.department}
-                onChange={(e) => handleInputChange("department", e.target.value)}
-                disabled={!isEditing}
+                readOnly
+                disabled
                 className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
               />
             </div>
@@ -141,9 +142,9 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
               )}
             </div>
             {/* Security Settings */}
-            <div className="mt-6">
-              <ChangePassword />
-            </div>          </div>
+            {/* <div className="mt-6">
+              <ChangePassword /></div> */}
+              </div>
         </div>
       </div>
     </div>

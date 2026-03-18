@@ -29,7 +29,7 @@ const ReimbursementCard = ({
       onClick={handleClick}
       disabled={disabled}
       className={`
-        w-full p-6 rounded-lg border-2 text-left transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+        group w-full p-6 rounded-lg border-2 text-left transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
         ${isSelected
           ? 'border-blue-500 bg-blue-50 shadow-md'
           : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'

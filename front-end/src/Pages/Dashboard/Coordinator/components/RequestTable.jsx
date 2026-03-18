@@ -140,7 +140,7 @@ export default function RequestTable({
                     <User className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                     <div>
                       <div className="text-xs sm:text-sm font-medium text-gray-900">{request.studentName}</div>
-                      <div className="text-xs sm:text-sm text-gray-500">{request.studentId}</div>
+                      <div className="text-xs sm:text-sm text-gray-500">{request.studentId} • {request.department || 'N/A'}</div>
                     </div>
                   </div>
                 </td>

@@ -27,7 +27,8 @@ class Logger {
     this._buffer = [];
     this._maxBuffer = 2000; // keep recent logs in memory
     this._io = null;
-    this._logPath = path.join(__dirname, '../../logs.json');
+    // Keep runtime logs under backend/server so they are not mixed with repository-level files.
+    this._logPath = path.join(__dirname, '../logs.json');
     this._loadLogs();
   }
 

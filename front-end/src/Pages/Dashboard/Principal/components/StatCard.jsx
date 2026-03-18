@@ -27,13 +27,13 @@ export default function StatCard({
   suffix = ''
 }) {
   const colorClasses = {
-    blue: "bg-blue-600 text-white",
-    orange: "bg-orange-500 text-white",
-    green: "bg-green-600 text-white",
-    red: "bg-red-500 text-white",
-    purple: "bg-purple-500 text-white",
-    indigo: "bg-indigo-500 text-white",
-    teal: "bg-teal-600 text-white"
+    blue: "text-white",
+    orange: "text-white",
+    green: "text-white",
+    red: "text-white",
+    purple: "text-white",
+    indigo: "text-white",
+    teal: "text-white"
   }
 
   const CardContent = () => (
@@ -63,6 +63,7 @@ export default function StatCard({
         {Icon && (
           <motion.div
             className={`p-2 sm:p-3 rounded-full ${colorClasses[color]} flex-shrink-0 ml-2 sm:ml-3`}
+            style={{ backgroundColor: 'var(--color-medium-teal)' }}
             whileHover={{ scale: 1.1, rotate: 5 }}
             transition={{ duration: 0.2 }}
           >

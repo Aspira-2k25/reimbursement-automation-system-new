@@ -10,13 +10,16 @@ import {
   Building,
   Loader2,
   Search,
-  X
+  X,
+  Bell
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import RequestTable from '../components/RequestTable'
 import { useHODContext } from './HODLayout'
 import { calculateStats } from '../data/mockData'
+import { useAnnouncement } from '../../../../hooks/useAnnouncement'
+import { announcementAPI } from '../../../../services/api'
 
 const HomeDashboard = () => {
   const {
@@ -37,6 +40,28 @@ const HomeDashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [viewLoading, setViewLoading] = useState(false)
   const [requestDetails, setRequestDetails] = useState(null)
+
+  // Announcement manager state
+  const { announcement, refresh: refreshAnnouncement } = useAnnouncement()
+  const [announcementMsg, setAnnouncementMsg] = useState('')
+  const [announcementActive, setAnnouncementActive] = useState(true)
+  const [announcementTargetRoles, setAnnouncementTargetRoles] = useState([])
+  const [announcementSaving, setAnnouncementSaving] = useState(false)
+
+  const ROLE_OPTIONS = [
+    { value: 'Student', label: 'Students' },
+    { value: 'Faculty', label: 'Faculty' },
+    { value: 'Coordinator', label: 'Coordinators' }
+  ]
+
+  // Sync editor with fetched announcement
+  React.useEffect(() => {
+    if (announcement) {
+      setAnnouncementMsg(announcement.message || '')
+      setAnnouncementActive(announcement.isActive ?? true)
+      setAnnouncementTargetRoles(announcement.targetRoles || [])
+    }
+  }, [announcement])
 
   // Handler functions - declared first to avoid hoisting issues
   const handleViewRequest = useCallback(async (request) => {
@@ -227,11 +252,24 @@ const HomeDashboard = () => {
     setRejectReason('')
   }, [])
 
+  const saveAnnouncement = useCallback(async () => {
+    setAnnouncementSaving(true)
+    try {
+      await announcementAPI.update({ message: announcementMsg.trim(), isActive: announcementActive, targetRoles: announcementTargetRoles })
+      toast.success('Reminder updated successfully')
+      refreshAnnouncement(true) // bust cache so next render picks up new data
+    } catch (err) {
+      toast.error(err?.error || 'Failed to save reminder')
+    } finally {
+      setAnnouncementSaving(false)
+    }
+  }, [announcementMsg, announcementActive, announcementTargetRoles, refreshAnnouncement])
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <motion.div
-        className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
+        className="bg-gradient-to-r from-[#3B945E] to-[#57BA98] rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -242,7 +280,7 @@ const HomeDashboard = () => {
               Welcome back, {userProfile?.fullName || 'HOD'} 👋
             </h1>
             <p className="text-green-100 mb-4 text-sm sm:text-base">
-              Head of Department • {userProfile?.department || 'Civil Engineering'}
+              Head of Department • {userProfile?.department || 'Department not set'}
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
               <div className="flex items-center gap-2">
@@ -402,6 +440,75 @@ const HomeDashboard = () => {
         />
       </div>
 
+      {/* Announcement Manager */}
+      <motion.div
+        className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100">
+            <Bell className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Reminder Banner</h3>
+            <p className="text-sm text-gray-500">Message shown to students and faculty on their dashboards</p>
+          </div>
+        </div>
+
+        <textarea
+          value={announcementMsg}
+          onChange={(e) => setAnnouncementMsg(e.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="e.g. Submit NPTEL reimbursement before 30 March."
+          className="w-full p-3 border border-gray-200 rounded-lg resize-none text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+        />
+
+        {/* Target roles — empty = show to all */}
+        <div className="mt-3">
+          <p className="text-xs text-gray-500 mb-2">Show to: <span className="text-gray-400">(leave all unchecked = show to everyone)</span></p>
+          <div className="flex flex-wrap gap-3">
+            {ROLE_OPTIONS.map(r => (
+              <label key={r.value} className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={announcementTargetRoles.includes(r.value)}
+                  onChange={(e) => {
+                    setAnnouncementTargetRoles(prev =>
+                      e.target.checked ? [...prev, r.value] : prev.filter(x => x !== r.value)
+                    )
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                {r.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-3">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={announcementActive}
+              onChange={(e) => setAnnouncementActive(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <span className="text-sm text-gray-700">Show banner to users</span>
+          </label>
+          <button
+            onClick={saveAnnouncement}
+            disabled={announcementSaving || !announcementMsg.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {announcementSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {announcementSaving ? 'Saving…' : 'Save Reminder'}
+          </button>
+        </div>
+      </motion.div>
+
       {/* View Modal */}
       <AnimatePresence>
         {viewModal.show && (
@@ -504,7 +611,7 @@ const HomeDashboard = () => {
                       <p className="text-sm text-gray-900 mt-1">
                         {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student'
                           ? (requestDetails?.division || 'N/A')
-                          : (requestDetails?.jobTitle || viewModal.request?.applicantType || 'N/A')
+                          : (requestDetails?.applicantType || viewModal.request?.applicantType || 'N/A')
                         }
                       </p>
                     </div>

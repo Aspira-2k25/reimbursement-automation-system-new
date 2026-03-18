@@ -41,13 +41,7 @@ const Header = ({ isCollapsed, setIsCollapsed }) => {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* System Logo */}
-        <div className="hidden sm:flex items-center gap-2 mr-2">
-          <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
-          <span className="font-semibold text-sm text-gray-900 hidden md:block">
-            Reimbursement Portal
-          </span>
-        </div>
+
 
         {/* Notifications */}
         <motion.button
