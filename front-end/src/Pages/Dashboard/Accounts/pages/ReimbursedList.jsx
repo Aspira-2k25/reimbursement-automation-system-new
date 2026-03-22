@@ -106,6 +106,18 @@ const ReimbursedList = () => {
     setPrintModal({ show: true, request })
   }, [])
 
+  const handlePrintDocument = useCallback(() => {
+    document.body.classList.add('accounts-reimbursement-print')
+
+    const cleanup = () => {
+      document.body.classList.remove('accounts-reimbursement-print')
+      window.removeEventListener('afterprint', cleanup)
+    }
+
+    window.addEventListener('afterprint', cleanup)
+    window.print()
+  }, [])
+
   const handleExportToCSV = useCallback(() => {
     const headers = ['Application ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
     const csvContent = [
@@ -431,26 +443,24 @@ const ReimbursedList = () => {
       <AnimatePresence>
         {printModal.show && printModal.request && (
           <motion.div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="print-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closePrintModal}
           >
             <motion.div
-              className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto"
+              className="print-modal-shell bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+              <div className="print-modal-header p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
                 <h3 className="text-lg font-semibold text-gray-900">Print Reimbursement Form</h3>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      window.print()
-                    }}
+                    onClick={handlePrintDocument}
                     className="flex items-center gap-2 px-4 py-2 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors text-sm"
                   >
                     <Printer className="w-4 h-4" />
@@ -464,7 +474,7 @@ const ReimbursedList = () => {
                   </button>
                 </div>
               </div>
-              <div ref={printRef} className="p-6">
+              <div ref={printRef} className="print-form-host p-6">
                 <PrintableForm request={printModal.request} />
               </div>
             </motion.div>
