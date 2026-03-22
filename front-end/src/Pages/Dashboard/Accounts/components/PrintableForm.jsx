@@ -1,4 +1,5 @@
 import React from 'react'
+import apshahLogo from '../../../../assets/images/Apshah_logo.png'
 
 /**
  * PrintableForm - A properly formatted printable version of a reimbursement form
@@ -22,49 +23,132 @@ const PrintableForm = ({ request }) => {
   }
 
   return (
-    <div className="print-form bg-white text-black" style={{ fontFamily: 'Times New Roman, serif' }}>
+    <div id="print-section" className="print-form bg-white text-black" style={{ fontFamily: 'Times New Roman, serif' }}>
       {/* Print Styles */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print-form, .print-form * {
-            visibility: visible;
-          }
-          .print-form {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 8mm;
-            box-sizing: border-box;
-            font-size: 13px;
-            line-height: 1.2;
-          }
           @page {
             size: A4;
-            margin: 0; /* Removing page margins removes the browser URL/Header/Footer text */
+            margin: 10mm;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: #fff;
+          }
+
+          body.accounts-reimbursement-print #root {
+            height: 0 !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+
+          body.accounts-reimbursement-print * {
+            visibility: hidden;
+          }
+
+          body.accounts-reimbursement-print #print-section,
+          body.accounts-reimbursement-print #print-section * {
+            visibility: visible;
+          }
+
+          body.accounts-reimbursement-print .print-modal-overlay {
+            display: block !important;
+            position: static !important;
+            background: #fff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+          }
+
+          body.accounts-reimbursement-print .print-modal-shell {
+            max-width: none !important;
+            width: 100%;
+            max-height: none !important;
+            overflow: visible !important;
+            height: auto !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            transform: none !important;
+          }
+
+          body.accounts-reimbursement-print .print-modal-header {
+            display: none !important;
+          }
+
+          body.accounts-reimbursement-print .print-form-host {
+            padding: 0 !important;
+            margin: 0 !important;
+            height: auto !important;
+          }
+
+          body.accounts-reimbursement-print #print-section {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-size: 11.5px;
+            line-height: 1.12;
+            color: #000;
+            background: #fff;
+            page-break-before: avoid;
+            break-after: avoid-page;
+            page-break-after: avoid;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          body.accounts-reimbursement-print #print-section table,
+          body.accounts-reimbursement-print #print-section tr,
+          body.accounts-reimbursement-print #print-section td,
+          body.accounts-reimbursement-print #print-section th {
+            page-break-before: avoid;
+            page-break-after: avoid;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          body.accounts-reimbursement-print .print-form {
+            max-width: 190mm;
           }
         }
       `}</style>
 
       {/* Header */}
-      <div className="text-center border-b-2 border-black pb-2 mb-4">
-        <h1 className="text-xl font-bold uppercase tracking-wide">
-          A.P. Shah Institute of Technology
-        </h1>
-        <p className="text-sm mt-1">Thane, Maharashtra</p>
-        <h2 className="text-lg font-bold mt-4 uppercase">
+      <div className="border-b-2 border-black pb-2 mb-3">
+        <div className="flex items-center justify-center gap-2">
+          <img
+            src={apshahLogo}
+            alt="AP Shah Institute Logo"
+            className="w-14 h-14 object-contain"
+          />
+          <div className="text-center">
+            <h1 className="text-xl font-bold uppercase tracking-wide">
+              A.P. Shah Institute of Technology
+            </h1>
+            <p className="text-sm mt-0.5">Thane, Maharashtra</p>
+          </div>
+        </div>
+        <h2 className="text-base font-bold mt-2 uppercase text-center">
           Reimbursement Application Form
         </h2>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-gray-600 mt-0.5 text-center">
           (For {request.reimbursementType || 'NPTEL'} Course Certification)
         </p>
       </div>
 
       {/* Application Details */}
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="flex justify-between items-center border-b border-gray-300 pb-1 mb-2">
           <div>
             <span className="font-semibold">Application ID: </span>
@@ -92,7 +176,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Applicant Information */}
-      <div className="mb-2">
+      <div className="mb-1.5">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           1. Applicant Information
         </h3>
@@ -133,7 +217,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Course Details */}
-      <div className="mb-2">
+      <div className="mb-1.5">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           2. Course Details
         </h3>
@@ -152,7 +236,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Financial Details */}
-      <div className="mb-2">
+      <div className="mb-1.5">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           3. Financial Details
         </h3>
@@ -167,7 +251,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Bank Details */}
-      <div className="mb-2">
+      <div className="mb-1.5">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           4. Bank Account Details
         </h3>
@@ -190,7 +274,7 @@ const PrintableForm = ({ request }) => {
       </div>
 
       {/* Approval History */}
-      <div className="mb-2">
+      <div className="mb-1.5">
         <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-1 uppercase">
           5. Approval History
         </h3>
@@ -220,51 +304,6 @@ const PrintableForm = ({ request }) => {
         </table>
       </div>
 
-      {/* Signature Section */}
-      <div className="mt-4 pt-2 border-t border-gray-400">
-        <div className="grid grid-cols-3 gap-8 text-center">
-          <div>
-            <div className="border-b border-black mb-1 h-10"></div>
-            <p className="text-sm font-semibold">Applicant Signature</p>
-            <p className="text-xs text-gray-500">Date: ____________</p>
-          </div>
-          <div>
-            <div className="border-b border-black mb-1 h-10"></div>
-            <p className="text-sm font-semibold">Verified By (Accounts)</p>
-            <p className="text-xs text-gray-500">Date: ____________</p>
-          </div>
-          <div>
-            <div className="border-b border-black mb-1 h-10"></div>
-            <p className="text-sm font-semibold">Authorized Signatory</p>
-            <p className="text-xs text-gray-500">Date: ____________</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-2 pt-1 border-t border-gray-300 text-center text-xs text-gray-500">
-        <p>This is a computer-generated document. Please verify all details before processing.</p>
-        <p className="mt-0.5">Generated on: {new Date().toLocaleString('en-IN')}</p>
-      </div>
-
-      {/* Office Use Only Section */}
-      <div className="mt-2 p-2 border-2 border-dashed border-gray-400">
-        <h4 className="text-xs font-bold mb-2">FOR OFFICE USE ONLY</h4>
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <span className="font-semibold">Cheque/Transaction No.: </span>
-            <span className="border-b border-dotted border-gray-400 inline-block min-w-[120px]">&nbsp;</span>
-          </div>
-          <div>
-            <span className="font-semibold">Date of Disbursement: </span>
-            <span className="border-b border-dotted border-gray-400 inline-block min-w-[120px]">&nbsp;</span>
-          </div>
-          <div className="col-span-2">
-            <span className="font-semibold">Remarks: </span>
-            <span className="border-b border-dotted border-gray-400 inline-block w-full">&nbsp;</span>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
