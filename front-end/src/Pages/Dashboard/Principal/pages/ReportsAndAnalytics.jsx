@@ -14,6 +14,7 @@ import StatCard from '../components/StatCard'
 import ReportLineChart from '../components/ReportLineChart'
 import ReportPieChart from '../components/ReportPieChart'
 import FilterBar from '../components/FilterBar'
+import PrintableReport from '../components/PrintableReport'
 import { usePrincipalContext } from './PrincipalLayout'
 import { normalizeDepartment } from '../../../../utils/departmentNormalization'
 
@@ -39,7 +40,7 @@ const getRequestsByType = (requests, type) => {
 }
 
 const ReportsAndAnalytics = () => {
-  const { allRequests, departments, collegeStats } = usePrincipalContext()
+  const { allRequests, departments, userProfile } = usePrincipalContext()
   const [selectedDateRange, setSelectedDateRange] = useState({ startDate: '', endDate: '' })
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedMemberType, setSelectedMemberType] = useState('All')
@@ -207,7 +208,17 @@ const ReportsAndAnalytics = () => {
   const uniqueStatuses = ['Under Principal', 'Approved', 'Rejected']
 
   const handleExport = () => {
-    toast.success('Report exported successfully!')
+    document.body.classList.add('principal-report-print')
+
+    const cleanup = () => {
+      document.body.classList.remove('principal-report-print')
+      window.removeEventListener('afterprint', cleanup)
+    }
+
+    window.addEventListener('afterprint', cleanup)
+    window.print()
+
+    toast.success('Print dialog opened for PDF export')
   }
 
   const handleRefresh = () => {
@@ -215,7 +226,8 @@ const ReportsAndAnalytics = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="reports-screen space-y-6">
       {/* Page Header */}
       <motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -434,6 +446,12 @@ const ReportsAndAnalytics = () => {
         </div>
       </div>
     </div>
+    <PrintableReport
+      requests={filteredRequests}
+      dateRange={selectedDateRange}
+      departmentName={selectedDepartment !== 'All' ? selectedDepartment : 'All Departments'}
+    />
+    </>
   )
 }
 
