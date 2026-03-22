@@ -1,8 +1,31 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
 
 const isProd = process.env.NODE_ENV === 'production';
 const isBcryptHash = (value) => typeof value === 'string' && /^\$2[aby]\$/.test(value);
+
+/**
+ * Helper: log a failed login attempt to MongoDB (fire-and-forget).
+ * Never throws or blocks the response.
+ */
+function logFailedLogin(req, reason, username) {
+  logger.logActivity({
+    action: 'login_failed',
+    message: `Login failed: ${reason}`,
+    userId: null,
+    userName: username || 'Unknown',
+    role: null,
+    department: null,
+    level: 'WARN',
+    status: 'failure',
+    details: { reason },
+    ipAddress: req.ip || req.connection?.remoteAddress || null,
+    userAgent: req.get('user-agent') || null,
+    method: req.method,
+    endpoint: req.originalUrl || req.path
+  });
+}
 
 const validationMiddleware = {
   // Validate login input with strict database checks
@@ -55,16 +78,19 @@ const validationMiddleware = {
       };
 
       if (!user) {
+        logFailedLogin(req, 'User not found', username);
         return res.status(401).json(invalidCredentialsError);
       }
 
       // Check if user is active
       if (!user.is_active) {
+        logFailedLogin(req, 'Account deactivated', user.username);
         return res.status(401).json({ error: 'Account is deactivated' });
       }
 
       // Strict Check: Verify email matches exactly
       if (!user.email || user.email.toLowerCase() !== email.toLowerCase()) {
+        logFailedLogin(req, 'Email mismatch', user.username);
         return res.status(401).json(invalidCredentialsError);
       }
 
@@ -85,6 +111,7 @@ const validationMiddleware = {
       }
 
       if (!isPasswordValid) {
+        logFailedLogin(req, 'Invalid password', user.username);
         return res.status(401).json(invalidCredentialsError);
       }
 
