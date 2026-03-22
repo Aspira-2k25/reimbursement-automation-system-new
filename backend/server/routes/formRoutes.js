@@ -643,9 +643,22 @@ router.put(
           let notificationType = 'status_change';
           if (newStatus === 'Rejected') {
             notificationType = 'rejection';
+          } else if (newStatus === 'Reimbursed') {
+            notificationType = 'reimbursed';
           } else if (['Under Principal', 'Approved'].includes(newStatus)) {
             notificationType = 'approval';
           }
+
+          const statusWord = newStatus === 'Rejected'
+            ? 'rejected'
+            : newStatus === 'Reimbursed'
+              ? 'reimbursed'
+              : 'approved';
+          const titleLabel = newStatus === 'Rejected'
+            ? 'Rejected'
+            : newStatus === 'Reimbursed'
+              ? 'Reimbursed'
+              : 'Approved';
 
           // Get user email from form or lookup
           let userEmail = form.email;
@@ -669,8 +682,8 @@ router.put(
             userId: form.userId,
             applicationId: form.applicationId,
             type: notificationType,
-            title: `Application ${newStatus === 'Rejected' ? 'Rejected' : 'Approved'}`,
-            message: `Your reimbursement application ${form.applicationId} has been ${newStatus === 'Rejected' ? 'rejected' : 'approved'} at the ${phase} phase.`,
+            title: `Application ${titleLabel}`,
+            message: `Your reimbursement application ${form.applicationId} has been ${statusWord} at the ${phase} phase.`,
             phase: phase,
             status: newStatus,
             userEmail: userEmail,

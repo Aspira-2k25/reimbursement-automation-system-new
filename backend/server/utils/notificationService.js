@@ -69,6 +69,16 @@ const createNotification = async (notificationData, sendEmailNotification = true
               studentId: notificationData.studentId,
               amount: notificationData.amount,
             });
+          } else if (notificationData.type === 'reimbursed') {
+            emailResult = await emailService.sendReimbursedEmail({
+              name: notificationData.userName || 'User',
+              email: notificationData.userEmail,
+              applicationId: notificationData.applicationId,
+              studentId: notificationData.studentId,
+              amount: notificationData.amount,
+              status: notificationData.status,
+              remarks: notificationData.remarks,
+            });
           } else {
             emailResult = await emailService.sendEmail(
               notificationData.userEmail,
