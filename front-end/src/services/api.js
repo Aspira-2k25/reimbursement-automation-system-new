@@ -1,8 +1,14 @@
 import axios from 'axios';
 
 // Use configured backend URL, fallback to local in dev and same-origin /api in prod.
+// Accepts both VITE_API_BASE_URL and VITE_API_URL for flexibility.
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
+
+// Warn in production if no explicit backend URL is configured
+if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL && !import.meta.env.VITE_API_URL) {
+  console.warn('[API] No VITE_API_BASE_URL or VITE_API_URL set. Using /api (requires vercel.json proxy rewrite to backend).');
+}
 
 // SECURITY: Request timeout configuration
 const REQUEST_TIMEOUT = 30000; // 30 seconds

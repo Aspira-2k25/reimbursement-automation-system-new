@@ -65,6 +65,7 @@ const { Server: IOServer } = require('socket.io');
 const connectMongoDB = require('./config/mongo');
 const dbUtils = require('./utils/database');
 const logger = require('./utils/logger');
+const ActivityLog = require('./models/ActivityLog');
 
 const notificationRoutes = require('./routes/notificationRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
@@ -351,14 +352,18 @@ app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-// Admin logs - returns recent activity logs (excludes admin user actions)
+// Admin logs - returns recent activity logs from MongoDB
 app.get('/api/admin/logs',
   authMiddleware.verifyToken,
   authMiddleware.requireRole(['Admin']),
-  (req, res) => {
+  async (req, res) => {
     try {
+      // Ensure MongoDB is connected
+      await connectMongoDB();
+
       const roleFilter = String(req.query.role || 'All');
       const departmentFilter = String(req.query.department || 'All');
+      const actionFilter = String(req.query.action || 'All');
       const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : null;
       const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : null;
       const rawLimit = Number.parseInt(String(req.query.limit || '200'), 10);
@@ -366,44 +371,55 @@ app.get('/api/admin/logs',
       const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 200;
       const page = Number.isFinite(rawPage) ? Math.max(rawPage, 1) : 1;
 
+      // Build MongoDB filter (no default level filter — show all levels)
+      const filter = {};
+
+      if (roleFilter !== 'All') filter.role = roleFilter;
+      if (departmentFilter !== 'All') filter.department = departmentFilter;
+      if (actionFilter !== 'All') filter.action = actionFilter;
+
+      // Date range filter
+      if (startDate && !Number.isNaN(startDate.getTime())) {
+        filter.timestamp = filter.timestamp || {};
+        filter.timestamp.$gte = startDate;
+      }
       if (endDate && !Number.isNaN(endDate.getTime())) {
-        // Include the full end day for date-only filters from the UI.
-        endDate.setHours(23, 59, 59, 999);
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        filter.timestamp = filter.timestamp || {};
+        filter.timestamp.$lte = endOfDay;
       }
 
-      const allLogs = logger.getLogs();
-      // Filter to only show activity logs from non-admin users
-      const activityLogs = allLogs.filter(log => {
-        // Only include INFO-level logs that have user activity data
-        if (log.level !== 'INFO') return false;
-        if (!log.data || !log.data.role) return false;
-        // Exclude admin actions
-        if (log.data.role?.toLowerCase() === 'admin') return false;
-
-        if (roleFilter !== 'All' && log.data.role !== roleFilter) return false;
-        if (departmentFilter !== 'All' && log.data.department !== departmentFilter) return false;
-
-        if (startDate && !Number.isNaN(startDate.getTime())) {
-          const logDate = new Date(log.timestamp);
-          if (logDate < startDate) return false;
-        }
-
-        if (endDate && !Number.isNaN(endDate.getTime())) {
-          const logDate = new Date(log.timestamp);
-          if (logDate > endDate) return false;
-        }
-
-        return true;
-      });
-
-      const total = activityLogs.length;
+      // Get total count for pagination
+      const total = await ActivityLog.countDocuments(filter);
       const totalPages = Math.max(1, Math.ceil(total / limit));
       const safePage = Math.min(page, totalPages);
-      const startIndex = (safePage - 1) * limit;
-      const pagedLogs = activityLogs.slice(startIndex, startIndex + limit);
+      const skip = (safePage - 1) * limit;
+
+      // Fetch paginated logs from MongoDB, newest first
+      const logs = await ActivityLog.find(filter)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      // Map to response format (compatible with existing frontend)
+      const formattedLogs = logs.map(log => ({
+        timestamp: log.timestamp,
+        level: log.level,
+        message: log.message,
+        data: {
+          user: log.userName,
+          role: log.role,
+          department: log.department,
+          formId: log.formId || undefined,
+          action: log.action,
+          status: log.status
+        }
+      }));
 
       res.json({
-        logs: pagedLogs,
+        logs: formattedLogs,
         pagination: {
           total,
           page: safePage,
@@ -412,6 +428,7 @@ app.get('/api/admin/logs',
         }
       });
     } catch (err) {
+      console.error('Failed to fetch logs:', err.message);
       res.status(500).json({ error: 'Failed to fetch logs' });
     }
   }
@@ -430,6 +447,24 @@ app.use((err, req, res, next) => {
       timestamp: new Date().toISOString()
     });
   }
+
+  // Persist error to MongoDB for production debugging
+  logger.logActivity({
+    action: 'error',
+    message: `Server error: ${err.message}`,
+    level: 'ERROR',
+    status: 'failure',
+    details: {
+      path: req.path,
+      method: req.method,
+      statusCode: err.status || 500,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    },
+    ipAddress: req.ip || null,
+    userAgent: req.get('user-agent') || null,
+    method: req.method,
+    endpoint: req.path
+  });
 
   // Remove potentially sensitive headers
   res.removeHeader('X-Powered-By');
