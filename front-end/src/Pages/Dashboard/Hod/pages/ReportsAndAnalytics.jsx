@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import {
   BarChart3,
   TrendingUp,
@@ -14,11 +14,12 @@ import StatCard from '../components/StatCard'
 import ReportLineChart from '../components/ReportLineChart'
 import ReportPieChart from '../components/ReportPieChart'
 import FilterBar from '../components/FilterBar'
+import PrintableReport from '../components/PrintableReport'
 import { useHODContext } from './HODLayout'
 import { calculateStats, getRequestsByType } from '../data/mockData'
 
 const ReportsAndAnalytics = () => {
-  const { allRequests } = useHODContext()
+  const { allRequests, userProfile } = useHODContext()
   const [selectedDateRange, setSelectedDateRange] = useState({ startDate: '', endDate: '' })
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedMemberType, setSelectedMemberType] = useState('All')
@@ -208,65 +209,19 @@ const ReportsAndAnalytics = () => {
   const uniqueCategories = [...new Set(allRequests.map(r => r.category).filter(Boolean))]
   const uniqueStatuses = [...new Set(allRequests.map(r => r.status).filter(Boolean))]
 
-  // Export comprehensive report as CSV
+  // Export official report using print/PDF flow
   const handleExport = () => {
-    const stats = calculateStats(filteredRequests)
-    const processedRequests = stats.approved + stats.rejected
-    const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
+    document.body.classList.add('hod-report-print')
 
-    // Helper to clean amount
-    const cleanAmount = (amount) => {
-      if (!amount) return 0
-      const cleaned = String(amount).replace(/[₹,\s]/g, '').replace(/[^\d.]/g, '')
-      return parseFloat(cleaned) || 0
+    const cleanup = () => {
+      document.body.classList.remove('hod-report-print')
+      window.removeEventListener('afterprint', cleanup)
     }
 
-    // Helper to format date
-    const formatDate = (dateStr) => {
-      if (!dateStr) return ''
-      const date = new Date(dateStr)
-      return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`
-    }
+    window.addEventListener('afterprint', cleanup)
+    window.print()
 
-    // Build CSV content
-    let csvContent = ''
-
-    // Report Header
-    csvContent += 'REIMBURSEMENT ANALYTICS REPORT\n'
-    csvContent += `Generated: ${new Date().toLocaleString()}\n`
-    csvContent += `Total Requests: ${stats.total}\n`
-    csvContent += `Approved: ${stats.approved} (₹${stats.approvedAmount.toLocaleString()})\n`
-    csvContent += `Pending: ${stats.pending}\n`
-    csvContent += `Rejected: ${stats.rejected}\n`
-    csvContent += `Approval Rate: ${approvalRate}%\n`
-    csvContent += '\n'
-
-    // Category Summary
-    csvContent += 'CATEGORY BREAKDOWN\n'
-    csvContent += 'Category,Total Requests,Approved Amount,Pending,Rejected\n'
-    categoryBreakdown.forEach(cat => {
-      csvContent += `${cat.category},${cat.count},${cat.amount},${cat.pending},${cat.rejected}\n`
-    })
-    csvContent += '\n'
-
-    // Detailed Data
-    csvContent += 'DETAILED REQUEST DATA\n'
-    csvContent += 'ID,Applicant,Type,Category,Amount,Status,Submitted Date\n'
-    filteredRequests.forEach(request => {
-      csvContent += `${request.id || request.applicationId},${request.applicantName || request.name},${request.applicantType},${request.category || 'NPTEL'},${cleanAmount(request.amount)},${request.status},${formatDate(request.submittedDate)}\n`
-    })
-
-    // Add UTF-8 BOM for Excel
-    const BOM = '\uFEFF'
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `reimbursement-report-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-
-    toast.success('Report exported successfully!')
+    toast.success('Print dialog opened for PDF export')
   }
 
   const handleRefresh = () => {
@@ -276,9 +231,10 @@ const ReportsAndAnalytics = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="reports-screen space-y-6">
       {/* Page Header */}
-      <motion.div
+      <Motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -288,7 +244,7 @@ const ReportsAndAnalytics = () => {
           <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
           <p className="text-gray-600 mt-1">Comprehensive reimbursement analytics and insights</p>
         </div>
-        <motion.button
+        <Motion.button
           onClick={handleExport}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           whileHover={{ scale: 1.05 }}
@@ -296,8 +252,8 @@ const ReportsAndAnalytics = () => {
         >
           <Download className="w-4 h-4" />
           Export Report
-        </motion.button>
-      </motion.div>
+        </Motion.button>
+      </Motion.div>
 
       {/* Filter Bar */}
       <FilterBar
@@ -314,14 +270,14 @@ const ReportsAndAnalytics = () => {
       {/* Summary Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredStats.map((stat, index) => (
-          <motion.div
+          <Motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
             <StatCard {...stat} />
-          </motion.div>
+          </Motion.div>
         ))}
       </div>
 
@@ -486,6 +442,12 @@ const ReportsAndAnalytics = () => {
         </div>
       </div>
     </div>
+    <PrintableReport
+      requests={filteredRequests}
+      dateRange={selectedDateRange}
+      departmentName={userProfile?.department || '-'}
+    />
+    </>
   )
 }
 
