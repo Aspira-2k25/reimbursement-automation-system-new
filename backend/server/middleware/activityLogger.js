@@ -35,9 +35,11 @@ function getActivityMessage(req) {
         ? prevPart 
         : null;
 
-    // ── Faculty forms ──
+    // ── Faculty / Coordinator / HOD forms ──
     if (path === '/api/forms/submit' && method === 'POST') {
-        return { message: 'Submitted a faculty reimbursement application', formId };
+        const role = req.user?.role?.toLowerCase();
+        const rolePrefix = role === 'hod' ? 'an HOD' : (role === 'coordinator' ? 'a coordinator' : 'a faculty');
+        return { message: `Submitted ${rolePrefix} reimbursement application`, formId };
     }
     if (path.startsWith('/api/forms/') && ['PUT', 'PATCH'].includes(method)) {
         const status = req.body?.status;

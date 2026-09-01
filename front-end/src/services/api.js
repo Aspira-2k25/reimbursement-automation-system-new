@@ -468,6 +468,42 @@ export const adminAPI = {
   }
 };
 
+// Notification API — in-app notification center
+export const notificationsAPI = {
+  getAll: async () => {
+    try {
+      const res = await api.get('/notifications');
+      return res.data; // { notifications: [...] }
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  getUnreadCount: async () => {
+    try {
+      const res = await api.get('/notifications/unread-count');
+      return res.data; // { count: ... }
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  markAsRead: async (id) => {
+    try {
+      const res = await api.put(`/notifications/${id}/read`);
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  },
+  markAllAsRead: async () => {
+    try {
+      const res = await api.put('/notifications/read-all');
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Network error' };
+    }
+  }
+};
+
 // Announcement API — dynamic reminder banner management
 export const announcementAPI = {
   /** Fetch the currently active announcement for a given role. Any authenticated user. */
