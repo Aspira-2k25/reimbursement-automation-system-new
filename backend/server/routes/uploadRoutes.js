@@ -4,14 +4,53 @@ const multer = require('multer');
 const cloudinary = require('../utils/cloudinary');
 const { uploadFile } = require('../utils/cloudinary');
 const { verifyToken } = require('../middleware/auth');
-// Use memory storage for serverless - disk storage doesn't work in read-only filesystem
+// Allowed MIME types and extensions for reimbursement documents
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/jpg',
+  'application/pdf'
+];
+
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+
+// Use memory storage for serverless with strict type & size validation (1MB limit)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { 
+    fileSize: 1 * 1024 * 1024, // 1MB limit per file
+    files: 5 // Maximum 5 files per upload
+  },
+  fileFilter: (req, file, cb) => {
+    const ext = require('path').extname(file.originalname).toLowerCase();
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype) || !ALLOWED_EXTENSIONS.includes(ext)) {
+      return cb(new Error('Invalid file type. Only PDF, JPG, PNG, and WebP files are allowed.'));
+    }
+    cb(null, true);
+  }
 });
 
+// Multer middleware wrapper for clean error responses
+const handleUpload = (req, res, next) => {
+  upload.array('files')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File size exceeds 1MB limit.' });
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ error: 'Cannot upload more than 5 files at once.' });
+      }
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ error: err.message || 'File upload failed.' });
+    }
+    next();
+  });
+};
+
 // POST /api/uploads/documents
-router.post('/documents', verifyToken, upload.array('files'), async (req, res) => {
+router.post('/documents', verifyToken, handleUpload, async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files provided' });

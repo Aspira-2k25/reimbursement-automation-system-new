@@ -1,11 +1,12 @@
 import React from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
-import { FileText, CheckCircle, Clock, XCircle } from "lucide-react"
+import { FileText, CheckCircle, Clock, XCircle, PlusCircle, RefreshCw, AlertTriangle } from "lucide-react"
 import "../Dashboard.css"
 import RequestsTable from "./components/RequestsTable.jsx"
 import { useNotificationContext } from "./NotificationContext"
+import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton.jsx"
 
 // Fetched data state
 const useStudentRequests = (addNotification) => {
@@ -79,78 +80,43 @@ const useStudentRequests = (addNotification) => {
       }
     } catch (e) {
       if (mountedRef.current) {
-        const errorMessage = e?.error || e?.message || "Failed to load requests"
-        setError(errorMessage)
+        setError(e.error || e.message || "Failed to load requests")
       }
     } finally {
-      if (mountedRef.current) setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
-  }, [addNotification])
+  }, [addNotification, previousRequests])
 
   React.useEffect(() => {
     mountedRef.current = true
     fetchRequests()
-    return () => { mountedRef.current = false }
-  }, [location.pathname, fetchRequests])
-
-  // Refetch when component becomes visible again (e.g., navigating back from view/edit)
-  React.useEffect(() => {
-    // Check if we're on the requests page
-    const isRequestsPage = location.pathname === '/dashboard/requests' || location.pathname.includes('/requests')
-
-    if (isRequestsPage) {
-      // Small delay to ensure navigation is complete
-      const timeoutId = setTimeout(() => {
-        fetchRequests()
-      }, 100)
-
-      return () => clearTimeout(timeoutId)
+    return () => {
+      mountedRef.current = false
     }
-  }, [location.pathname, fetchRequests])
+  }, [])
 
   return { loading, error, requests, refetch: fetchRequests }
 }
 
-/**
- * SummaryCard Component
- * Displays a summary statistic with icon, value and subtitle
- * @param {string} title - The title of the summary card
- * @param {number} value - The numeric value to display
- * @param {string} sub - The subtitle text
- */
-function SummaryCard({ title, value, sub }) {
-  // Icon mapping for consistent icons across summary cards
-  const iconMap = {
-    "Total Applications": <FileText className="h-5 w-5" style={{ color: '#3B945E' }} />,
-    "Total Approved": <CheckCircle className="h-5 w-5" style={{ color: '#3B945E' }} />,
-    "Pending Review": <Clock className="h-5 w-5" style={{ color: '#57BA98' }} />,
-    "Rejected": <XCircle className="h-5 w-5" style={{ color: '#3B945E' }} />
-  }
-
-  const icon = iconMap[title] || <FileText className="h-5 w-5" style={{ color: '#3B945E' }} />
-
-  return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-medium" style={{ color: '#182628' }}>{title}</div>
-          <div className="text-2xl font-semibold mt-1" style={{ color: '#182628' }}>{value}</div>
-          <div className="text-xs mt-1" style={{ color: '#3B945E' }}>{sub}</div>
-        </div>
-        <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)' }}>
-          {icon}
-        </div>
-      </div>
+const SummaryCard = ({ title, value, sub, icon: Icon, color = "#3B945E" }) => (
+  <div className="card p-4 rounded-2xl border border-slate-100 bg-white shadow-sm flex items-center justify-between">
+    <div>
+      <p className="text-xs sm:text-sm font-medium text-slate-500">{title}</p>
+      <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{value}</p>
+      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
     </div>
-  )
-}
+    {Icon && (
+      <div className="p-3 rounded-xl" style={{ backgroundColor: `${color}15`, color }}>
+        <Icon className="w-5 h-5" />
+      </div>
+    )}
+  </div>
+)
 
-/**
- * Student RequestStatus Component
- * Displays student's reimbursement request statistics and table
- */
 export default function RequestStatus() {
-  // State for search functionality
+  const navigate = useNavigate()
   const [search, setSearch] = React.useState("")
   const { addNotification } = useNotificationContext()
   const { loading, error, requests, refetch } = useStudentRequests(addNotification)
@@ -158,76 +124,113 @@ export default function RequestStatus() {
   // Calculate summary statistics from fetched data
   const summary = React.useMemo(() => ({
     total: requests.length,
-    approved: requests.filter(r => String(r.status).toLowerCase() === "approved").length,
+    approved: requests.filter(r => String(r.status).toLowerCase() === "approved" || String(r.status).toLowerCase() === "reimbursed").length,
     pending: requests.filter(r => ["pending", "under review", "under coordinator", "under hod", "under principal"].includes(String(r.status).toLowerCase())).length,
     rejected: requests.filter(r => String(r.status).toLowerCase() === "rejected").length,
   }), [requests])
 
   return (
     <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content">
-      {/* Summary cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <SummaryCard
-          title="Total Applications"
-          value={summary.total}
-          sub="All time"
-        />
-        <SummaryCard
-          title="Total Approved"
-          value={summary.approved}
-          sub="Approved requests"
-        />
-        <SummaryCard
-          title="Pending Review"
-          value={summary.pending}
-          sub="Under review"
-        />
-        <SummaryCard
-          title="Rejected"
-          value={summary.rejected}
-          sub="Not approved"
-        />
-      </div>
+      {/* Summary cards section */}
+      {loading ? (
+        <CardSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <SummaryCard
+            title="Total Applications"
+            value={summary.total}
+            sub="All time claims"
+            icon={FileText}
+            color="#3B945E"
+          />
+          <SummaryCard
+            title="Total Approved"
+            value={summary.approved}
+            sub="Sanctioned / Reimbursed"
+            icon={CheckCircle}
+            color="#10b981"
+          />
+          <SummaryCard
+            title="Pending Review"
+            value={summary.pending}
+            sub="Under administrative review"
+            icon={Clock}
+            color="#f59e0b"
+          />
+          <SummaryCard
+            title="Rejected"
+            value={summary.rejected}
+            sub="Requires attention"
+            icon={XCircle}
+            color="#ef4444"
+          />
+        </div>
+      )}
 
-      {/* Search input */}
-      <div className="card mt-4 sm:mt-6 p-3 sm:p-4">
+      {/* Search and Action Bar */}
+      <div className="card mt-4 sm:mt-6 p-3 sm:p-4 rounded-2xl border border-slate-100 bg-white shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
         <input
-          className="input w-full"
-          placeholder="Search requests..."
+          className="input w-full sm:max-w-md rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-[#3B945E] focus:outline-none"
+          placeholder="Search by course, application ID, or status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => refetch()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+            title="Refresh list"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </button>
+          <button
+            onClick={() => navigate('/student-nptel-form')}
+            className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-[#3B945E] to-[#57BA98] hover:from-[#2e744a] hover:to-[#459e80] rounded-xl shadow-sm transition-all"
+          >
+            <PlusCircle className="w-4 h-4" />
+            New Reimbursement
+          </button>
+        </div>
       </div>
 
       {/* Requests table section */}
       <div className="section mt-4 sm:mt-6">
         <div className="mb-3 sm:mb-4">
-          <h3 className="section-title text-lg sm:text-xl" style={{ color: '#182628' }}>Your Requests</h3>
-          <p className="section-subtitle text-sm sm:text-base" style={{ color: '#3B945E' }}>Track the status of your reimbursement applications</p>
+          <h3 className="section-title text-lg sm:text-xl font-bold" style={{ color: '#182628' }}>Your Applications</h3>
+          <p className="section-subtitle text-xs sm:text-sm" style={{ color: '#3B945E' }}>Live tracking and status updates of your submitted reimbursement claims</p>
         </div>
+
         {error ? (
-          <div className="card p-4 text-red-600">
-            <div className="font-semibold mb-2">Error loading requests:</div>
-            <div>{String(error)}</div>
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-6 text-center">
+            <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+            <div className="font-semibold text-slate-800 mb-1">Unable to load requests</div>
+            <p className="text-xs text-slate-600 mb-4">{String(error)}</p>
             <button
-              onClick={() => window.location.reload()}
-              className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              onClick={() => refetch()}
+              className="px-4 py-2 text-xs font-semibold bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition"
             >
-              Retry
+              Try Again
             </button>
           </div>
         ) : loading ? (
-          <div className="card p-8 text-center">
-            <div className="flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-[#3B945E] border-t-transparent rounded-full animate-spin mr-3"></div>
-              <span className="text-slate-600">Loading requests...</span>
-            </div>
-          </div>
+          <TableSkeleton rows={5} />
         ) : requests.length === 0 ? (
-          <div className="card p-8 text-center">
-            <div className="text-lg font-medium text-slate-700 mb-2">No requests found</div>
-            <div className="text-sm text-slate-500 mb-4">You haven't submitted any reimbursement requests yet.</div>
-            <div className="text-xs text-slate-400">Check the browser console for debugging information.</div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-sm">
+            <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-3 text-slate-400">
+              <FileText className="w-7 h-7 text-[#65CCB8]" />
+            </div>
+            <h4 className="text-base font-semibold text-slate-800 mb-1">No reimbursement claims yet</h4>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5">
+              Submit your NPTEL course completion certificate or other expenses to start the approval workflow.
+            </p>
+            <button
+              onClick={() => navigate('/student-nptel-form')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-[#3B945E] hover:bg-[#2e744a] rounded-xl shadow-md transition"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Apply for Reimbursement
+            </button>
           </div>
         ) : (
           <RequestsTable
