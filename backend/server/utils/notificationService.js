@@ -1,8 +1,10 @@
 const Notification = require('../models/Notification');
 const emailService = require('./emailService');
+const { queueEmailNotification } = require('../queues/emailQueue');
+const { processEmailJob } = require('../workers/emailWorker');
 const he = require('he');
 
-// Create notification and send email
+// Create notification and send email via job queue (with direct execution fallback)
 const createNotification = async (notificationData, sendEmailNotification = true) => {
   try {
     // Ensure userId is a string (Notification schema requires String)
@@ -26,78 +28,34 @@ const createNotification = async (notificationData, sendEmailNotification = true
 
     await notification.save();
 
-    // Send email in background so HTTP response is not blocked (avoids ~60s SMTP timeout delaying form submit/approve)
+    // Send email via BullMQ job queue
     if (sendEmailNotification && notificationData.userEmail) {
-      if (!emailService.isSmtpConfigured()) {
-        console.warn('Notification saved but email skipped: RESEND_API_KEY not set on server.');
-      } else {
-      const sendEmailInBackground = async () => {
-        try {
-          let emailResult = { success: false };
-
-          if (notificationData.type === 'approval') {
-            emailResult = await emailService.sendApprovalEmail(
-              {
-                name: notificationData.userName || 'User',
-                email: notificationData.userEmail,
-                applicationId: notificationData.applicationId,
-                studentId: notificationData.studentId,
-                amount: notificationData.amount,
-                status: notificationData.status,
-                remarks: notificationData.remarks,
-              },
-              notificationData.phase
-            );
-          } else if (notificationData.type === 'rejection') {
-            emailResult = await emailService.sendRejectionEmail(
-              {
-                name: notificationData.userName || 'User',
-                email: notificationData.userEmail,
-                applicationId: notificationData.applicationId,
-                studentId: notificationData.studentId,
-                amount: notificationData.amount,
-                status: notificationData.status,
-              },
-              notificationData.phase,
-              notificationData.remarks
-            );
-          } else if (notificationData.type === 'submission') {
-            emailResult = await emailService.sendSubmissionEmail({
-              name: notificationData.userName || 'User',
-              email: notificationData.userEmail,
-              applicationId: notificationData.applicationId,
-              studentId: notificationData.studentId,
-              amount: notificationData.amount,
-            });
-          } else if (notificationData.type === 'reimbursed') {
-            emailResult = await emailService.sendReimbursedEmail({
-              name: notificationData.userName || 'User',
-              email: notificationData.userEmail,
-              applicationId: notificationData.applicationId,
-              studentId: notificationData.studentId,
-              amount: notificationData.amount,
-              status: notificationData.status,
-              remarks: notificationData.remarks,
-            });
-          } else {
-            emailResult = await emailService.sendEmail(
-              notificationData.userEmail,
-              notificationData.title || `Application Update: ${notificationData.applicationId}`,
-              `<p>Dear ${he.encode(notificationData.userName || 'User')},</p><p>${he.encode(notificationData.message || '')}</p><p>Status: ${he.encode(notificationData.status || '')}</p>`
-            );
-          }
-
-          if (emailResult && emailResult.success) {
-            notification.emailSent = true;
-            await notification.save();
-          } else {
-            console.warn('Notification created but email delivery failed:', emailResult?.error || 'Unknown error');
-          }
-        } catch (emailError) {
-          console.error('Failed to send email notification:', emailError);
-        }
+      const emailPayload = {
+        notificationId: String(notification._id),
+        userId: userId,
+        userEmail: notificationData.userEmail,
+        userName: notificationData.userName || 'User',
+        type: notificationData.type,
+        applicationId: notificationData.applicationId,
+        studentId: notificationData.studentId,
+        amount: notificationData.amount,
+        phase: notificationData.phase,
+        status: notificationData.status,
+        remarks: notificationData.remarks,
+        title: notificationData.title,
+        message: notificationData.message
       };
-      sendEmailInBackground();
+
+      try {
+        // Try BullMQ async job queue first
+        await queueEmailNotification(emailPayload);
+      } catch (queueErr) {
+        // Fallback: If Redis/Queue is unavailable in local dev, process directly in background
+        if (emailService.isSmtpConfigured()) {
+          processEmailJob({ data: emailPayload, id: `direct-${Date.now()}` }).catch(err => {
+            console.warn('Direct background email notification failed:', err.message);
+          });
+        }
       }
     }
 
@@ -112,27 +70,18 @@ const createNotification = async (notificationData, sendEmailNotification = true
 const getUserNotifications = async (userId, options = {}) => {
   try {
     const { limit = 50, unreadOnly = false } = options;
-
-    // Convert userId to string for query (Notification schema stores as String)
     const userIdStr = String(userId || '');
 
-    // Try multiple formats to handle different userId types
-    const query = {
-      $or: [
-        { userId: userIdStr },
-        { userId: userId },
-        { userId: Number(userId) }
-      ]
-    };
+    // Direct string equality match against normalized userId
+    const query = { userId: userIdStr };
 
-    // Add read filter if unreadOnly is true
     if (unreadOnly) {
       query.read = false;
     }
 
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(parseInt(limit, 10));
 
     return notifications;
   } catch (error) {
@@ -144,18 +93,12 @@ const getUserNotifications = async (userId, options = {}) => {
 // Mark notification as read
 const markAsRead = async (notificationId, userId) => {
   try {
-    // Convert userId to string for query
     const userIdStr = String(userId || '');
 
-    // Try multiple formats to handle different userId types
     const notification = await Notification.findOneAndUpdate(
       {
         _id: notificationId,
-        $or: [
-          { userId: userIdStr },
-          { userId: userId },
-          { userId: Number(userId) }
-        ]
+        userId: userIdStr
       },
       { read: true },
       { new: true }
@@ -171,17 +114,11 @@ const markAsRead = async (notificationId, userId) => {
 // Mark all notifications as read for a user
 const markAllAsRead = async (userId) => {
   try {
-    // Convert userId to string for query
     const userIdStr = String(userId || '');
 
-    // Try multiple formats to handle different userId types
     const result = await Notification.updateMany(
       {
-        $or: [
-          { userId: userIdStr },
-          { userId: userId },
-          { userId: Number(userId) }
-        ],
+        userId: userIdStr,
         read: false
       },
       { read: true }
@@ -197,16 +134,10 @@ const markAllAsRead = async (userId) => {
 // Get unread count
 const getUnreadCount = async (userId) => {
   try {
-    // Convert userId to string for query
     const userIdStr = String(userId || '');
 
-    // Try multiple formats to handle different userId types
     const count = await Notification.countDocuments({
-      $or: [
-        { userId: userIdStr },
-        { userId: userId },
-        { userId: Number(userId) }
-      ],
+      userId: userIdStr,
       read: false
     });
     return count;

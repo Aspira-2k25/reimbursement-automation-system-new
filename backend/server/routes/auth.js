@@ -7,10 +7,9 @@ const { validateLogin, validateRegister } = require('../middleware/validation');
 
 // Public routes (no authentication required)
 router.post('/login', validateLogin, authController.login);
-// /register removed — user creation is restricted to Principal via /create-user
 router.post('/google', authController.googleLogin);
-router.post('/logout', verifyToken, csrfProtection, authController.logout);
-
+router.post('/refresh', authController.refreshToken);
+router.post('/logout', authController.logout);
 
 // Protected routes (authentication required)
 router.get('/profile', verifyToken, authController.getProfile);
@@ -27,7 +26,6 @@ router.get('/admin/faculty/:id', verifyToken, requireRole(['Admin']), authContro
 router.put('/admin/faculty/:id', verifyToken, csrfProtection, requireRole(['Admin']), authController.updateStaffById);
 router.post('/admin/faculty', verifyToken, csrfProtection, requireRole(['Admin']), authController.createFaculty);
 router.delete('/admin/faculty/:id', verifyToken, csrfProtection, requireRole(['Admin']), authController.deleteFaculty);
-
 
 // Test route for checking authentication
 router.get('/test-auth', verifyToken, (req, res) => {

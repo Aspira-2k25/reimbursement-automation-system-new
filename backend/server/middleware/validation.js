@@ -28,7 +28,7 @@ function logFailedLogin(req, reason, username) {
 }
 
 const validationMiddleware = {
-  // Validate login input with strict database checks
+  // Validate login input with strict database checks & failed-login lockout
   validateLogin: async (req, res, next) => {
     try {
       const { username, email, password } = req.body;
@@ -55,6 +55,11 @@ const validationMiddleware = {
         });
       }
 
+      // Generic error for security (does not reveal whether user exists, email matches, or account is locked)
+      const genericAuthError = {
+        error: 'Invalid credentials or account locked'
+      };
+
       // 2. Database checks using Prisma
       // Find user by username
       const user = await prisma.staff.findUnique({
@@ -67,19 +72,21 @@ const validationMiddleware = {
           role: true,
           email: true,
           password: true,
-          is_active: true
+          is_active: true,
+          failed_login_attempts: true,
+          locked_until: true
         }
       });
 
-      // Generic error for security
-      const invalidCredentialsError = {
-        error: 'Validation failed',
-        details: ['Invalid credentials']
-      };
-
       if (!user) {
         logFailedLogin(req, 'User not found', username);
-        return res.status(401).json(invalidCredentialsError);
+        return res.status(401).json(genericAuthError);
+      }
+
+      // Check if account is currently locked out
+      if (user.locked_until && new Date(user.locked_until) > new Date()) {
+        logFailedLogin(req, 'Account locked out', user.username);
+        return res.status(401).json(genericAuthError);
       }
 
       // Check if user is active
@@ -89,36 +96,55 @@ const validationMiddleware = {
       }
 
       // Strict Check: Verify email matches exactly
-      if (!user.email || user.email.toLowerCase() !== email.toLowerCase()) {
-        logFailedLogin(req, 'Email mismatch', user.username);
-        return res.status(401).json(invalidCredentialsError);
+      const emailMatches = user.email && user.email.toLowerCase() === email.toLowerCase().trim();
+
+      // Helper function to handle failed authentication attempts and record lockout
+      const handleFailedAuth = async (reason) => {
+        const nextAttempts = (user.failed_login_attempts || 0) + 1;
+        const updateData = { failed_login_attempts: nextAttempts };
+
+        if (nextAttempts >= 5) {
+          // Lock account for 15 minutes
+          updateData.locked_until = new Date(Date.now() + 15 * 60 * 1000);
+        }
+
+        try {
+          await prisma.staff.update({
+            where: { id: user.id },
+            data: updateData
+          });
+        } catch (dbErr) {
+          console.error('Failed to update login attempts:', dbErr);
+        }
+
+        logFailedLogin(req, reason, user.username);
+        return res.status(401).json(genericAuthError);
+      };
+
+      if (!emailMatches) {
+        return await handleFailedAuth('Email mismatch');
       }
 
       // Compare provided password with stored hash
-      // Security: Only accept bcrypt hashed passwords in production
-      // For development: also allow plain text passwords
       let isPasswordValid = false;
       if (isBcryptHash(user.password)) {
-        // Bcrypt hashed password
         isPasswordValid = await bcrypt.compare(password, user.password);
       } else if (!isProd) {
         // Allow plain-text only in non-production for legacy local/dev accounts
         isPasswordValid = (password === user.password);
         console.warn(`⚠️ Plain text password used for user: ${user.username}. Hash passwords before production.`);
       } else {
-        // In production, never accept non-hashed passwords
         console.error(`Blocked non-hashed password login for user: ${user.username}`);
       }
 
       if (!isPasswordValid) {
-        logFailedLogin(req, 'Invalid password', user.username);
-        return res.status(401).json(invalidCredentialsError);
+        return await handleFailedAuth('Invalid password');
       }
 
-      // authentication successful - attach user to request for controller
+      // Authentication successful - attach user to request for controller
       req.user = user;
 
-      // Sanitize inputs for consistency (optional, as we already have the user obj)
+      // Sanitize inputs for consistency
       req.body.username = username.trim();
       req.body.email = email.trim().toLowerCase();
 

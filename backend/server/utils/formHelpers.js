@@ -21,6 +21,9 @@ const DEPARTMENT_ALIASES = {
     'MECH': 'Mechanical Engineering',
 };
 
+// Cache for pre-compiled RegExp objects to avoid recompilation per request
+const departmentRegexCache = new Map();
+
 /**
  * Sanitize a string by removing MongoDB operators and dangerous characters.
  * @param {string} str
@@ -77,6 +80,25 @@ const getDepartmentVariants = (department) => {
 };
 
 /**
+ * Get or compile a cached regular expression for a list of department variants.
+ * @param {string} cacheKey 
+ * @param {string[]} variants 
+ * @returns {RegExp}
+ */
+const getCompiledDepartmentRegex = (cacheKey, variants) => {
+    if (departmentRegexCache.has(cacheKey)) {
+        return departmentRegexCache.get(cacheKey);
+    }
+
+    const deptPattern = variants
+        .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('|');
+    const regex = new RegExp(`^(${deptPattern})$`, 'i');
+    departmentRegexCache.set(cacheKey, regex);
+    return regex;
+};
+
+/**
  * Build a strict department filter for MongoDB queries based on user role and their department.
  * Principals, Accounts, and Admins can see all departments.
  * HODs and Coordinators can only see applications matching their department precisely.
@@ -96,16 +118,13 @@ const buildDepartmentFilter = (userRole, userDepartment) => {
     // Coordinators and HODs are strictly filtered to their own department
     if (['coordinator', 'hod'].includes(role)) {
         if (!userDepartment) {
-            // Edge case: if an HOD/Coordinator has no department assigned, they technically
-            // shouldn't see anything, but we'll return an unsatisfiable query to be safe.
+            // Edge case: if an HOD/Coordinator has no department assigned, return unsatisfiable filter
             return { department: "__NONE__" };
         }
 
+        const normDept = getNormalizedDepartment(userDepartment).toLowerCase();
         const deptVariants = getDepartmentVariants(userDepartment);
-        const deptPattern = deptVariants
-            .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-            .join('|');
-        const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+        const deptRegex = getCompiledDepartmentRegex(normDept, deptVariants);
 
         return {
             $or: [
@@ -176,10 +195,12 @@ const hasDepartmentAccess = (userRole, userDepartment, formDepartment) => {
 
 module.exports = {
     DEPARTMENT_ALIASES,
+    departmentRegexCache,
     sanitizeString,
     sanitizeApplicationId,
     isValidObjectId,
     getDepartmentVariants,
+    getCompiledDepartmentRegex,
     buildDepartmentFilter,
     getNormalizedDepartment,
     hasDepartmentAccess,

@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 const { OAuth2Client } = require('google-auth-library');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
@@ -11,6 +13,7 @@ const { getNormalizedDepartment } = require('../utils/formHelpers');
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const isProd = process.env.NODE_ENV === 'production';
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET || 'refresh-token-secret-distinct-key-64chars-minimum';
 
 const buildAuthCookieOptions = (maxAgeMs) => ({
   httpOnly: true,
@@ -20,30 +23,81 @@ const buildAuthCookieOptions = (maxAgeMs) => ({
   path: '/'
 });
 
+/**
+ * Hash opaque refresh token using distinct refresh secret
+ */
+function hashRefreshToken(token) {
+  return crypto.createHmac('sha256', REFRESH_TOKEN_SECRET).update(token).digest('hex');
+}
+
+/**
+ * Issue a matched Access Token (15m JWT) and Refresh Token (7d opaque token) pair.
+ * Maintains familyId for reuse detection.
+ */
+async function issueTokenPair(user, existingFamilyId = null) {
+  const userIdStr = String(user.id || user.userId || user.email);
+
+  const accessToken = jwt.sign(
+    {
+      userId: user.id || user.userId || userIdStr,
+      username: user.username,
+      name: user.name,
+      role: user.role,
+      email: user.email,
+      department: user.department
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+  );
+
+  const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+  const tokenHash = hashRefreshToken(rawRefreshToken);
+  const familyId = existingFamilyId || uuidv4();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  await prisma.refreshToken.create({
+    data: {
+      tokenHash,
+      userId: userIdStr,
+      familyId,
+      expiresAt
+    }
+  });
+
+  return { accessToken, refreshToken: rawRefreshToken, familyId };
+}
+
 const authController = {
   // Login function
   login: async (req, res, next) => {
     try {
-      // User is already authenticated and attached by validationMiddleware
+      // User is already authenticated and checked by validationMiddleware
       const user = req.user;
 
       if (!user) {
-        // Should not happen if middleware works correctly
         return res.status(500).json({ error: 'Authentication failed internally' });
       }
 
-      // Update last login time (fire-and-forget — don't block the response)
-      dbUtils.updateLastLogin(user.id).catch(err => console.error('updateLastLogin failed:', err));
+      // Reset failed attempts, clear lockout, and update last login time in Prisma
+      try {
+        await prisma.staff.update({
+          where: { id: user.id },
+          data: {
+            failed_login_attempts: 0,
+            locked_until: null,
+            last_login: new Date()
+          }
+        });
+      } catch (err) {
+        console.error('Failed to reset login attempts on success:', err);
+      }
 
-      // Generate JWT token with short expiry
-      const token = jwt.sign(
-        { userId: user.id, username: user.username, name: user.name, role: user.role, email: user.email, department: user.department },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
-      );
+      // Generate Access Token (15m) and Refresh Token (7d)
+      const { accessToken, refreshToken } = await issueTokenPair(user);
 
-      // Set httpOnly cookie for security (centralized options)
-      res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+      // Set httpOnly cookies for both tokens
+      res.cookie('auth_token', accessToken, buildAuthCookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', refreshToken, buildAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
 
       // Log the login activity (persisted to MongoDB)
       logger.logActivity({
@@ -58,7 +112,7 @@ const authController = {
         userAgent: req.get('user-agent') || null
       });
 
-      // Return user data (without sensitive information or token)
+      // Return user data (without tokens in body)
       res.json({
         message: 'Login successful',
         user: {
@@ -93,7 +147,7 @@ const authController = {
       try {
         ticket = await googleClient.verifyIdToken({
           idToken: credential,
-          audience: process.env.GOOGLE_CLIENT_ID, // Verify token is for our app
+          audience: process.env.GOOGLE_CLIENT_ID,
         });
       } catch (verifyError) {
         console.error('Google token verification failed:', verifyError);
@@ -109,14 +163,13 @@ const authController = {
         return res.status(400).json({ error: 'Google token missing email' });
       }
 
-      // Verify email is confirmed by Google
       if (!emailVerified) {
         return res.status(400).json({ error: 'Email not verified by Google' });
       }
 
-      // Validate email domain - only allow apsit.edu.in domain
-      const allowedDomain = 'apsit.edu.in';
-      if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
+      // Validate email domain against externalized environment variable
+      const configuredDomain = (process.env.INSTITUTIONAL_EMAIL_DOMAIN || 'apsit.edu.in').replace(/^@/, '').toLowerCase().trim();
+      if (!email.toLowerCase().endsWith(`@${configuredDomain}`)) {
         return res.status(403).json({
           error: 'Please sign in with your institutional email.'
         });
@@ -125,19 +178,24 @@ const authController = {
       // Look up staff by email to determine role; default to Student
       const staff = await dbUtils.getStaffByEmail(email);
       const role = staff?.role || 'Student';
-      // Use staff ID if found, otherwise use email as userId for Google users
-      const userId = staff?.id || email;
+      const userId = staff?.id ? String(staff.id) : email;
 
-      const token = jwt.sign(
-        { userId, email, role, name, department: staff?.department || null },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
-      );
+      const userObj = {
+        id: userId,
+        userId: userId,
+        username: email,
+        name: staff?.name || name,
+        role: role,
+        email: email,
+        department: staff?.department || null
+      };
 
-      // Set httpOnly cookie for security (consistent with regular login)
-      res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+      // Generate Access and Refresh Token pair
+      const { accessToken, refreshToken } = await issueTokenPair(userObj);
 
-      // Log the Google login activity (persisted to MongoDB)
+      res.cookie('auth_token', accessToken, buildAuthCookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', refreshToken, buildAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
+
       logger.logActivity({
         action: 'login',
         message: 'User logged in via Google',
@@ -150,10 +208,126 @@ const authController = {
         userAgent: req.get('user-agent') || null
       });
 
-      return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
+      return res.json({
+        message: 'Login successful',
+        user: { id: userId, email, name: userObj.name, role, department: staff?.department || null }
+      });
     } catch (error) {
       console.error('Google login error:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+  // Refresh Token Rotation Endpoint (POST /api/auth/refresh)
+  refreshToken: async (req, res) => {
+    try {
+      const incomingRefreshToken = req.cookies?.refresh_token;
+
+      if (!incomingRefreshToken) {
+        return res.status(401).json({ error: 'Refresh token required' });
+      }
+
+      const tokenHash = hashRefreshToken(incomingRefreshToken);
+
+      // Look up refresh token in PostgreSQL
+      const tokenRecord = await prisma.refreshToken.findUnique({
+        where: { tokenHash }
+      });
+
+      if (!tokenRecord) {
+        // Token not recognized — clear cookies
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+        return res.status(401).json({ error: 'Invalid refresh token' });
+      }
+
+      // Check if token was already revoked — Reuse Detection!
+      if (tokenRecord.revokedAt !== null) {
+        // Severe security event: Revoke entire token family for this user
+        console.warn(`⚠️ Refresh token reuse detected for userId: ${tokenRecord.userId}, familyId: ${tokenRecord.familyId}. Revoking entire family.`);
+        await prisma.refreshToken.updateMany({
+          where: { familyId: tokenRecord.familyId, revokedAt: null },
+          data: { revokedAt: new Date() }
+        });
+
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+
+        logger.logActivity({
+          action: 'token_reuse_blocked',
+          message: 'Refresh token reuse detected. Revoked all family tokens.',
+          userId: tokenRecord.userId,
+          level: 'WARN',
+          status: 'failure',
+          ipAddress: req.ip || null,
+          userAgent: req.get('user-agent') || null
+        });
+
+        return res.status(401).json({ error: 'Refresh token reuse detected. Please log in again.' });
+      }
+
+      // Check if token has expired
+      if (new Date(tokenRecord.expiresAt) < new Date()) {
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+        return res.status(401).json({ error: 'Refresh token expired' });
+      }
+
+      // Valid token: Rotate token (revoke old one, issue new pair in same family)
+      await prisma.refreshToken.update({
+        where: { id: tokenRecord.id },
+        data: { revokedAt: new Date() }
+      });
+
+      // Retrieve current user details from staff if applicable
+      let user = null;
+      const numUserId = parseInt(tokenRecord.userId, 10);
+      if (!isNaN(numUserId)) {
+        user = await prisma.staff.findUnique({
+          where: { id: numUserId },
+          select: { id: true, username: true, name: true, department: true, role: true, email: true, is_active: true }
+        });
+      } else if (tokenRecord.userId.includes('@')) {
+        user = await prisma.staff.findUnique({
+          where: { email: tokenRecord.userId },
+          select: { id: true, username: true, name: true, department: true, role: true, email: true, is_active: true }
+        });
+      }
+
+      if (user && !user.is_active) {
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+        return res.status(401).json({ error: 'Account is deactivated' });
+      }
+
+      const userPayload = user || {
+        id: tokenRecord.userId,
+        userId: tokenRecord.userId,
+        username: tokenRecord.userId,
+        role: 'Student'
+      };
+
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await issueTokenPair(userPayload, tokenRecord.familyId);
+
+      // Set new cookies
+      res.cookie('auth_token', newAccessToken, buildAuthCookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', newRefreshToken, buildAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
+
+      res.json({
+        message: 'Token refreshed successfully',
+        user: {
+          id: userPayload.id,
+          username: userPayload.username,
+          name: userPayload.name,
+          department: userPayload.department,
+          role: userPayload.role,
+          email: userPayload.email
+        }
+      });
+
+    } catch (error) {
+      console.error('Refresh token error:', error);
+      res.status(500).json({ error: 'Failed to refresh token' });
     }
   },
 
@@ -162,21 +336,18 @@ const authController = {
     try {
       const { username, name, department, role, email, password, employee_id } = req.body;
 
-      // Basic validation
       if (!username || !name || !password) {
         return res.status(400).json({
           error: 'Username, name, and password are required'
         });
       }
 
-      // Validate email format if provided
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(400).json({
           error: 'Invalid email format'
         });
       }
 
-      // Check if user already exists by username
       const existingUserByUsername = await prisma.staff.findUnique({
         where: { username: username }
       });
@@ -186,7 +357,6 @@ const authController = {
         });
       }
 
-      // Check if email already exists (if provided)
       if (email) {
         const existingUserByEmail = await prisma.staff.findUnique({
           where: { email: email }
@@ -198,15 +368,13 @@ const authController = {
         }
       }
 
-      // Hash password before storing
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create new user using Prisma
       const newUser = await prisma.staff.create({
         data: {
           username: username.trim(),
           name: name.trim(),
-          password: hashedPassword, // Store hashed password, not plain text
+          password: hashedPassword,
           email: email ? email.trim() : null,
           department: department ? getNormalizedDepartment(department) : null,
           role: role || 'Faculty',
@@ -226,26 +394,19 @@ const authController = {
         }
       });
 
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: newUser.id, username: newUser.username, role: newUser.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-      );
+      const { accessToken, refreshToken } = await issueTokenPair(newUser);
 
-      // Set httpOnly cookie (consistent with login)
-      res.cookie('auth_token', token, buildAuthCookieOptions(24 * 60 * 60 * 1000)); // 24 hours
+      res.cookie('auth_token', accessToken, buildAuthCookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', refreshToken, buildAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
 
       res.status(201).json({
         message: 'User created successfully',
-        // Token NOT in response body - only in httpOnly cookie
         user: newUser
       });
 
     } catch (error) {
       console.error('Register error:', error);
 
-      // Handle Prisma unique constraint errors
       if (error.code === 'P2002') {
         const field = error.meta?.target?.[0] || 'field';
         return res.status(409).json({
@@ -263,7 +424,7 @@ const authController = {
   // Get user profile
   getProfile: async (req, res) => {
     try {
-      const userId = req.user?.userId; // From JWT middleware
+      const userId = req.user?.userId;
 
       if (!userId) {
         return res.status(401).json({ error: 'Authentication required' });
@@ -293,7 +454,6 @@ const authController = {
 
       const { name, department, email } = req.body || {};
 
-      // Basic validation
       if (email !== undefined && email !== null) {
         const emailStr = String(email).trim();
         if (emailStr && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
@@ -318,15 +478,28 @@ const authController = {
     }
   },
 
-  // Logout function — blacklist the token so it can't be reused
+  // Logout function — revoke refresh token and blacklist access token
   logout: async (req, res) => {
     try {
-      // Extract the raw token from the Authorization header or httpOnly cookie
+      // 1. Revoke refresh token in database if cookie present
+      const incomingRefreshToken = req.cookies?.refresh_token;
+      if (incomingRefreshToken) {
+        try {
+          const tokenHash = hashRefreshToken(incomingRefreshToken);
+          await prisma.refreshToken.updateMany({
+            where: { tokenHash, revokedAt: null },
+            data: { revokedAt: new Date() }
+          });
+        } catch (dbErr) {
+          console.error('Failed to revoke refresh token in database:', dbErr);
+        }
+      }
+
+      // 2. Blacklist access token if present
       const authHeader = req.headers.authorization;
       const token = (authHeader && authHeader.split(' ')[1]) || (req.cookies && req.cookies.auth_token);
 
       if (token) {
-        // Decode to find expiry so we only store until it naturally expires
         const decoded = jwt.decode(token);
         if (decoded && decoded.exp) {
           const remainingTTL = decoded.exp - Math.floor(Date.now() / 1000);
@@ -336,11 +509,11 @@ const authController = {
         }
       }
 
-      // Clear the httpOnly cookie as well (same options as when setting)
+      // 3. Clear both httpOnly cookies
       const clearOpts = buildAuthCookieOptions(0);
       res.clearCookie('auth_token', clearOpts);
+      res.clearCookie('refresh_token', clearOpts);
 
-      // Log the logout activity if we could decode the token
       if (token) {
         try {
           const decoded = jwt.decode(token);
@@ -357,11 +530,8 @@ const authController = {
               userAgent: req.get('user-agent') || null
             });
           }
-        } catch (e) {
-          // ignore parsing errors
-        }
+        } catch (e) {}
       }
-
 
       res.json({ message: 'Logout successful' });
     } catch (error) {
@@ -394,27 +564,23 @@ authController.getStaffByDepartment = async (req, res) => {
   }
 };
 
-// Create user endpoint (for admin/user creation via Postman)
-// Similar to register but doesn't auto-login the user
+// Create user endpoint (admin action)
 authController.createUser = async (req, res) => {
   try {
     const { username, name, department, role, email, password, employee_id } = req.body;
 
-    // Basic validation
     if (!username || !name || !password) {
       return res.status(400).json({
         error: 'Username, name, and password are required'
       });
     }
 
-    // Validate email format if provided
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({
         error: 'Invalid email format'
       });
     }
 
-    // Check if user already exists by username
     const existingUserByUsername = await prisma.staff.findUnique({
       where: { username: username }
     });
@@ -424,7 +590,6 @@ authController.createUser = async (req, res) => {
       });
     }
 
-    // Check if email already exists (if provided)
     if (email) {
       const existingUserByEmail = await prisma.staff.findUnique({
         where: { email: email }
@@ -436,10 +601,8 @@ authController.createUser = async (req, res) => {
       }
     }
 
-    // Hash password before storing
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user using Prisma
     const newUser = await prisma.staff.create({
       data: {
         username: username.trim(),
@@ -472,7 +635,6 @@ authController.createUser = async (req, res) => {
   } catch (error) {
     console.error('Create user error:', error);
 
-    // Handle Prisma unique constraint errors
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0] || 'field';
       return res.status(409).json({
@@ -489,16 +651,15 @@ authController.createUser = async (req, res) => {
 
 // ==================== ADMIN STAFF MANAGEMENT ====================
 
-// Get all staff members (admin only) — supports optional pagination
+// Get all staff members (admin only)
 authController.getFacultyList = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10);
     const limit = parseInt(req.query.limit, 10);
 
-    // If pagination params are provided, use paginated query
     if (page > 0 && limit > 0) {
       const safePage = Math.max(1, page);
-      const safeLimit = Math.min(Math.max(1, limit), 100); // cap at 100
+      const safeLimit = Math.min(Math.max(1, limit), 100);
       const offset = (safePage - 1) * safeLimit;
 
       const staff = await prisma.staff.findMany({
@@ -531,7 +692,6 @@ authController.getFacultyList = async (req, res) => {
       });
     }
 
-    // Default: return all (backward compatible)
     const staff = await dbUtils.getAllStaff();
     res.json({ staff });
   } catch (error) {
@@ -568,16 +728,14 @@ authController.updateStaffById = async (req, res) => {
       return res.status(400).json({ error: 'Staff ID required' });
     }
 
-    // Basic validation
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
     const normalizedUsername = typeof username === 'string' ? username.toLowerCase().trim() : undefined;
     const normalizedEmail = typeof email === 'string' ? email.toLowerCase().trim() : undefined;
-    const staffId = parseInt(id);
+    const staffId = parseInt(id, 10);
 
-    // Check if username/email conflict with another record
     if (normalizedUsername) {
       const existing = await prisma.staff.findFirst({
         where: {
@@ -645,14 +803,12 @@ authController.createFaculty = async (req, res) => {
   try {
     const { username, name, department, role, email, password, employee_id } = req.body;
 
-    // Basic validation
     if (!username || !name || !password) {
       return res.status(400).json({
         error: 'Username, name, and password are required'
       });
     }
 
-    // Validate email format
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
@@ -660,7 +816,6 @@ authController.createFaculty = async (req, res) => {
     const normalizedUsername = username.toLowerCase().trim();
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
 
-    // Check if username is used by an active account.
     const existingActiveByUsername = await prisma.staff.findFirst({
       where: { username: normalizedUsername, is_active: true }
     });
@@ -670,7 +825,6 @@ authController.createFaculty = async (req, res) => {
       });
     }
 
-    // Check if email is used by an active account.
     if (normalizedEmail) {
       const existingActiveByEmail = await prisma.staff.findFirst({
         where: { email: normalizedEmail, is_active: true }
@@ -682,7 +836,6 @@ authController.createFaculty = async (req, res) => {
       }
     }
 
-    // Reuse an inactive record if username or email match a deactivated account.
     const inactiveByUsername = await prisma.staff.findFirst({
       where: { username: normalizedUsername, is_active: false }
     });
@@ -698,7 +851,6 @@ authController.createFaculty = async (req, res) => {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const reactivationTarget = inactiveByUsername || inactiveByEmail;
@@ -746,7 +898,6 @@ authController.createFaculty = async (req, res) => {
       });
     }
 
-    // Create new faculty
     const newFaculty = await prisma.staff.create({
       data: {
         username: normalizedUsername,
@@ -811,7 +962,6 @@ authController.deleteFaculty = async (req, res) => {
       return res.status(400).json({ error: 'Staff ID required' });
     }
 
-    // Soft delete - mark as inactive so history is preserved.
     const updated = await dbUtils.updateStaffById(id, { is_active: false });
     if (!updated) {
       return res.status(404).json({ error: 'Staff member not found' });

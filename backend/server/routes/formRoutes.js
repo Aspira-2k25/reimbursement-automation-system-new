@@ -159,24 +159,14 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
     // Parse pagination parameters
     const pagination = parsePaginationParams(req.query, { defaultLimit: 20, maxLimit: 100 });
 
-    // Try multiple query patterns to handle different userId formats
-    // Convert userId to string for comparison since MongoDB might store it as string
-    const userIdStr = String(userId);
+    // Direct string equality match against normalized userId
+    const query = { userId: String(userId) };
 
-    // Try multiple query patterns to handle different userId formats
-    const query = {
-      $or: [
-        { userId: userIdStr },
-        { userId: userId },
-        { userId: Number(userId) }
-      ]
-    };
-
-    // Execute paginated query
+    // Execute paginated query with field projection (excluding heavy documents)
     const result = await paginateQuery(
       Form,
       query,
-      { sort: { createdAt: -1 } },
+      { sort: { createdAt: -1 }, select: '-documents' },
       pagination
     );
 
@@ -221,7 +211,7 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -259,7 +249,7 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
     }
     // Principal: sees all (no additional filter)
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -303,7 +293,7 @@ router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -331,7 +321,7 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching principal forms:", err);
@@ -359,7 +349,7 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
         { status: "Reimbursed" },
         { status: "Rejected", rejectedBy: "Accounts" }
       ]
-    }).sort({ updatedAt: -1 });
+    }).select('-documents').sort({ updatedAt: -1 });
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching accounts forms:", err);
@@ -472,42 +462,45 @@ router.put(
       }
 
       // Upload new files if provided (parallel with old file cleanup)
-      const updateUploadPromises = [];
+      const tasks = [];
+
       if (req.files?.nptelResult?.[0]) {
-        updateUploadPromises.push(
-          (async () => {
-            if (form.documents?.[0]?.publicId) {
-              await cloudinary.uploader.destroy(form.documents[0].publicId);
-            }
-            return uploadFile(req.files.nptelResult[0], {
-              folder: "reimbursement-Forms/Faculty_Form",
-              resource_type: "image",
-              use_filename: true,
-              unique_filename: false
-            });
-          })()
+        if (form.documents?.[0]?.publicId) {
+          tasks.push(
+            cloudinary.uploader.destroy(form.documents[0].publicId)
+              .catch(e => console.warn('Cloudinary destroy nptelResult warning:', e.message))
+          );
+        }
+        tasks.push(
+          uploadFile(req.files.nptelResult[0], {
+            folder: "reimbursement-Forms/Faculty_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false
+          }).then(uploadRes => ({ type: 'nptelResult', uploadRes }))
         );
-      } else {
-        updateUploadPromises.push(Promise.resolve(null));
       }
+
       if (req.files?.idCard?.[0]) {
-        updateUploadPromises.push(
-          (async () => {
-            if (form.documents?.[1]?.publicId) {
-              await cloudinary.uploader.destroy(form.documents[1].publicId);
-            }
-            return uploadFile(req.files.idCard[0], {
-              folder: "reimbursement-Forms/Faculty_Form",
-              resource_type: "image",
-              use_filename: true,
-              unique_filename: false
-            });
-          })()
+        if (form.documents?.[1]?.publicId) {
+          tasks.push(
+            cloudinary.uploader.destroy(form.documents[1].publicId)
+              .catch(e => console.warn('Cloudinary destroy idCard warning:', e.message))
+          );
+        }
+        tasks.push(
+          uploadFile(req.files.idCard[0], {
+            folder: "reimbursement-Forms/Faculty_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false
+          }).then(uploadRes => ({ type: 'idCard', uploadRes }))
         );
-      } else {
-        updateUploadPromises.push(Promise.resolve(null));
       }
-      const [nptelResultUpload, idCardUpload] = await Promise.all(updateUploadPromises);
+
+      const uploadResults = await Promise.all(tasks);
+      const nptelResultUpload = uploadResults.find(r => r?.type === 'nptelResult')?.uploadRes || null;
+      const idCardUpload = uploadResults.find(r => r?.type === 'idCard')?.uploadRes || null;
 
       // Determine allowed updates based on user role and form status
       // Faculty/Coordinator/HOD (owners) can only edit their own pending/under-review forms

@@ -1,1 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+logs/
 logs.json
+coverage/
+.nyc_output/
+dist/
+build/
+.DS_Store
