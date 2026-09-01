@@ -36,9 +36,19 @@ const useStudentRequests = (addNotification) => {
 
       // Map backend forms to table row shape
       const mapped = forms.map((f) => ({
+        ...f,
         id: f.applicationId || f._id || f.id || `form-${f._id}`,
         _id: f._id, // Store MongoDB _id for navigation
         applicationId: f.applicationId, // Store applicationId as well
+        name: f.name || f.studentName || f.fullName || '',
+        studentId: f.studentId || f.rollNumber || '',
+        email: f.email || '',
+        department: f.department || '',
+        division: f.division || '',
+        academicYear: f.academicYear || '',
+        accountName: f.accountName || f.name || '',
+        accountNumber: f.accountNumber || '',
+        ifscCode: f.ifscCode || '',
         category: f.reimbursementType || f.category || "NPTEL",
         status: f.status || "Pending",
         amount: Number(f.amount || 0),
@@ -49,6 +59,7 @@ const useStudentRequests = (addNotification) => {
         marks: f.marks ?? null,
         documents: f.documents || [],
         accountsRemarks: f.accountsRemarks || '',
+        remarks: f.remarks || f.rejectionRemarks || '',
       }))
 
       // Check for status changes and generate notifications

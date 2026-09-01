@@ -10,6 +10,7 @@ const SKIP_PATHS = [
     '/api/csrf-token',
     '/api/admin/logs',
     '/api/uploads',
+    '/api/announcements',
 ];
 
 /**
@@ -24,42 +25,49 @@ function getActivityDescriptor(req) {
     // ── Auth ──
     // login, google login, and logout are logged explicitly in authController
     if (path.startsWith('/api/auth/profile') && method === 'PUT') {
-        return { action: 'profile_update', message: 'Updated profile' };
+        return { action: 'profile_update', message: 'Updated user profile' };
     }
 
-    // Extract possible form ID from URL
-    const urlParts = path.split('/');
-    const possibleId = urlParts[urlParts.length - 1];
-    const formId = (possibleId && possibleId.length > 5 && possibleId !== 'submit') ? possibleId : null;
+    // Extract ID if available
+    const urlParts = path.split('/').filter(Boolean);
+    const lastPart = urlParts[urlParts.length - 1];
+    const prevPart = urlParts.length > 1 ? urlParts[urlParts.length - 2] : null;
+    const formId = (lastPart && lastPart.length > 5 && lastPart !== 'submit' && lastPart !== 'status') 
+        ? lastPart 
+        : (prevPart && prevPart.length > 5 && prevPart !== 'student-forms' && prevPart !== 'forms')
+        ? prevPart 
+        : null;
 
-    // ── Faculty forms ──
+    // ── Faculty / Coordinator / HOD forms ──
     if (path === '/api/forms/submit' && method === 'POST') {
-        return { action: 'submit', message: 'Submitted a reimbursement application', formId };
+        const role = req.user?.role?.toLowerCase();
+        const rolePrefix = role === 'hod' ? 'an HOD' : (role === 'coordinator' ? 'a coordinator' : 'a faculty');
+        return { action: 'submit', message: `Submitted ${rolePrefix} reimbursement application`, formId };
     }
-    if (path.startsWith('/api/forms/') && method === 'PUT') {
+    if (path.startsWith('/api/forms/') && ['PUT', 'PATCH'].includes(method)) {
         const status = req.body?.status;
         if (status === 'Under Principal') return { action: 'approve', message: 'Approved an application (forwarded to Principal)', formId };
-        if (status === 'Approved') return { action: 'approve', message: 'Approved an application', formId };
-        if (status === 'Rejected') return { action: 'reject', message: 'Rejected an application', formId };
-        if (status === 'Reimbursed') return { action: 'reimburse', message: 'Marked an application as reimbursed', formId };
-        return { action: 'update', message: 'Updated a reimbursement application', formId };
+        if (status === 'Approved') return { action: 'approve', message: 'Sanctioned & approved reimbursement claim', formId };
+        if (status === 'Rejected') return { action: 'reject', message: `Rejected reimbursement claim (${req.body?.rejectionRemarks || req.body?.rejectionReason || 'No reason provided'})`, formId };
+        if (status === 'Reimbursed') return { action: 'reimburse', message: 'Marked claim as reimbursed / payment disbursed', formId };
+        return { action: 'update', message: 'Updated reimbursement claim', formId };
     }
     if (path.startsWith('/api/forms/') && method === 'DELETE') {
-        return { action: 'delete', message: 'Deleted a reimbursement application', formId };
+        return { action: 'delete', message: 'Deleted a reimbursement claim', formId };
     }
 
     // ── Student forms ──
     if (path === '/api/student-forms/submit' && method === 'POST') {
-        return { action: 'submit', message: 'Submitted a student reimbursement application', formId };
+        return { action: 'submit', message: 'Submitted an NPTEL student reimbursement application', formId };
     }
-    if (path.startsWith('/api/student-forms/') && method === 'PUT') {
+    if (path.startsWith('/api/student-forms/') && ['PUT', 'PATCH'].includes(method)) {
         const status = req.body?.status;
-        if (status === 'Under HOD') return { action: 'approve', message: 'Approved a student application (forwarded to HOD)', formId };
-        if (status === 'Under Principal') return { action: 'approve', message: 'Approved a student application (forwarded to Principal)', formId };
-        if (status === 'Approved') return { action: 'approve', message: 'Approved a student application', formId };
-        if (status === 'Rejected') return { action: 'reject', message: 'Rejected a student application', formId };
-        if (status === 'Reimbursed') return { action: 'reimburse', message: 'Marked a student application as reimbursed', formId };
-        return { action: 'update', message: 'Updated a student reimbursement application', formId };
+        if (status === 'Under HOD') return { action: 'approve', message: 'Verified student application (forwarded to HOD)', formId };
+        if (status === 'Under Principal') return { action: 'approve', message: 'Approved student application (forwarded to Principal)', formId };
+        if (status === 'Approved') return { action: 'approve', message: 'Sanctioned & approved student reimbursement', formId };
+        if (status === 'Rejected') return { action: 'reject', message: `Rejected student reimbursement (${req.body?.rejectionRemarks || req.body?.rejectionReason || 'No reason provided'})`, formId };
+        if (status === 'Reimbursed') return { action: 'reimburse', message: 'Disbursed reimbursement payment to student', formId };
+        return { action: 'update', message: 'Updated student reimbursement application', formId };
     }
     if (path.startsWith('/api/student-forms/') && method === 'DELETE') {
         return { action: 'delete', message: 'Deleted a student reimbursement application', formId };
@@ -70,7 +78,7 @@ function getActivityDescriptor(req) {
         return { action: 'update', message: 'Updated user settings' };
     }
     if (path.startsWith('/api/users') && method === 'POST') {
-        return { action: 'upload', message: 'Uploaded a document' };
+        return { action: 'upload', message: 'Uploaded a supporting document' };
     }
 
     // ── Notification routes ──
@@ -83,10 +91,7 @@ function getActivityDescriptor(req) {
         return { action: 'password_change', message: 'Changed account password' };
     }
 
-    // Skip GET requests and anything not matched
-    if (method === 'GET') return null;
-
-    return null; // Skip unknown routes to avoid noisy logs
+    return null;
 }
 
 function activityLogger(req, res, next) {
@@ -116,7 +121,7 @@ function activityLogger(req, res, next) {
             if (!descriptor) return;
 
             const userName = req.user?.name || req.user?.username || req.user?.email || 'Unknown';
-            const userRoleDisplay = req.user?.role || 'Unknown';
+            const userRoleDisplay = req.user?.role || 'User';
             const department = req.user?.department || '';
 
             // Persist to MongoDB (fire-and-forget)

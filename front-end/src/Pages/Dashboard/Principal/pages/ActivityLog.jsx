@@ -47,20 +47,27 @@ const ActivityLog = () => {
         const now = new Date()
 
         switch (dateFilter) {
-          case 'Today':
+          case 'Today': {
             matchesDate = activityDate.toDateString() === now.toDateString()
             break
-          case 'This Week':
+          }
+          case 'This Week': {
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
             matchesDate = activityDate >= weekAgo
             break
-          case 'This Month':
+          }
+          case 'This Month': {
             matchesDate = activityDate.getMonth() === now.getMonth() &&
               activityDate.getFullYear() === now.getFullYear()
             break
-          case 'Last 3 Months':
+          }
+          case 'Last 3 Months': {
             const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
             matchesDate = activityDate >= threeMonthsAgo
+            break
+          }
+          default:
+            matchesDate = true
             break
         }
       }

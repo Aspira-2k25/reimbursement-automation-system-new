@@ -63,17 +63,28 @@ export default function RequestStatus() {
         // Handle both simple array response and paginated object response
         const formsArray = Array.isArray(data) ? data : (data?.forms || [])
         const mapped = formsArray.map(f => ({
+          ...f,
           id: f.applicationId || f._id,
           _id: f._id,
+          name: f.name || f.facultyName || '',
+          facultyId: f.facultyId || '',
+          department: f.department || '',
+          email: f.email || '',
+          academicYear: f.academicYear || '',
+          accountName: f.accountName || f.name || '',
+          accountNumber: f.accountNumber || '',
+          ifscCode: f.ifscCode || '',
           category: f.reimbursementType || "NPTEL",
           status: f.status || "Pending",
-          amount: f.amount,
+          amount: Number(f.amount || 0),
           submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           updatedDate: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           description: f.remarks || f.name || "NPTEL Reimbursement",
           courseName: f.courseName || 'N/A',
           marks: f.marks ?? null,
           documents: f.documents || [],
+          accountsRemarks: f.accountsRemarks || '',
+          remarks: f.remarks || f.rejectionRemarks || '',
         }))
 
         // Check for status changes and generate notifications

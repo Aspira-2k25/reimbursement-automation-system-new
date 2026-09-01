@@ -43,7 +43,7 @@ router.post(
         uploadPromises.push(
           uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false
           })
@@ -55,7 +55,7 @@ router.post(
         uploadPromises.push(
           uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false
           })
@@ -471,7 +471,7 @@ router.put(
             }
             return uploadFile(req.files.nptelResult[0], {
               folder: "reimbursement-Forms/Faculty_Form",
-              resource_type: "image",
+              resource_type: "auto",
               use_filename: true,
               unique_filename: false
             });
@@ -488,7 +488,7 @@ router.put(
             }
             return uploadFile(req.files.idCard[0], {
               folder: "reimbursement-Forms/Faculty_Form",
-              resource_type: "image",
+              resource_type: "auto",
               use_filename: true,
               unique_filename: false
             });
@@ -510,11 +510,16 @@ router.put(
         // Owners can update form details ONLY while the form is at its initial status
         // (i.e., before the first approver has taken any action).
         // Faculty/Coordinator forms start at "Under HOD", HOD forms start at "Under Principal".
-        const initialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
-        if (form.status === initialStatus) {
+        const isHodForm = form.applicantType === 'HOD' || userRole === 'hod';
+        const initialStatus = isHodForm ? 'Under Principal' : 'Under HOD';
+        if (form.status === initialStatus || form.status === 'Pending') {
           allowedUpdates = ['name', 'email', 'facultyId', 'academicYear', 'amount', 'accountName', 'ifscCode', 'accountNumber', 'courseName', 'marks', 'remark'];
         } else {
-          return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
+          return res.status(403).json({
+            error: isHodForm
+              ? 'Form can no longer be edited after Principal has acted on it.'
+              : 'Form can no longer be edited after HOD has approved and forwarded it.'
+          });
         }
       } else if (isOwner && req.body.status) {
         // Owners cannot change the status of their own forms
@@ -572,8 +577,9 @@ router.put(
       });
 
       // Handle document updates for owners (only at initial status)
-      const editableInitialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
-      if (isOwner && form.status === editableInitialStatus) {
+      const isHodFormDoc = form.applicantType === 'HOD' || userRole === 'hod';
+      const editableInitialStatus = isHodFormDoc ? 'Under Principal' : 'Under HOD';
+      if (isOwner && (form.status === editableInitialStatus || form.status === 'Pending')) {
         if (nptelResultUpload) {
           updates.documents = updates.documents || [...(form.documents || [])];
           updates.documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
@@ -735,10 +741,16 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized for this department' });
     }
 
-    const deletableStatuses = ['Under HOD'];
+    const isHodForm = form.applicantType === 'HOD' || userRole === 'hod';
+    const deletableStatuses = isHodForm
+      ? ['Under Principal', 'Pending']
+      : ['Under HOD', 'Pending'];
+
     if (!deletableStatuses.includes(form.status)) {
       return res.status(409).json({
-        error: 'Form cannot be deleted after review has started. Use workflow actions instead.'
+        error: isHodForm
+          ? 'Form cannot be deleted after Principal has reviewed or approved it.'
+          : 'Form cannot be deleted after HOD has approved and forwarded it.'
       });
     }
 

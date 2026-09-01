@@ -39,6 +39,12 @@ export default function LoginPage() {
       const role = (user?.role || '').toLowerCase();
       if (role === 'admin') {
         navigate('/dashboard/admin', { replace: true });
+      } else if (role === 'principal') {
+        navigate('/dashboard/principal', { replace: true });
+      } else if (role === 'hod') {
+        navigate('/dashboard/hod', { replace: true });
+      } else if (role === 'accounts') {
+        navigate('/dashboard/accounts', { replace: true });
       } else if (role === 'coordinator') {
         navigate('/dashboard/coordinator', { replace: true });
       } else if (role === 'faculty') {

@@ -38,7 +38,7 @@ const activityLogSchema = new mongoose.Schema({
   responseTime: { type: Number, default: null }, // ms
 
   // Timestamp
-  timestamp: { type: Date, default: Date.now, index: true }
+  timestamp: { type: Date, default: Date.now }
 }, {
   timestamps: false, // We use our own 'timestamp' field
   versionKey: false

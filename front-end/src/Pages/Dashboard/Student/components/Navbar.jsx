@@ -9,12 +9,15 @@ import apshahLogo from "../../../../assets/images/Apshah_logo.png"
 // import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 function initials(name) {
+  if (!name || typeof name !== 'string') return "U"
   return name
-    .split(" ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase()
+    .toUpperCase() || "U"
 }
 
 /**

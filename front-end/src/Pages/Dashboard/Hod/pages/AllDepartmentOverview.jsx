@@ -42,9 +42,9 @@ const AllDepartmentOverview = () => {
 
   // Categorise requests for the HOD's own department
   const categorizedRequests = useMemo(() => {
-    const pending = allRequests.filter(r => r.status === 'Pending' || r.status === 'Under HOD')
+    const pending = allRequests.filter(r => r.status === 'Pending' || r.status === 'Under HOD' || r.status === 'Under Coordinator')
     const underPrincipal = allRequests.filter(r => r.status === 'Under Principal')
-    const approved = allRequests.filter(r => r.status === 'Approved')
+    const approved = allRequests.filter(r => r.status === 'Approved' || r.status === 'Reimbursed')
     const rejected = allRequests.filter(r => r.status === 'Rejected')
     return { pending, underPrincipal, approved, rejected }
   }, [allRequests])

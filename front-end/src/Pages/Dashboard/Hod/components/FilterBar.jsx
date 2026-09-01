@@ -24,7 +24,7 @@ const FilterBar = ({
   onRefresh,
   categories = [],
   statuses = [],
-  memberTypes = ['All', 'Faculty', 'Student'],
+  memberTypes = ['All', 'Faculty', 'Student', 'HOD'],
   departments = []
 }) => {
   const [dateRange, setDateRange] = useState({

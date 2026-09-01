@@ -1,21 +1,23 @@
-// Prisma Client instance with Accelerate extension for connection pooling
-// Use a singleton pattern to reuse the same instance across your app
+// Prisma Client instance with optional Accelerate extension for connection pooling
 const { PrismaClient } = require('@prisma/client');
 const { withAccelerate } = require('@prisma/extension-accelerate');
 
-// Create a single instance with Accelerate extension
-// Accelerate provides connection pooling and caching to reduce cold start times
-const prisma = new PrismaClient({
-  // Log queries in development, errors only in production
+const basePrisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development'
-    ? ['query', 'error', 'warn']
+    ? ['error', 'warn']
     : ['error'],
-}).$extends(withAccelerate());
+});
 
-// Handle graceful shutdown (for long-running processes)
+const isAccelerate = (process.env.DB_PRISMA_DATABASE_URL || '').startsWith('prisma+postgres://');
+
+const prisma = isAccelerate ? basePrisma.$extends(withAccelerate()) : basePrisma;
+
+// Handle graceful shutdown
 if (process.env.NODE_ENV !== 'production' || require.main === module) {
   process.on('beforeExit', async () => {
-    await prisma.$disconnect();
+    try {
+      await basePrisma.$disconnect();
+    } catch (_) {}
   });
 }
 

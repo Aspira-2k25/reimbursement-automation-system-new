@@ -53,7 +53,7 @@ router.post(
         uploadPromises.push(
           uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Student_Form",
-            resource_type: "image",
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false
           })
@@ -65,7 +65,7 @@ router.post(
         uploadPromises.push(
           uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Student_Form",
-            resource_type: "image",
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false
           })
@@ -431,7 +431,7 @@ router.post(
         docUploadPromises.push(
           uploadFile(req.files.nptelResult[0], {
             folder: "reimbursement-Forms/Student_Form",
-            resource_type: "image",
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false,
           })
@@ -443,7 +443,7 @@ router.post(
         docUploadPromises.push(
           uploadFile(req.files.idCard[0], {
             folder: "reimbursement-Forms/Student_Form",
-            resource_type: "image",
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false,
           })

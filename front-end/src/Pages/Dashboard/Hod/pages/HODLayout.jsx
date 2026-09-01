@@ -123,17 +123,19 @@ const HODLayout = ({ children }) => {
     try {
       setLoading(true)
 
-      // Fetch student forms AND faculty forms in parallel
+      // Fetch student forms, faculty forms, and HOD's own forms in parallel
       const [
         studentHodData, studentApprovedData, studentRejectedData,
-        facultyHodData, facultyApprovedData, facultyRejectedData
+        facultyHodData, facultyApprovedData, facultyRejectedData,
+        hodMineData
       ] = await Promise.allSettled([
         studentFormsAPI.listForHOD(),
         studentFormsAPI.listApproved(),
         studentFormsAPI.listRejected(),
         facultyFormsAPI.listForHOD(),
         facultyFormsAPI.listApproved(),
-        facultyFormsAPI.listRejected()
+        facultyFormsAPI.listRejected(),
+        facultyFormsAPI.listMine()
       ])
 
       let allForms = []
@@ -176,9 +178,25 @@ const HODLayout = ({ children }) => {
         allForms = [...allForms, ...forms]
       }
 
-      // Map backend data to HOD dashboard format
-      const mappedRequests = allForms.map(mapFormToRequest)
+      // Process HOD's own submitted forms (applicantType: 'HOD')
+      if (hodMineData.status === 'fulfilled') {
+        const forms = (hodMineData.value?.forms || hodMineData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'HOD' }))
+        allForms = [...allForms, ...forms]
+      }
 
+      // Deduplicate forms by unique identifier (_id or applicationId or id)
+      const uniqueFormsMap = new Map()
+      for (const form of allForms) {
+        const key = String(form._id || form.id || form.applicationId)
+        if (key && !uniqueFormsMap.has(key)) {
+          uniqueFormsMap.set(key, form)
+        }
+      }
+      const uniqueForms = Array.from(uniqueFormsMap.values())
+
+      // Map backend data to HOD dashboard format
+      const mappedRequests = uniqueForms.map(mapFormToRequest)
 
       setAllRequests(mappedRequests)
     } catch (error) {

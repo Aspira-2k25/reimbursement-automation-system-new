@@ -3,6 +3,7 @@ import { Clock, CheckCircle, XCircle, FileText, Search, Download, Loader2, Eye, 
 import { useNavigate } from 'react-router-dom'
 import { facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { jsPDF } from 'jspdf'
 
 /**
  * SummaryCard Component
@@ -303,28 +304,161 @@ const RequestStatus = () => {
                     <StatusBadge status={r.status} />
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-900">₹{r.amount.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-slate-600">{new Date(r.submittedDate).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-slate-600">{new Date(r.updatedDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-slate-600">{new Date(r.submittedDate).toLocaleDateString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {/* Download */}
                       <button
-                        className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors disabled:opacity-50"
-                        onClick={() => {
-                          const docUrl = r.documents?.[0]?.url
-                          // SECURITY: Validate URL before opening
-                          if (docUrl) {
-                            const isValidUrl = docUrl.startsWith('https://') || docUrl.startsWith('http://');
-                            const isTrustedDomain = docUrl.includes('cloudinary.com') || docUrl.includes('res.cloudinary.com');
-                            if (isValidUrl && isTrustedDomain) {
-                              window.open(docUrl, '_blank', 'noopener,noreferrer');
-                            } else {
-                              toast.error('Invalid document URL');
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
+                        onClick={async () => {
+                          try {
+                            let formDetails = { ...r };
+                            try {
+                              const res = await facultyFormsAPI.getById(r._id || r.id);
+                              const full = res?.form || res;
+                              if (full && typeof full === 'object') {
+                                formDetails = { ...formDetails, ...full };
+                              }
+                            } catch (fetchErr) {
+                              console.warn('Could not fetch full details, using table state:', fetchErr);
                             }
+
+                            // Generate Professional Institutional PDF for HOD
+                            const doc = new jsPDF();
+                            const pageWidth = doc.internal.pageSize.getWidth();
+                            let y = 16;
+
+                            // Institutional Header
+                            doc.setFont('helvetica', 'bold');
+                            doc.setFontSize(10);
+                            doc.setTextColor(80, 80, 80);
+                            doc.text("PARSHVANATH CHARITABLE TRUST'S", pageWidth / 2, y, { align: 'center' });
+                            y += 6;
+
+                            doc.setFontSize(14);
+                            doc.setTextColor(15, 23, 42);
+                            doc.text('A. P. SHAH INSTITUTE OF TECHNOLOGY', pageWidth / 2, y, { align: 'center' });
+                            y += 5;
+
+                            doc.setFontSize(9.5);
+                            doc.setFont('helvetica', 'italic');
+                            doc.setTextColor(71, 85, 105);
+                            doc.text('(Approved by AICTE New Delhi & Govt. of Maharashtra, Affiliated to University of Mumbai)', pageWidth / 2, y, { align: 'center' });
+                            y += 7;
+
+                            doc.setDrawColor(203, 213, 225);
+                            doc.setLineWidth(0.5);
+                            doc.line(15, y, pageWidth - 15, y);
+                            y += 8;
+
+                            // Document Title
+                            doc.setFont('helvetica', 'bold');
+                            doc.setFontSize(12);
+                            doc.setTextColor(15, 23, 42);
+                            doc.text('HOD REIMBURSEMENT APPLICATION ACKNOWLEDGMENT', pageWidth / 2, y, { align: 'center' });
+                            y += 10;
+
+                            // Meta Box
+                            doc.setFillColor(248, 250, 252);
+                            doc.setDrawColor(226, 232, 240);
+                            doc.roundedRect(15, y, pageWidth - 30, 16, 2, 2, 'FD');
+                            
+                            doc.setFontSize(9.5);
+                            doc.setFont('helvetica', 'bold');
+                            doc.setTextColor(51, 65, 85);
+                            doc.text(`Application ID:`, 20, y + 6);
+                            doc.setFont('helvetica', 'normal');
+                            doc.text(String(formDetails.applicationId || formDetails._id || formDetails.id || '-'), 50, y + 6);
+
+                            doc.setFont('helvetica', 'bold');
+                            doc.text(`Status:`, 120, y + 6);
+                            doc.setFont('helvetica', 'normal');
+                            doc.text(String(formDetails.status || 'Pending'), 135, y + 6);
+
+                            doc.setFont('helvetica', 'bold');
+                            doc.text(`Submitted On:`, 20, y + 12);
+                            doc.setFont('helvetica', 'normal');
+                            const subDate = formDetails.submittedDate || formDetails.createdAt ? new Date(formDetails.submittedDate || formDetails.createdAt).toLocaleDateString('en-IN') : '-';
+                            doc.text(subDate, 50, y + 12);
+
+                            doc.setFont('helvetica', 'bold');
+                            doc.text(`Academic Year:`, 120, y + 12);
+                            doc.setFont('helvetica', 'normal');
+                            doc.text(String(formDetails.academicYear || '2026-2027'), 150, y + 12);
+                            y += 24;
+
+                            const printSectionHeader = (title) => {
+                              doc.setFont('helvetica', 'bold');
+                              doc.setFontSize(10.5);
+                              doc.setTextColor(59, 148, 94);
+                              doc.text(title, 15, y);
+                              doc.setDrawColor(59, 148, 94);
+                              doc.setLineWidth(0.3);
+                              doc.line(15, y + 2, pageWidth - 15, y + 2);
+                              y += 8;
+                            };
+
+                            const printFieldRow = (label1, val1, label2, val2) => {
+                              doc.setFontSize(9);
+                              doc.setFont('helvetica', 'bold');
+                              doc.setTextColor(71, 85, 105);
+                              doc.text(label1, 15, y);
+                              doc.setFont('helvetica', 'normal');
+                              doc.setTextColor(15, 23, 42);
+                              doc.text(String(val1 || '-'), 50, y);
+
+                              if (label2) {
+                                doc.setFont('helvetica', 'bold');
+                                doc.setTextColor(71, 85, 105);
+                                doc.text(label2, 115, y);
+                                doc.setFont('helvetica', 'normal');
+                                doc.setTextColor(15, 23, 42);
+                                doc.text(String(val2 || '-'), 145, y);
+                              }
+                              y += 6;
+                            };
+
+                            // 1. Applicant Details
+                            printSectionHeader('1. APPLICANT DETAILS');
+                            printFieldRow('Full Name:', formDetails.name || formDetails.facultyName || '-', 'Designation:', 'Head of Department');
+                            printFieldRow('Department:', formDetails.department || '-', 'Email Address:', formDetails.email || '-');
+                            y += 4;
+
+                            // 2. Course & Claim Details
+                            printSectionHeader('2. NPTEL COURSE & REIMBURSEMENT DETAILS');
+                            printFieldRow('Course Name:', formDetails.courseName || '-', 'Score / Marks (%):', formDetails.marks !== undefined && formDetails.marks !== null ? `${formDetails.marks}%` : '-');
+                            printFieldRow('Claim Amount:', `Rs. ${(formDetails.amount || 0).toLocaleString('en-IN')}`, 'Category:', formDetails.reimbursementType || formDetails.category || 'NPTEL');
+                            y += 4;
+
+                            // 3. Bank Account Details
+                            printSectionHeader('3. BANK ACCOUNT DETAILS');
+                            printFieldRow('Account Name:', formDetails.accountName || formDetails.name || '-', 'Account Number:', formDetails.accountNumber || '-');
+                            printFieldRow('IFSC Code:', formDetails.ifscCode || '-', '', '');
+                            y += 4;
+
+                            // 4. Remarks
+                            printSectionHeader('4. REMARKS & ADMINISTRATIVE STATUS');
+                            doc.setFontSize(9);
+                            doc.setFont('helvetica', 'normal');
+                            doc.setTextColor(51, 65, 85);
+                            const remarkText = formDetails.remarks || formDetails.rejectionRemarks || formDetails.accountsRemarks || 'Application submitted for Principal review.';
+                            doc.text(remarkText, 15, y, { maxWidth: pageWidth - 30 });
+                            y += 18;
+
+                            // Footer
+                            doc.setFontSize(8);
+                            doc.setTextColor(148, 163, 184);
+                            doc.text('This is an auto-generated system acknowledgment from APSIT Reimbursement Automation Portal.', pageWidth / 2, 275, { align: 'center' });
+                            doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, 280, { align: 'center' });
+
+                            doc.save(`Application_${formDetails.applicationId || formDetails._id || 'hod_form'}.pdf`);
+                            toast.success('Application PDF downloaded successfully!');
+                          } catch (err) {
+                            console.error('PDF generation error:', err);
+                            toast.error('Failed to generate PDF document');
                           }
                         }}
-                        disabled={!r.documents?.[0]?.url}
-                        title={r.documents?.[0]?.url ? 'Download NPTEL Result' : 'No Document'}
+                        title="Download Application Form"
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -332,7 +466,7 @@ const RequestStatus = () => {
                       <button
                         className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
                         onClick={() => navigate(`/faculty-form/view/${r._id || r.id}`)}
-                        title="View"
+                        title="View Form Details"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -340,8 +474,8 @@ const RequestStatus = () => {
                       <button
                         className="p-1.5 rounded-lg hover:bg-green-50 text-slate-600 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => navigate(`/faculty-form/edit/${r._id || r.id}`)}
-                        title={r.status !== 'Under Principal' ? 'Editing locked — form has been acted upon' : 'Edit'}
-                        disabled={r.status !== 'Under Principal'}
+                        title={r.status !== 'Under Principal' && r.status !== 'Pending' ? 'Editing locked — form has been acted upon' : 'Edit Application'}
+                        disabled={r.status !== 'Under Principal' && r.status !== 'Pending'}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
@@ -349,8 +483,8 @@ const RequestStatus = () => {
                       <button
                         className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setDeleteItem(r)}
-                        title={r.status !== 'Under Principal' ? 'Cannot delete — form has been acted upon' : 'Delete'}
-                        disabled={r.status !== 'Under Principal'}
+                        title={r.status !== 'Under Principal' && r.status !== 'Pending' ? 'Cannot delete — form has been acted upon' : 'Delete Application'}
+                        disabled={r.status !== 'Under Principal' && r.status !== 'Pending'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
