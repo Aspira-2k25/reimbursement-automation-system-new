@@ -17,19 +17,19 @@ const sanitizeInput = (input) => {
     .trim();
 };
 
-// SECURITY: Validate file type and size
+// SECURITY: Validate file type and size (1MB limit)
 const validateFile = (file) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  const maxSize = 500 * 1024; // 500KB
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'];
+  const maxSize = 1 * 1024 * 1024; // 1MB
 
   if (!file) return { valid: true };
 
   if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+    return { valid: false, error: 'Only JPEG, PNG, WebP, and PDF files are allowed' };
   }
 
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 500KB' };
+    return { valid: false, error: 'File size must be less than 1MB' };
   }
 
   return { valid: true };
@@ -309,7 +309,7 @@ const ReimbursementForm = () => {
         }
       } else if (res.status === 413) {
         // File too large — show prominent warning popup
-        toast.error(data.message || "File size exceeds 500KB limit. Please upload a smaller file.", {
+        toast.error(data.message || "File size exceeds 1MB limit. Please upload a smaller file.", {
           duration: 5000,
           icon: '⚠️',
         });
@@ -682,7 +682,7 @@ const ReimbursementForm = () => {
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 500KB</p>
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
 
@@ -717,7 +717,7 @@ const ReimbursementForm = () => {
                    file:bg-teal-50 file:text-teal-700
                    hover:file:bg-teal-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 500KB</p>
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
 
               </div>
             </div>

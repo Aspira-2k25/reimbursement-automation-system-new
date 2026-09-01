@@ -48,10 +48,14 @@ const FormSchema = new mongoose.Schema({
 
 // Indexes for query performance on commonly filtered fields
 FormSchema.index({ userId: 1 });
+FormSchema.index({ email: 1 });
+FormSchema.index({ email: 1, status: 1 }); // User dashboard queries
 FormSchema.index({ status: 1 });
 FormSchema.index({ department: 1 });
+FormSchema.index({ applicantType: 1 });
 FormSchema.index({ status: 1, department: 1 }); // Compound: HOD queries filter by both
 FormSchema.index({ status: 1, rejectedBy: 1 }); // Compound: rejected queries
+FormSchema.index({ createdAt: -1 }); // Sorting by newest creation
 FormSchema.index({ updatedAt: -1 }); // Sorting by latest update
 
 module.exports = mongoose.model("Form", FormSchema);

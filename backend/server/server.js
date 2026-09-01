@@ -223,6 +223,8 @@ const passwordResetLimiter = rateLimit({
 });
 app.use('/api/password/forgot-password', passwordResetLimiter);
 app.use('/api/password/send-otp', passwordResetLimiter);
+app.use('/api/password/verify-otp', passwordResetLimiter);
+app.use('/api/password/reset-password', passwordResetLimiter);
 
 // ----------------- Health / Basic routes -----------------
 // IMPORTANT: These must be BEFORE body parsing so HEAD/GET health checks

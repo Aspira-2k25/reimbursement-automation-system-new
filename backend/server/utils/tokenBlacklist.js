@@ -66,26 +66,33 @@ async function addToBlacklist(token, expiresInSeconds) {
  */
 async function isBlacklisted(token) {
   try {
+    // If MongoDB is not connected (readyState !== 1), skip blacklist check to avoid hanging
+    if (mongoose.connection.readyState !== 1) {
+      console.warn('MongoDB not ready for token blacklist check. Proceeding with caution.');
+      return false;
+    }
+
     // Hash the token for lookup
     const crypto = require('crypto');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    const entry = await TokenBlacklist.findOne({ token: tokenHash });
+    // Use maxTimeMS to prevent blocking serverless execution
+    const entry = await TokenBlacklist.findOne({ token: tokenHash }).maxTimeMS(2500);
 
     if (!entry) return false;
 
     // Check if expired
     if (entry.expiresAt <= new Date()) {
       // Document will be auto-deleted by TTL, but clean up now
-      await TokenBlacklist.deleteOne({ token: tokenHash });
+      await TokenBlacklist.deleteOne({ token: tokenHash }).maxTimeMS(2500);
       return false;
     }
 
     return true;
   } catch (error) {
     console.error('Error checking token blacklist:', error);
-    // Fail secure: if we can't check, assume it's blacklisted
-    return true;
+    // In development or disconnection, avoid locking out legitimate users
+    return false;
   }
 }
 
