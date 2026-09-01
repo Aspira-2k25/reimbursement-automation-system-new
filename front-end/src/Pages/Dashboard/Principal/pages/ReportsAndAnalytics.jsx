@@ -22,10 +22,10 @@ import { normalizeDepartment } from '../../../../utils/departmentNormalization'
 const calculateCollegeStats = (requests) => {
   const total = requests.length
   const pending = requests.filter(r => r.status === 'Under Principal').length
-  const approved = requests.filter(r => r.status === 'Approved' || r.status === 'Under Principal').length
+  const approved = requests.filter(r => r.status === 'Approved' || r.status === 'Reimbursed').length
   const rejected = requests.filter(r => r.status === 'Rejected').length
   const approvedAmount = requests
-    .filter(r => r.status === 'Reimbursed')
+    .filter(r => r.status === 'Reimbursed' || r.status === 'Approved')
     .reduce((sum, r) => sum + (parseFloat(String(r.amount).replace(/[₹,]/g, '')) || 0), 0)
 
   return { total, pending, approved, rejected, approvedAmount }
@@ -174,33 +174,49 @@ const ReportsAndAnalytics = () => {
   // Generate dynamic monthly trend data from filtered requests
   const monthlyTrendData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const currentYear = new Date().getFullYear()
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
 
-    // Group filtered requests by month
+    // Group filtered requests by month and year
     const monthlyData = filteredRequests.reduce((acc, request) => {
-      const date = new Date(request.submittedDate)
-      const month = date.getMonth()
-      const monthName = months[month]
+      const date = new Date(request.submittedDate || request.createdAt)
+      if (isNaN(date.getTime())) return acc
 
-      if (!acc[monthName]) {
-        acc[monthName] = { requests: 0, amount: 0 }
+      const month = date.getMonth()
+      const year = date.getFullYear()
+      const monthName = months[month]
+      const key = `${year}-${monthName}`
+
+      if (!acc[key]) {
+        acc[key] = { requests: 0, amount: 0 }
       }
 
-      acc[monthName].requests += 1
-      if (request.status === 'Reimbursed') {
+      acc[key].requests += 1
+      if (request.status === 'Reimbursed' || request.status === 'Approved') {
         const amount = parseFloat(String(request.amount).replace(/[₹,]/g, ''))
-        acc[monthName].amount += isNaN(amount) ? 0 : amount
+        acc[key].amount += isNaN(amount) ? 0 : amount
       }
 
       return acc
     }, {})
 
-    // Convert to array format for the chart
-    return months.slice(0, 6).map(month => ({
-      month,
-      requests: monthlyData[month]?.requests || 0,
-      amount: monthlyData[month]?.amount || 0
-    }))
+    // Get trailing 6 months for display
+    const result = []
+    for (let i = 5; i >= 0; i--) {
+      const targetMonth = (currentMonth - i + 12) % 12
+      const targetYear = currentMonth - i < 0 ? currentYear - 1 : currentYear
+      const monthName = months[targetMonth]
+      const key = `${targetYear}-${monthName}`
+
+      result.push({
+        month: monthName,
+        requests: monthlyData[key]?.requests || 0,
+        amount: monthlyData[key]?.amount || 0
+      })
+    }
+
+    return result
   }, [filteredRequests])
 
   // Get unique values for filters - use fixed valid Principal statuses
