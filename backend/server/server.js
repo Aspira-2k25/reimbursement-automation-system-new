@@ -576,10 +576,7 @@ async function startServer() {
       console.warn('Could not attach socket to logger', e.message || e);
     }
 
-<<<<<<< HEAD
     server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-=======
-    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
     // ── Graceful shutdown ──
     const gracefulShutdown = async (signal) => {
@@ -603,7 +600,6 @@ async function startServer() {
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
->>>>>>> origin/main
   } catch (err) {
     console.error('❌ Failed to start server', err);
   }
