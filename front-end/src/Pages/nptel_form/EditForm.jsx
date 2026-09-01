@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
-import { useAuth } from '../../context/AuthContext'; // Import useAuth
+import { studentFormsAPI, facultyFormsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 export default function EditForm() {
   const { id } = useParams();
@@ -296,11 +297,7 @@ export default function EditForm() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex justify-center items-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading application for editing..." />;
   }
 
   return (
