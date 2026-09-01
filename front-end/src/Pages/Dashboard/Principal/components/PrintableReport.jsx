@@ -306,27 +306,29 @@ const PrintableReport = ({
           </tbody>
         </table>
 
-        {/* Dual Signatures */}
+        {/* Signatures */}
         <div
           style={{
-            marginTop: '50px',
+            marginTop: '55px',
             display: 'flex',
-            justifyContent: 'space-between',
+            justifyContent: cleanDept ? 'space-between' : 'flex-end',
             alignItems: 'flex-start',
             fontSize: '11pt',
             pageBreakInside: 'avoid',
             breakInside: 'avoid'
           }}
         >
-          <div style={{ textAlign: 'left', width: '45%' }}>
-            <div style={{ height: '35px' }}></div>
-            <div style={{ fontWeight: 'bold' }}>
-              {isAllDepartments ? 'Accounts / Committee Officer' : `Head of Department`}
+          {cleanDept && (
+            <div style={{ textAlign: 'left', width: '45%' }}>
+              <div style={{ height: '35px' }}></div>
+              <div style={{ fontWeight: 'bold' }}>
+                Head of Department
+              </div>
+              <div>
+                Department of {cleanDept}
+              </div>
             </div>
-            <div>
-              {isAllDepartments ? 'A. P. Shah Institute of Technology' : `Department of ${cleanDept}`}
-            </div>
-          </div>
+          )}
 
           <div style={{ textAlign: 'right', width: '45%' }}>
             <div style={{ height: '35px' }}></div>
