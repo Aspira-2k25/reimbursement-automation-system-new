@@ -119,7 +119,7 @@ const PrintableReport = ({
           @media print {
             @page {
               size: A4 portrait;
-              margin: 15mm 12mm 15mm 12mm;
+              margin: 0;
             }
 
             html,
@@ -156,9 +156,8 @@ const PrintableReport = ({
               top: 0 !important;
               left: 0 !important;
               width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
               box-sizing: border-box !important;
+              padding: 20mm 20mm 20mm 20mm !important;
               background: #fff !important;
               color: #000 !important;
               font-family: "Times New Roman", Times, serif !important;
@@ -167,6 +166,7 @@ const PrintableReport = ({
             .hod-print-table {
               width: 100% !important;
               border-collapse: collapse !important;
+              border: 1px solid #000 !important;
             }
 
             .hod-print-table thead {
@@ -198,24 +198,24 @@ const PrintableReport = ({
         }}
       >
         {/* Header with Dual Logos and Centered Title */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <img
             src={apshahLogo}
             alt="APSIT Logo Left"
-            style={{ width: '75px', height: '75px', objectFit: 'contain' }}
+            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
           />
 
-          <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
-            <div style={{ fontSize: '11pt', fontWeight: 'bold', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+          <div style={{ textAlign: 'center', flex: 1, padding: '0 12px' }}>
+            <div style={{ fontSize: '10.5pt', fontWeight: 'bold', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
               PARSHVANATH CHARITABLE TRUST&apos;S
             </div>
-            <div style={{ fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase', margin: '2px 0' }}>
+            <div style={{ fontSize: '14.5pt', fontWeight: 'bold', textTransform: 'uppercase', margin: '2px 0' }}>
               A. P. SHAH INSTITUTE OF TECHNOLOGY
             </div>
-            <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>
+            <div style={{ fontSize: '11.5pt', fontWeight: 'bold' }}>
               Department of {cleanDept}
             </div>
-            <div style={{ fontSize: '10pt', fontStyle: 'italic', marginTop: '1px' }}>
+            <div style={{ fontSize: '9.5pt', fontStyle: 'italic', marginTop: '1px' }}>
               (NBA Accredited)
             </div>
           </div>
@@ -223,12 +223,12 @@ const PrintableReport = ({
           <img
             src={apshahLogo}
             alt="APSIT Logo Right"
-            style={{ width: '75px', height: '75px', objectFit: 'contain' }}
+            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
           />
         </div>
 
         {/* Title */}
-        <div style={{ textAlign: 'center', fontSize: '13pt', fontWeight: 'bold', margin: '18px 0 14px 0' }}>
+        <div style={{ textAlign: 'center', fontSize: '12.5pt', fontWeight: 'bold', margin: '18px 0 14px 0' }}>
           {`NPTEL reimbursement details for ${titleRange}`}
         </div>
 
