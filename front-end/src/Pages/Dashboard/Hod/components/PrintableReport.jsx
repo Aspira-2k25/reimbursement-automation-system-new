@@ -96,7 +96,6 @@ const PrintableReport = ({
     }))
   }, [requests])
 
-  // Format department title
   const cleanDept = departmentName && departmentName !== '-' && departmentName !== 'All Departments'
     ? departmentName.replace(/^Department of\s+/i, '')
     : 'Information Technology'
@@ -113,14 +112,14 @@ const PrintableReport = ({
         {`
           @media screen {
             #print-section {
-              display: none;
+              display: none !important;
             }
           }
 
           @media print {
             @page {
               size: A4 portrait;
-              margin: 18mm 15mm 18mm 15mm;
+              margin: 15mm 12mm 15mm 12mm;
             }
 
             html,
@@ -132,43 +131,51 @@ const PrintableReport = ({
               overflow: visible !important;
               background: #fff !important;
               color: #000 !important;
-              font-family: "Times New Roman", Times, serif !important;
-              font-size: 11pt !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
             }
 
-            body.hod-report-print #root {
+            body.hod-report-print * {
+              visibility: hidden;
+            }
+
+            body.hod-report-print #print-section,
+            body.hod-report-print #print-section * {
+              visibility: visible !important;
+            }
+
+            body.hod-report-print .reports-screen,
+            body.hod-report-print aside,
+            body.hod-report-print nav,
+            body.hod-report-print header,
+            body.hod-report-print footer {
               display: none !important;
             }
 
             body.hod-report-print #print-section {
               display: block !important;
-              position: static !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
               width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
               box-sizing: border-box !important;
-              visibility: visible !important;
-            }
-
-            body.hod-report-print #print-section * {
-              visibility: visible !important;
+              background: #fff !important;
+              color: #000 !important;
+              font-family: "Times New Roman", Times, serif !important;
             }
 
             .hod-print-table {
               width: 100% !important;
               border-collapse: collapse !important;
-              page-break-inside: auto;
             }
 
             .hod-print-table thead {
-              display: table-header-group;
+              display: table-header-group !important;
             }
 
             .hod-print-table tr {
-              page-break-inside: avoid;
-              break-inside: avoid;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
 
             .hod-print-table th,
@@ -190,25 +197,25 @@ const PrintableReport = ({
           backgroundColor: '#fff'
         }}
       >
-        {/* Header: Exact Match to Institutional Format */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+        {/* Header with Dual Logos and Centered Title */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <img
             src={apshahLogo}
             alt="APSIT Logo Left"
-            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+            style={{ width: '75px', height: '75px', objectFit: 'contain' }}
           />
 
-          <div style={{ textAlign: 'center', flex: 1, padding: '0 15px' }}>
-            <div style={{ fontSize: '11pt', fontWeight: 'bold', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+          <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
+            <div style={{ fontSize: '11pt', fontWeight: 'bold', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
               PARSHVANATH CHARITABLE TRUST&apos;S
             </div>
-            <div style={{ fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase', margin: '3px 0' }}>
+            <div style={{ fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase', margin: '2px 0' }}>
               A. P. SHAH INSTITUTE OF TECHNOLOGY
             </div>
-            <div style={{ fontSize: '12.5pt', fontWeight: 'bold' }}>
+            <div style={{ fontSize: '12pt', fontWeight: 'bold' }}>
               Department of {cleanDept}
             </div>
-            <div style={{ fontSize: '10.5pt', fontStyle: 'italic', marginTop: '2px' }}>
+            <div style={{ fontSize: '10pt', fontStyle: 'italic', marginTop: '1px' }}>
               (NBA Accredited)
             </div>
           </div>
@@ -216,16 +223,16 @@ const PrintableReport = ({
           <img
             src={apshahLogo}
             alt="APSIT Logo Right"
-            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+            style={{ width: '75px', height: '75px', objectFit: 'contain' }}
           />
         </div>
 
         {/* Title */}
-        <div style={{ textAlign: 'center', fontSize: '13pt', fontWeight: 'bold', margin: '22px 0 16px 0' }}>
+        <div style={{ textAlign: 'center', fontSize: '13pt', fontWeight: 'bold', margin: '18px 0 14px 0' }}>
           {`NPTEL reimbursement details for ${titleRange}`}
         </div>
 
-        {/* Main Tabulated Details */}
+        {/* Main Tabulated Records */}
         <table
           className="hod-print-table"
           style={{
@@ -285,10 +292,10 @@ const PrintableReport = ({
           </tbody>
         </table>
 
-        {/* Dual Signatures Matching Physical Document */}
+        {/* Dual Signatures Block */}
         <div
           style={{
-            marginTop: '55px',
+            marginTop: '50px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
