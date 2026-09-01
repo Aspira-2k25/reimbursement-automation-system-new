@@ -49,7 +49,7 @@ const Dashboard = () => {
       {
         title: 'Active Staff',
         value: active.toString(),
-        subtitle: `${((active / total) * 100).toFixed(1)}% of total`,
+        subtitle: total > 0 ? `${((active / total) * 100).toFixed(1)}% active rate` : 'No staff registered',
         icon: Award,
         color: 'blue'
       },

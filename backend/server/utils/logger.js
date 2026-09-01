@@ -116,15 +116,15 @@ class Logger {
   warn(message, data = null) {
     if (!this.isProduction) {
       console.warn(this.formatMessage(LOG_LEVELS.WARN, message, data));
-      this._pushLogObject(this.createLogObject(LOG_LEVELS.WARN, message, data));
     }
+    this._pushLogObject(this.createLogObject(LOG_LEVELS.WARN, message, data));
   }
 
   info(message, data = null) {
     if (!this.isProduction) {
       console.info(this.formatMessage(LOG_LEVELS.INFO, message, data));
-      this._pushLogObject(this.createLogObject(LOG_LEVELS.INFO, message, data));
     }
+    this._pushLogObject(this.createLogObject(LOG_LEVELS.INFO, message, data));
   }
 
   debug(message, data = null) {
