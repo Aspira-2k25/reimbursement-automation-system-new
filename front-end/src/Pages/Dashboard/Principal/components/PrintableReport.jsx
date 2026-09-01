@@ -85,19 +85,22 @@ const PrintableReport = ({
 }) => {
   const titleRange = useMemo(() => formatDateRangeLabel(dateRange, requests), [dateRange, requests])
 
+  const isAllDepartments = !departmentName || departmentName === 'All Departments' || departmentName === '-'
+
+  const cleanDept = !isAllDepartments
+    ? departmentName.replace(/^Department of\s+/i, '')
+    : null
+
   const rows = useMemo(() => {
     return requests.map((request, index) => ({
       srNo: index + 1,
       applicantName: safeValue(request.applicantName || request.name),
+      department: safeValue(request.department),
       courseName: safeValue(request.courseName),
       marks: formatScore(request.marks),
       amount: formatRawAmount(request.amount)
     }))
   }, [requests])
-
-  const cleanDept = departmentName && departmentName !== '-' && departmentName !== 'All Departments'
-    ? departmentName.replace(/^Department of\s+/i, '')
-    : 'Information Technology'
 
   const applicantHeaderTitle = memberType === 'Student'
     ? 'Name of student'
@@ -196,7 +199,7 @@ const PrintableReport = ({
           backgroundColor: '#fff'
         }}
       >
-        {/* Header: Dual Logos & Official Title */}
+        {/* Header with Dual Logos & Institutional Title */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <img
             src={apshahLogo}
@@ -212,7 +215,7 @@ const PrintableReport = ({
               A. P. SHAH INSTITUTE OF TECHNOLOGY
             </div>
             <div style={{ fontSize: '11.5pt', fontWeight: 'bold' }}>
-              Department of {cleanDept}
+              {isAllDepartments ? 'Consolidated Institutional Reimbursement Statement' : `Department of ${cleanDept}`}
             </div>
             <div style={{ fontSize: '9.5pt', fontStyle: 'italic', marginTop: '1px' }}>
               (NBA Accredited)
@@ -226,9 +229,11 @@ const PrintableReport = ({
           />
         </div>
 
-        {/* Title */}
+        {/* Report Title */}
         <div style={{ textAlign: 'center', fontSize: '12.5pt', fontWeight: 'bold', margin: '18px 0 14px 0' }}>
-          {`NPTEL reimbursement details for ${titleRange}`}
+          {isAllDepartments
+            ? `NPTEL College-Wide Reimbursement Details for ${titleRange}`
+            : `NPTEL Reimbursement Details for ${titleRange}`}
         </div>
 
         {/* Tabulated Records */}
@@ -243,19 +248,24 @@ const PrintableReport = ({
         >
           <thead>
             <tr>
-              <th style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', width: '8%', fontWeight: 'bold' }}>
+              <th style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', width: '7%', fontWeight: 'bold' }}>
                 Sr. No
               </th>
-              <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', width: '31%', fontWeight: 'bold' }}>
+              <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', width: isAllDepartments ? '26%' : '31%', fontWeight: 'bold' }}>
                 {applicantHeaderTitle}
               </th>
-              <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', width: '39%', fontWeight: 'bold' }}>
+              {isAllDepartments && (
+                <th style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'left', width: '18%', fontWeight: 'bold' }}>
+                  Department
+                </th>
+              )}
+              <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', width: isAllDepartments ? '31%' : '39%', fontWeight: 'bold' }}>
                 Nptel course name
               </th>
-              <th style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', width: '10%', fontWeight: 'bold' }}>
+              <th style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', width: '8%', fontWeight: 'bold' }}>
                 Score
               </th>
-              <th style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'center', width: '12%', fontWeight: 'bold' }}>
+              <th style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'center', width: '10%', fontWeight: 'bold' }}>
                 Amount in Rs.
               </th>
             </tr>
@@ -270,6 +280,11 @@ const PrintableReport = ({
                   <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>
                     {row.applicantName}
                   </td>
+                  {isAllDepartments && (
+                    <td style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>
+                      {row.department}
+                    </td>
+                  )}
                   <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>
                     {row.courseName}
                   </td>
@@ -283,7 +298,7 @@ const PrintableReport = ({
               ))
             ) : (
               <tr>
-                <td colSpan={5} style={{ border: '1px solid #000', padding: '16px', textAlign: 'center' }}>
+                <td colSpan={isAllDepartments ? 6 : 5} style={{ border: '1px solid #000', padding: '16px', textAlign: 'center' }}>
                   No reimbursement records available.
                 </td>
               </tr>
@@ -306,10 +321,10 @@ const PrintableReport = ({
           <div style={{ textAlign: 'left', width: '45%' }}>
             <div style={{ height: '35px' }}></div>
             <div style={{ fontWeight: 'bold' }}>
-              Head of Department
+              {isAllDepartments ? 'Accounts / Committee Officer' : `Head of Department`}
             </div>
             <div>
-              {`HoD, ${cleanDept}`}
+              {isAllDepartments ? 'A. P. Shah Institute of Technology' : `Department of ${cleanDept}`}
             </div>
           </div>
 
@@ -317,6 +332,9 @@ const PrintableReport = ({
             <div style={{ height: '35px' }}></div>
             <div style={{ fontWeight: 'bold' }}>
               Principal
+            </div>
+            <div>
+              A. P. Shah Institute of Technology
             </div>
           </div>
         </div>
