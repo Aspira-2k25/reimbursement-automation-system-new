@@ -1,0 +1,19 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+*.env
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+logs/
+logs.json
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
