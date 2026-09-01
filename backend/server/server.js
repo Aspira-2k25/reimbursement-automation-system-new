@@ -477,26 +477,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ----------------- Server bootstrap -----------------
-// In serverless / test environments we export the app and let the platform
-// handle the HTTP server.
-// IMPORTANT: In serverless, we should NOT connect to databases on module load
-// because: 1) It slows down cold starts, 2) Connections might fail and crash the function
-// Instead, connect lazily when routes are actually called (lazy initialization)
-// Only connect immediately if running as a traditional server (local dev)
-if (require.main === module) {
-  connectMongoDB().catch((err) => {
-    console.error('❌ Failed to connect MongoDB on startup', err);
-    // In local dev, we can exit if DB connection fails
-    process.exit(1);
-  });
-}
-// In serverless, MongoDB will connect on first route that needs it
-
 // When running this file directly (local dev), start the HTTP server
 async function startServer() {
   try {
-    await connectMongoDB();
+    try {
+      await connectMongoDB();
+    } catch (dbErr) {
+      console.warn('⚠️  MongoDB connection failed on startup. Please update your MONGO_URI in .env with valid credentials.');
+    }
+
     const PORT = process.env.PORT || 5000;
 
     const server = http.createServer(app);
@@ -516,11 +505,9 @@ async function startServer() {
       console.warn('Could not attach socket to logger', e.message || e);
     }
 
-    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (err) {
     console.error('❌ Failed to start server', err);
-    // In local dev it's okay to exit; in serverless this path isn't used.
-    process.exit(1);
   }
 }
 

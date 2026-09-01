@@ -84,12 +84,11 @@ const DepartmentRoster = () => {
   )
 
   const handleAddMember = () => {
-    setShowAddModal(true)
-    toast('Add member functionality would be implemented here')
+    toast.success('To add new department members, use the Admin Management portal.');
   }
 
   const handleViewMember = (member) => {
-    toast(`Viewing profile for ${member.name}`)
+    toast(`Member: ${member.name} (${member.designation || member.type})`);
   }
 
   const handleExportRoster = () => {
