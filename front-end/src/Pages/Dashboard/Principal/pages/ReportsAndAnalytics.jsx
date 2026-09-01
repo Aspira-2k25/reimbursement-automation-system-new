@@ -466,6 +466,7 @@ const ReportsAndAnalytics = () => {
       requests={filteredRequests}
       dateRange={selectedDateRange}
       departmentName={selectedDepartment !== 'All' ? selectedDepartment : 'All Departments'}
+      memberType={selectedMemberType}
     />
     </>
   )

@@ -446,6 +446,8 @@ const ReportsAndAnalytics = () => {
       requests={filteredRequests}
       dateRange={selectedDateRange}
       departmentName={userProfile?.department || '-'}
+      hodName={userProfile?.fullName || userProfile?.name || ''}
+      memberType={selectedMemberType}
     />
     </>
   )
