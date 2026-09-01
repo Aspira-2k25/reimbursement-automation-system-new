@@ -1,37 +1,59 @@
 import React from 'react';
+import apshahLogo from '../assets/images/Apshah_logo.png';
 
 /**
- * Modern Loading Spinner with glassmorphism & brand-aligned glowing animations
+ * Premium College-Branded Loading Screen
+ * Clean, bright aesthetic matching APSIT brand colors (Emerald, Mint, Crisp White)
  */
-const LoadingSpinner = ({ message = "Loading portal...", subtext = "Please wait a moment" }) => {
+const LoadingSpinner = ({ 
+  message = "Loading Portal...", 
+  subtext = "Fetching data, please wait a moment" 
+}) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-md transition-all duration-300">
-      <div className="relative mx-4 flex max-w-sm flex-col items-center rounded-3xl border border-white/60 bg-white/90 p-8 shadow-2xl backdrop-blur-xl transition-all dark:border-slate-800/80 dark:bg-slate-900/90">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-50/90 via-emerald-50/40 to-teal-50/80 backdrop-blur-md transition-all duration-300">
+      
+      {/* Centered Brand Card */}
+      <div className="relative mx-4 flex max-w-sm flex-col items-center rounded-3xl border border-white bg-white/95 p-8 shadow-2xl shadow-emerald-900/10 backdrop-blur-2xl">
         
-        {/* Glow ambient background */}
-        <div className="absolute -top-10 left-1/2 -z-10 h-32 w-32 -translate-x-1/2 rounded-full bg-[#65CCB8]/30 blur-2xl"></div>
+        {/* Soft emerald background glow */}
+        <div className="absolute -top-12 left-1/2 -z-10 h-36 w-36 -translate-x-1/2 rounded-full bg-emerald-300/30 blur-2xl"></div>
 
-        {/* Dual-ring animated spinner */}
-        <div className="relative mb-5 flex h-16 w-16 items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-[#3B945E] border-r-[#65CCB8]"></div>
-          <div className="h-4 w-4 rounded-full bg-[#3B945E]/80 animate-ping"></div>
+        {/* Animated Brand Logo Container */}
+        <div className="relative mb-5 flex h-20 w-20 items-center justify-center">
+          
+          {/* Outer Orbiting Gradient Ring */}
+          <div className="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-[#3B945E] border-r-[#65CCB8] [animation-duration:1.2s]"></div>
+          
+          {/* Inner College Seal with subtle breathing scale */}
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-md shadow-emerald-500/15 p-2">
+            <img 
+              src={apshahLogo} 
+              alt="APSIT College Logo" 
+              className="h-full w-full object-contain drop-shadow-sm animate-pulse" 
+            />
+          </div>
         </div>
 
-        {/* Text indicators */}
-        <h3 className="text-center text-lg font-bold text-slate-800 dark:text-slate-100">
+        {/* Title & Status Message */}
+        <h3 className="text-center text-base font-bold text-slate-800 tracking-tight">
           {message}
         </h3>
-        <p className="mt-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+        
+        <p className="mt-1 text-center text-xs font-medium text-slate-500 max-w-[220px]">
           {subtext}
         </p>
 
-        {/* Subtle loading dots animation */}
-        <div className="mt-4 flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#3B945E] animate-bounce [animation-delay:-0.3s]"></div>
-          <div className="h-1.5 w-1.5 rounded-full bg-[#57BA98] animate-bounce [animation-delay:-0.15s]"></div>
-          <div className="h-1.5 w-1.5 rounded-full bg-[#65CCB8] animate-bounce"></div>
+        {/* Sleek Gradient Loading Indicator */}
+        <div className="mt-5 w-36 overflow-hidden rounded-full bg-slate-100 h-1.5 relative">
+          <div className="h-full w-full rounded-full bg-gradient-to-r from-[#3B945E] via-[#57BA98] to-[#65CCB8] animate-progress-pulse"></div>
         </div>
+
+        {/* College Tagline */}
+        <span className="mt-4 text-[10px] font-semibold text-emerald-800/60 uppercase tracking-widest">
+          A. P. Shah Institute of Technology
+        </span>
+
       </div>
     </div>
   );
