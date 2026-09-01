@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const dbUtils = require('../utils/database');
 const prisma = require('../config/prisma');
@@ -12,6 +13,13 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// Externalized institutional email domain
+const INSTITUTIONAL_EMAIL_DOMAIN = process.env.INSTITUTIONAL_EMAIL_DOMAIN || 'apsit.edu.in';
+
+// Refresh token configuration
+const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const REFRESH_TOKEN_BYTES = 64;
+
 const buildAuthCookieOptions = (maxAgeMs) => ({
   httpOnly: true,
   secure: isProd,
@@ -19,6 +27,37 @@ const buildAuthCookieOptions = (maxAgeMs) => ({
   maxAge: maxAgeMs,
   path: '/'
 });
+
+/**
+ * Generate an opaque refresh token, hash it, and store in DB.
+ * Returns the plaintext token (to be set as a cookie).
+ */
+async function issueRefreshToken(userId, familyId = null) {
+  const rawToken = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const family = familyId || crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+
+  await prisma.refreshToken.create({
+    data: {
+      tokenHash,
+      userId: String(userId),
+      familyId: family,
+      expiresAt,
+    }
+  });
+
+  return { rawToken, familyId: family, expiresAt };
+}
+
+/**
+ * Set both auth_token and refresh_token cookies on the response.
+ */
+function setAuthCookies(res, accessToken, refreshToken, refreshExpiresAt) {
+  res.cookie('auth_token', accessToken, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+  const refreshMaxAge = refreshExpiresAt.getTime() - Date.now();
+  res.cookie('refresh_token', refreshToken, buildAuthCookieOptions(refreshMaxAge));
+}
 
 const authController = {
   // Login function
@@ -42,8 +81,11 @@ const authController = {
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      // Set httpOnly cookie for security (centralized options)
-      res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+      // Issue refresh token (new family)
+      const { rawToken: refreshToken, familyId, expiresAt: refreshExpiresAt } = await issueRefreshToken(user.id);
+
+      // Set both cookies
+      setAuthCookies(res, token, refreshToken, refreshExpiresAt);
 
       // Log the login activity (persisted to MongoDB)
       logger.logActivity({
@@ -114,9 +156,8 @@ const authController = {
         return res.status(400).json({ error: 'Email not verified by Google' });
       }
 
-      // Validate email domain - only allow apsit.edu.in domain
-      const allowedDomain = 'apsit.edu.in';
-      if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
+      // Validate email domain - only allow institutional domain
+      if (!email.toLowerCase().endsWith(`@${INSTITUTIONAL_EMAIL_DOMAIN}`)) {
         return res.status(403).json({
           error: 'Please sign in with your institutional email.'
         });
@@ -134,8 +175,11 @@ const authController = {
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
 
-      // Set httpOnly cookie for security (consistent with regular login)
-      res.cookie('auth_token', token, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+      // Issue refresh token (new family)
+      const { rawToken: refreshToken, familyId, expiresAt: refreshExpiresAt } = await issueRefreshToken(userId);
+
+      // Set both cookies
+      setAuthCookies(res, token, refreshToken, refreshExpiresAt);
 
       // Log the Google login activity (persisted to MongoDB)
       logger.logActivity({
@@ -153,6 +197,85 @@ const authController = {
       return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
     } catch (error) {
       console.error('Google login error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+  // Refresh token rotation
+  refreshToken: async (req, res) => {
+    try {
+      const rawToken = req.cookies?.refresh_token;
+
+      if (!rawToken) {
+        return res.status(401).json({ error: 'No refresh token provided' });
+      }
+
+      // Hash the incoming token to look it up in DB
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+      const storedToken = await prisma.refreshToken.findUnique({
+        where: { tokenHash }
+      });
+
+      if (!storedToken) {
+        return res.status(401).json({ error: 'Invalid refresh token' });
+      }
+
+      // ── Reuse Detection ──
+      // If this token has already been revoked, it means someone is replaying it.
+      // Revoke ALL tokens in the family to protect the user.
+      if (storedToken.revokedAt) {
+        console.warn(`⚠️ Refresh token reuse detected for family ${storedToken.familyId}. Revoking entire family.`);
+        await prisma.refreshToken.updateMany({
+          where: { familyId: storedToken.familyId },
+          data: { revokedAt: new Date() }
+        });
+        // Clear cookies
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+        return res.status(401).json({ error: 'Token reuse detected. Please log in again.' });
+      }
+
+      // Check expiry
+      if (new Date(storedToken.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Refresh token expired' });
+      }
+
+      // ── Revoke the old token ──
+      await prisma.refreshToken.update({
+        where: { id: storedToken.id },
+        data: { revokedAt: new Date() }
+      });
+
+      // Look up user to build a fresh JWT
+      const staff = await prisma.staff.findUnique({
+        where: { id: parseInt(storedToken.userId) || undefined },
+        select: { id: true, username: true, name: true, role: true, email: true, department: true, is_active: true }
+      });
+
+      // If userId was an email (Google user), staff may be null
+      let jwtPayload;
+      if (staff && staff.is_active) {
+        jwtPayload = { userId: staff.id, username: staff.username, name: staff.name, role: staff.role, email: staff.email, department: staff.department };
+      } else {
+        // Fallback for Google-only users stored with email as userId
+        jwtPayload = { userId: storedToken.userId, email: storedToken.userId, role: 'Student', name: 'User' };
+      }
+
+      // Issue new access token
+      const newAccessToken = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
+      });
+
+      // Issue new refresh token in the SAME family
+      const { rawToken: newRefreshToken, expiresAt: newRefreshExpiresAt } = await issueRefreshToken(storedToken.userId, storedToken.familyId);
+
+      // Set new cookies
+      setAuthCookies(res, newAccessToken, newRefreshToken, newRefreshExpiresAt);
+
+      return res.json({ message: 'Token refreshed successfully' });
+    } catch (error) {
+      console.error('Refresh token error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   },
@@ -318,7 +441,7 @@ const authController = {
     }
   },
 
-  // Logout function — blacklist the token so it can't be reused
+  // Logout function — blacklist the token and revoke refresh token
   logout: async (req, res) => {
     try {
       // Extract the raw token from the Authorization header or httpOnly cookie
@@ -336,9 +459,24 @@ const authController = {
         }
       }
 
-      // Clear the httpOnly cookie as well (same options as when setting)
+      // Revoke the refresh token if present
+      const refreshRaw = req.cookies?.refresh_token;
+      if (refreshRaw) {
+        const refreshHash = crypto.createHash('sha256').update(refreshRaw).digest('hex');
+        try {
+          await prisma.refreshToken.updateMany({
+            where: { tokenHash: refreshHash, revokedAt: null },
+            data: { revokedAt: new Date() }
+          });
+        } catch (e) {
+          console.error('Error revoking refresh token on logout:', e);
+        }
+      }
+
+      // Clear both cookies
       const clearOpts = buildAuthCookieOptions(0);
       res.clearCookie('auth_token', clearOpts);
+      res.clearCookie('refresh_token', clearOpts);
 
       // Log the logout activity if we could decode the token
       if (token) {

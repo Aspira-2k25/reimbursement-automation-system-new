@@ -5,30 +5,12 @@ const logger = require('../utils/logger');
 const isProd = process.env.NODE_ENV === 'production';
 const isBcryptHash = (value) => typeof value === 'string' && /^\$2[aby]\$/.test(value);
 
-/**
- * Helper: log a failed login attempt to MongoDB (fire-and-forget).
- * Never throws or blocks the response.
- */
-function logFailedLogin(req, reason, username) {
-  logger.logActivity({
-    action: 'login_failed',
-    message: `Login failed: ${reason}`,
-    userId: null,
-    userName: username || 'Unknown',
-    role: null,
-    department: null,
-    level: 'WARN',
-    status: 'failure',
-    details: { reason },
-    ipAddress: req.ip || req.connection?.remoteAddress || null,
-    userAgent: req.get('user-agent') || null,
-    method: req.method,
-    endpoint: req.originalUrl || req.path
-  });
-}
+// Account lockout configuration
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 const validationMiddleware = {
-  // Validate login input with strict database checks
+  // Validate login input with strict database checks and account lockout
   validateLogin: async (req, res, next) => {
     try {
       const { username, email, password } = req.body;
@@ -56,7 +38,7 @@ const validationMiddleware = {
       }
 
       // 2. Database checks using Prisma
-      // Find user by username
+      // Find user by username (include lockout fields)
       const user = await prisma.staff.findUnique({
         where: { username: username.trim() },
         select: {
@@ -67,11 +49,13 @@ const validationMiddleware = {
           role: true,
           email: true,
           password: true,
-          is_active: true
+          is_active: true,
+          failed_login_attempts: true,
+          locked_until: true
         }
       });
 
-      // Generic error for security
+      // Generic error for security (prevents user enumeration)
       const invalidCredentialsError = {
         error: 'Validation failed',
         details: ['Invalid credentials']
@@ -88,9 +72,21 @@ const validationMiddleware = {
         return res.status(401).json({ error: 'Account is deactivated' });
       }
 
+      // ── Account Lockout Check ──
+      // If locked_until is set and still in the future, reject immediately
+      if (user.locked_until && new Date(user.locked_until) > new Date()) {
+        const remainingMs = new Date(user.locked_until).getTime() - Date.now();
+        const remainingMin = Math.ceil(remainingMs / 60000);
+        return res.status(401).json({
+          error: 'Validation failed',
+          details: [`Account is temporarily locked. Try again in ${remainingMin} minute(s).`]
+        });
+      }
+
       // Strict Check: Verify email matches exactly
       if (!user.email || user.email.toLowerCase() !== email.toLowerCase()) {
-        logFailedLogin(req, 'Email mismatch', user.username);
+        // Increment failed attempts for email mismatch
+        await incrementFailedAttempts(user.id, user.failed_login_attempts);
         return res.status(401).json(invalidCredentialsError);
       }
 
@@ -111,8 +107,20 @@ const validationMiddleware = {
       }
 
       if (!isPasswordValid) {
-        logFailedLogin(req, 'Invalid password', user.username);
+        // ── Failed Login: increment counter and possibly lock ──
+        await incrementFailedAttempts(user.id, user.failed_login_attempts);
         return res.status(401).json(invalidCredentialsError);
+      }
+
+      // ── Successful Login: reset lockout counters ──
+      if (user.failed_login_attempts > 0 || user.locked_until) {
+        await prisma.staff.update({
+          where: { id: user.id },
+          data: {
+            failed_login_attempts: 0,
+            locked_until: null
+          }
+        });
       }
 
       // authentication successful - attach user to request for controller
@@ -197,6 +205,24 @@ const validationMiddleware = {
     next();
   },
 };
+
+/**
+ * Increment failed login attempts and lock the account if threshold is reached.
+ */
+async function incrementFailedAttempts(userId, currentAttempts) {
+  const newAttempts = (currentAttempts || 0) + 1;
+  const updateData = { failed_login_attempts: newAttempts };
+
+  if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+    updateData.locked_until = new Date(Date.now() + LOCKOUT_DURATION_MS);
+    console.warn(`⚠️ Account locked for user ID ${userId} after ${newAttempts} failed attempts.`);
+  }
+
+  await prisma.staff.update({
+    where: { id: userId },
+    data: updateData
+  });
+}
 
 // Helper function
 function isValidEmail(email) {
