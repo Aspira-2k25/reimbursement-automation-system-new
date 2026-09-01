@@ -123,17 +123,19 @@ const HODLayout = ({ children }) => {
     try {
       setLoading(true)
 
-      // Fetch student forms AND faculty forms in parallel
+      // Fetch student forms, faculty forms, and HOD's own forms in parallel
       const [
         studentHodData, studentApprovedData, studentRejectedData,
-        facultyHodData, facultyApprovedData, facultyRejectedData
+        facultyHodData, facultyApprovedData, facultyRejectedData,
+        hodMineData
       ] = await Promise.allSettled([
         studentFormsAPI.listForHOD(),
         studentFormsAPI.listApproved(),
         studentFormsAPI.listRejected(),
         facultyFormsAPI.listForHOD(),
         facultyFormsAPI.listApproved(),
-        facultyFormsAPI.listRejected()
+        facultyFormsAPI.listRejected(),
+        facultyFormsAPI.listMine()
       ])
 
       let allForms = []
@@ -173,6 +175,13 @@ const HODLayout = ({ children }) => {
       if (facultyRejectedData.status === 'fulfilled') {
         const forms = (facultyRejectedData.value?.forms || facultyRejectedData.value || [])
           .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      // Process HOD's own submitted forms (applicantType: 'HOD')
+      if (hodMineData.status === 'fulfilled') {
+        const forms = (hodMineData.value?.forms || hodMineData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'HOD' }))
         allForms = [...allForms, ...forms]
       }
 

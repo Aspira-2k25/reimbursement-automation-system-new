@@ -44,8 +44,11 @@ const ReportsAndAnalytics = () => {
       }
 
       // Member type filter
-      if (selectedMemberType !== 'All' && request.applicantType !== selectedMemberType) {
-        return false
+      if (selectedMemberType !== 'All') {
+        const reqType = String(request.applicantType || (request.studentId ? 'Student' : (request.facultyId ? 'Faculty' : ''))).toLowerCase();
+        if (reqType !== selectedMemberType.toLowerCase()) {
+          return false;
+        }
       }
 
       // Status filter
@@ -265,6 +268,7 @@ const ReportsAndAnalytics = () => {
         onRefresh={handleRefresh}
         categories={uniqueCategories}
         statuses={uniqueStatuses}
+        memberTypes={['All', 'Faculty', 'Student', 'HOD']}
       />
 
       {/* Summary Statistics */}
