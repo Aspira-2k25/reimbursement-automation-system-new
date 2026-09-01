@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, FileText, UploadCloud, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -10,12 +10,17 @@ export default function EditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth(); // Get authenticated user
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
   const [isStudentForm, setIsStudentForm] = useState(false);
+
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
+  const [selectedNptelFile, setSelectedNptelFile] = useState(null);
+  const [selectedIdCardFile, setSelectedIdCardFile] = useState(null);
 
   const navigateToRoleRequests = React.useCallback(() => {
     const userRole = user?.role?.toLowerCase();
@@ -52,7 +57,6 @@ export default function EditForm() {
         try {
           response = await api.getById(id);
         } catch (initialErr) {
-          // If the primary role API fails, try the other one
           const fallbackApi = api === studentFormsAPI ? facultyFormsAPI : studentFormsAPI;
           response = await fallbackApi.getById(id);
           api = fallbackApi;
@@ -77,9 +81,6 @@ export default function EditForm() {
         }
 
         // Check if the form is still editable based on its status
-        // 1. Student forms: editable when status is "Pending" (before Coordinator acts)
-        // 2. Faculty / Coordinator forms: editable when status is "Under HOD" or "Pending" (before HOD acts)
-        // 3. HOD forms: editable when status is "Under Principal" or "Pending" (before Principal acts)
         let isEditable = false;
         if (isStudent) {
           isEditable = form.status === 'Pending';
@@ -111,6 +112,18 @@ export default function EditForm() {
     }
   }, [id, user, location.pathname, navigateToRoleRequests]);
 
+  const validateFile = (file) => {
+    if (!file) return { valid: true };
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      return { valid: false, error: 'File must be a PDF, JPEG, JPG, or PNG' };
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      return { valid: false, error: 'File size must not exceed 1MB' };
+    }
+    return { valid: true };
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -118,8 +131,6 @@ export default function EditForm() {
       newErrors.name = 'Name is required';
     }
 
-    // For faculty forms: validate facultyId
-    // For student forms: validate studentId and division
     const isFacultyForm = !isStudentForm;
     if (isFacultyForm) {
       if (!formData.facultyId?.trim()) {
@@ -183,7 +194,6 @@ export default function EditForm() {
       newErrors.courseName = 'Course name must be at least 3 characters long';
     }
 
-    // Marks validation
     if (!formData.marks && formData.marks !== 0) {
       newErrors.marks = 'Marks is required';
     } else {
@@ -231,6 +241,25 @@ export default function EditForm() {
     }
   };
 
+  const handleFileChange = (e, fileType) => {
+    const file = e.target.files[0];
+    if (file) {
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        toast.error(`${fileType}: ${validation.error}`);
+        e.target.value = '';
+        if (fileType === 'NPTEL Result') setSelectedNptelFile(null);
+        if (fileType === 'ID Card') setSelectedIdCardFile(null);
+        return;
+      }
+      if (fileType === 'NPTEL Result') setSelectedNptelFile(file);
+      if (fileType === 'ID Card') setSelectedIdCardFile(file);
+    } else {
+      if (fileType === 'NPTEL Result') setSelectedNptelFile(null);
+      if (fileType === 'ID Card') setSelectedIdCardFile(null);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm() || saving) return;
@@ -238,27 +267,18 @@ export default function EditForm() {
     try {
       setSaving(true);
 
-      // Handle file updates if needed
-      // Only send editable fields — strip status, _id, applicantType, etc.
       const { status: _status, _id: _oid, __v: _v, applicantType: _at, applicationId: _aid, userId: _uid, createdAt: _ca, updatedAt: _ua, documents: _docs, rejectedBy: _rb, rejectionRemarks: _rr, ...editableFields } = formData;
       const formDataToSend = { ...editableFields };
 
-      // Enforce trusted session-derived department in update payload.
       formDataToSend.department = user?.department || formData.department;
-
-      // Convert amount to number explicitly
       formDataToSend.amount = parseFloat(formData.amount);
-
-      // Convert marks to number explicitly
       formDataToSend.marks = parseFloat(formData.marks);
 
-      const nptelFile = document.getElementById('nptelResult')?.files[0];
-      const idCardFile = document.getElementById('idCard')?.files[0];
-
-      if (nptelFile || idCardFile) {
+      // Handle new file uploads
+      if (selectedNptelFile || selectedIdCardFile) {
         const uploadData = new FormData();
-        if (nptelFile) uploadData.append('nptelResult', nptelFile);
-        if (idCardFile) uploadData.append('idCard', idCardFile);
+        if (selectedNptelFile) uploadData.append('nptelResult', selectedNptelFile);
+        if (selectedIdCardFile) uploadData.append('idCard', selectedIdCardFile);
 
         try {
           if (!isStudentForm) {
@@ -283,7 +303,7 @@ export default function EditForm() {
       const api = isStudentForm ? studentFormsAPI : facultyFormsAPI;
       await api.updateById(id, formDataToSend);
 
-      toast.success('Changes saved successfully!');
+      toast.success('Application updated successfully!');
       navigateToRoleRequests();
     } catch (err) {
       console.error('Error updating form:', err);
@@ -300,36 +320,47 @@ export default function EditForm() {
     return <LoadingSpinner message="Loading application for editing..." />;
   }
 
+  // Check existing documents
+  const existingNptelDoc = formData?.documents?.[0]?.url || formData?.proofOfPayment;
+  const existingIdDoc = formData?.documents?.[1]?.url;
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <div className="mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8 space-y-6">
+        
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
           <button
             onClick={navigateToRoleRequests}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </button>
+          <span className="text-xs font-semibold text-slate-500">
+            ID: <span className="text-slate-800 font-mono font-bold">{formData?.applicationId || formData?._id}</span>
+          </span>
         </div>
 
-        <div className="border-b border-gray-200 pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-center text-gray-800">
-            Edit Reimbursement Form
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-800">
+            Edit Reimbursement Application
           </h1>
-          <p className="text-center text-gray-600 mt-1">
-            Application ID: {formData?.applicationId}
+          <p className="text-xs text-slate-500 mt-1">
+            Update application information and replace supporting documents
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          
           {/* Personal Information */}
-          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-            <h2 className="text-lg font-semibold text-gray-700">Personal Information</h2>
+          <div className="bg-slate-50/70 border border-slate-100 p-5 rounded-2xl space-y-4">
+            <h2 className="text-sm font-bold text-slate-800 border-b border-slate-200/60 pb-2">
+              Personal Information
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -337,16 +368,16 @@ export default function EditForm() {
                   name="name"
                   value={formData?.name || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.name ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
               </div>
 
               {!isStudentForm ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs font-semibold text-slate-700">
                     Faculty ID <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -354,16 +385,16 @@ export default function EditForm() {
                     name="facultyId"
                     value={formData?.facultyId || ''}
                     onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md border ${
-                      errors.facultyId ? 'border-red-500' : 'border-gray-300'
-                    } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                    className={`mt-1 block w-full rounded-xl border ${
+                      errors.facultyId ? 'border-red-500' : 'border-slate-200'
+                    } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                   />
-                  {errors.facultyId && <p className="mt-1 text-sm text-red-500">{errors.facultyId}</p>}
+                  {errors.facultyId && <p className="mt-1 text-xs text-red-500">{errors.facultyId}</p>}
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-xs font-semibold text-slate-700">
                       Student ID <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -371,15 +402,15 @@ export default function EditForm() {
                       name="studentId"
                       value={formData?.studentId || ''}
                       onChange={handleChange}
-                      className={`mt-1 block w-full rounded-md border ${
-                        errors.studentId ? 'border-red-500' : 'border-gray-300'
-                      } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                      className={`mt-1 block w-full rounded-xl border ${
+                        errors.studentId ? 'border-red-500' : 'border-slate-200'
+                      } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                     />
-                    {errors.studentId && <p className="mt-1 text-sm text-red-500">{errors.studentId}</p>}
+                    {errors.studentId && <p className="mt-1 text-xs text-red-500">{errors.studentId}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-xs font-semibold text-slate-700">
                       Division <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -387,17 +418,17 @@ export default function EditForm() {
                       name="division"
                       value={formData?.division || ''}
                       onChange={handleChange}
-                      className={`mt-1 block w-full rounded-md border ${
-                        errors.division ? 'border-red-500' : 'border-gray-300'
-                      } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                      className={`mt-1 block w-full rounded-xl border ${
+                        errors.division ? 'border-red-500' : 'border-slate-200'
+                      } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                     />
-                    {errors.division && <p className="mt-1 text-sm text-red-500">{errors.division}</p>}
+                    {errors.division && <p className="mt-1 text-xs text-red-500">{errors.division}</p>}
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Email Address <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -405,15 +436,15 @@ export default function EditForm() {
                   name="email"
                   value={formData?.email || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.email ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Department
                 </label>
                 <input
@@ -421,36 +452,38 @@ export default function EditForm() {
                   name="department"
                   value={formData?.department || ''}
                   disabled
-                  className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm sm:text-sm text-gray-600"
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-600 shadow-sm cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Academic Year <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="academicYear"
-                  placeholder="YYYY-YYYY (e.g. 2024-2025)"
+                  placeholder="YYYY-YYYY (e.g. 2026-2027)"
                   value={formData?.academicYear || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.academicYear ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.academicYear ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.academicYear && <p className="mt-1 text-sm text-red-500">{errors.academicYear}</p>}
+                {errors.academicYear && <p className="mt-1 text-xs text-red-500">{errors.academicYear}</p>}
               </div>
             </div>
           </div>
 
           {/* Course Details */}
-          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-            <h2 className="text-lg font-semibold text-gray-700">NPTEL Course Details</h2>
+          <div className="bg-slate-50/70 border border-slate-100 p-5 rounded-2xl space-y-4">
+            <h2 className="text-sm font-bold text-slate-800 border-b border-slate-200/60 pb-2">
+              NPTEL Course Details
+            </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-1">
+                <label className="block text-xs font-semibold text-slate-700">
                   Course Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -458,15 +491,15 @@ export default function EditForm() {
                   name="courseName"
                   value={formData?.courseName || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.courseName ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.courseName ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.courseName && <p className="mt-1 text-sm text-red-500">{errors.courseName}</p>}
+                {errors.courseName && <p className="mt-1 text-xs text-red-500">{errors.courseName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Marks Obtained (%) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -477,15 +510,15 @@ export default function EditForm() {
                   step="0.01"
                   value={formData?.marks ?? ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.marks ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.marks ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.marks && <p className="mt-1 text-sm text-red-500">{errors.marks}</p>}
+                {errors.marks && <p className="mt-1 text-xs text-red-500">{errors.marks}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Claim Amount (₹) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -495,22 +528,24 @@ export default function EditForm() {
                   max="1500"
                   value={formData?.amount || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.amount ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.amount ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
+                {errors.amount && <p className="mt-1 text-xs text-red-500">{errors.amount}</p>}
               </div>
             </div>
           </div>
 
           {/* Banking Details */}
-          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-            <h2 className="text-lg font-semibold text-gray-700">Bank Account Details</h2>
+          <div className="bg-slate-50/70 border border-slate-100 p-5 rounded-2xl space-y-4">
+            <h2 className="text-sm font-bold text-slate-800 border-b border-slate-200/60 pb-2">
+              Bank Account Details
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Account Holder Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -518,15 +553,15 @@ export default function EditForm() {
                   name="accountName"
                   value={formData?.accountName || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.accountName ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.accountName ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.accountName && <p className="mt-1 text-sm text-red-500">{errors.accountName}</p>}
+                {errors.accountName && <p className="mt-1 text-xs text-red-500">{errors.accountName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   Account Number <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -534,15 +569,15 @@ export default function EditForm() {
                   name="accountNumber"
                   value={formData?.accountNumber || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.accountNumber ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.accountNumber ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500`}
                 />
-                {errors.accountNumber && <p className="mt-1 text-sm text-red-500">{errors.accountNumber}</p>}
+                {errors.accountNumber && <p className="mt-1 text-xs text-red-500">{errors.accountNumber}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-semibold text-slate-700">
                   IFSC Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -550,28 +585,119 @@ export default function EditForm() {
                   name="ifscCode"
                   value={formData?.ifscCode || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.ifscCode ? 'border-red-500' : 'border-gray-300'
-                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm uppercase`}
+                  className={`mt-1 block w-full rounded-xl border ${
+                    errors.ifscCode ? 'border-red-500' : 'border-slate-200'
+                  } px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 uppercase`}
                 />
-                {errors.ifscCode && <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>}
+                {errors.ifscCode && <p className="mt-1 text-xs text-red-500">{errors.ifscCode}</p>}
               </div>
             </div>
           </div>
 
+          {/* Supporting Documents (Update / Replace Files) */}
+          <div className="bg-slate-50/70 border border-slate-100 p-5 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-teal-600" />
+                Supporting Documents (Update / Replace Files)
+              </h2>
+              <span className="text-[11px] text-slate-500">PDF, JPG, PNG — Max 1MB</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* NPTEL Result File */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800">
+                    NPTEL Result / Certificate
+                  </label>
+                  {existingNptelDoc && (
+                    <a
+                      href={existingNptelDoc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-teal-600 hover:text-teal-700 font-semibold"
+                    >
+                      <ExternalLink className="w-3 h-3" /> View Current
+                    </a>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  id="nptelResult"
+                  ref={nptelFileRef}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange(e, 'NPTEL Result')}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                />
+
+                {selectedNptelFile ? (
+                  <p className="text-[11px] text-teal-700 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" /> Selected: {selectedNptelFile.name}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400">
+                    {existingNptelDoc ? 'Choose a file to replace current result' : 'Upload NPTEL scorecard/result'}
+                  </p>
+                )}
+              </div>
+
+              {/* ID Card File */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800">
+                    {isStudentForm ? 'Student ID Card' : 'Faculty ID Proof'}
+                  </label>
+                  {existingIdDoc && (
+                    <a
+                      href={existingIdDoc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-teal-600 hover:text-teal-700 font-semibold"
+                    >
+                      <ExternalLink className="w-3 h-3" /> View Current
+                    </a>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  id="idCard"
+                  ref={idCardFileRef}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange(e, 'ID Card')}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                />
+
+                {selectedIdCardFile ? (
+                  <p className="text-[11px] text-teal-700 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" /> Selected: {selectedIdCardFile.name}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400">
+                    {existingIdDoc ? 'Choose a file to replace current ID card' : 'Upload college ID card'}
+                  </p>
+                )}
+              </div>
+
+            </div>
+          </div>
+
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={navigateToRoleRequests}
-              className="px-5 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm"
+              className="px-5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#3B945E] text-sm font-semibold text-white hover:bg-[#2e744a] transition shadow-md disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#3B945E] text-xs font-bold text-white hover:bg-[#2e744a] transition shadow-md disabled:opacity-50"
             >
               {saving ? (
                 <>

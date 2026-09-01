@@ -99,15 +99,6 @@ export default function ViewForm() {
           </span>
         </div>
 
-        {/* Live Approval Stepper */}
-        <ApprovalTimeline
-          status={formData.status}
-          applicantType={applicantType}
-          rejectedBy={formData.rejectedBy}
-          rejectionRemarks={formData.rejectionRemarks || formData.rejectionReason}
-          accountsRemarks={formData.accountsRemarks}
-          updatedAt={formData.updatedAt}
-        />
 
         {/* Main Details Card */}
         <div className="rounded-3xl border border-white/80 bg-white/90 p-6 sm:p-8 shadow-xl backdrop-blur-md space-y-8">
