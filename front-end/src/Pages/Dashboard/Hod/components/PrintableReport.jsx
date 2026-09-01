@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import apshahLogo from '../../../../assets/images/Apshah_logo.png'
-import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const buildDateLabel = (start, end) => {
   if (!start || Number.isNaN(start.getTime())) return ''
@@ -97,10 +96,10 @@ const PrintableReport = ({
     }))
   }, [requests])
 
-  // Format department display
-  const displayDepartment = departmentName && departmentName !== '-' && departmentName !== 'All Departments'
-    ? (departmentName.toLowerCase().startsWith('department of') ? departmentName : `Department of ${departmentName}`)
-    : 'Department of Information Technology'
+  // Format department title
+  const cleanDept = departmentName && departmentName !== '-' && departmentName !== 'All Departments'
+    ? departmentName.replace(/^Department of\s+/i, '')
+    : 'Information Technology'
 
   const applicantHeaderTitle = memberType === 'Student'
     ? 'Name of student'
@@ -121,54 +120,45 @@ const PrintableReport = ({
           @media print {
             @page {
               size: A4 portrait;
-              margin: 15mm 15mm 15mm 15mm;
+              margin: 18mm 15mm 18mm 15mm;
             }
 
             html,
             body {
-              margin: 0;
-              padding: 0;
-              height: auto;
-              overflow: visible;
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: 0 !important;
+              overflow: visible !important;
               background: #fff !important;
-              font-family: "Times New Roman", Times, serif !important;
               color: #000 !important;
+              font-family: "Times New Roman", Times, serif !important;
+              font-size: 11pt !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
 
-            body.hod-report-print * {
-              visibility: hidden;
-            }
-
-            body.hod-report-print #print-section,
-            body.hod-report-print #print-section * {
-              visibility: visible;
-            }
-
-            body.hod-report-print .reports-screen,
-            body.hod-report-print aside,
-            body.hod-report-print nav,
-            body.hod-report-print header,
-            body.hod-report-print footer {
+            body.hod-report-print #root {
               display: none !important;
             }
 
             body.hod-report-print #print-section {
               display: block !important;
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              background: #fff;
+              position: static !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+              visibility: visible !important;
             }
 
-            .hod-print-container {
-              width: 100%;
-              box-sizing: border-box;
+            body.hod-report-print #print-section * {
+              visibility: visible !important;
             }
 
             .hod-print-table {
-              width: 100%;
-              border-collapse: collapse;
+              width: 100% !important;
+              border-collapse: collapse !important;
               page-break-inside: auto;
             }
 
@@ -176,94 +166,118 @@ const PrintableReport = ({
               display: table-header-group;
             }
 
-            .hod-print-table tfoot {
-              display: table-footer-group;
-            }
-
             .hod-print-table tr {
-              break-inside: avoid;
               page-break-inside: avoid;
+              break-inside: avoid;
             }
 
-            .hod-print-table td,
-            .hod-print-table th {
-              break-inside: avoid;
-              page-break-inside: avoid;
+            .hod-print-table th,
+            .hod-print-table td {
               border: 1px solid #000 !important;
+              color: #000 !important;
             }
           }
         `}
       </style>
 
-      <div className="hod-print-container" style={{ fontFamily: '"Times New Roman", Times, serif', color: '#000' }}>
-        {/* Header with Two Logos and Centered Text */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+      <div
+        className="hod-print-container"
+        style={{
+          width: '100%',
+          boxSizing: 'border-box',
+          fontFamily: '"Times New Roman", Times, serif',
+          color: '#000',
+          backgroundColor: '#fff'
+        }}
+      >
+        {/* Header: Exact Match to Institutional Format */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
           <img
             src={apshahLogo}
-            alt="APSIT Logo"
-            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
+            alt="APSIT Logo Left"
+            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
           />
 
-          <div style={{ textAlign: 'center', flex: 1, padding: '0 12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+          <div style={{ textAlign: 'center', flex: 1, padding: '0 15px' }}>
+            <div style={{ fontSize: '11pt', fontWeight: 'bold', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
               PARSHVANATH CHARITABLE TRUST&apos;S
             </div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', margin: '2px 0' }}>
+            <div style={{ fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase', margin: '3px 0' }}>
               A. P. SHAH INSTITUTE OF TECHNOLOGY
             </div>
-            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
-              {displayDepartment}
+            <div style={{ fontSize: '12.5pt', fontWeight: 'bold' }}>
+              Department of {cleanDept}
             </div>
-            <div style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '1px' }}>
+            <div style={{ fontSize: '10.5pt', fontStyle: 'italic', marginTop: '2px' }}>
               (NBA Accredited)
             </div>
           </div>
 
           <img
-            src={websiteLogo}
-            alt="College Seal"
-            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
+            src={apshahLogo}
+            alt="APSIT Logo Right"
+            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
           />
         </div>
 
         {/* Title */}
-        <h2 style={{ textAlign: 'center', fontSize: '14.5px', fontWeight: 'bold', margin: '16px 0 16px 0' }}>
+        <div style={{ textAlign: 'center', fontSize: '13pt', fontWeight: 'bold', margin: '22px 0 16px 0' }}>
           {`NPTEL reimbursement details for ${titleRange}`}
-        </h2>
+        </div>
 
-        {/* Tabulated Records */}
+        {/* Main Tabulated Details */}
         <table
           className="hod-print-table"
           style={{
             width: '100%',
             borderCollapse: 'collapse',
-            tableLayout: 'fixed',
-            fontSize: '11px'
+            fontSize: '10.5pt',
+            border: '1px solid #000'
           }}
         >
           <thead>
             <tr>
-              <th style={{ border: '1px solid #000', padding: '5px 4px', textAlign: 'center', width: '7%', fontWeight: 'bold' }}>Sr. No</th>
-              <th style={{ border: '1px solid #000', padding: '5px 6px', textAlign: 'left', width: '31%', fontWeight: 'bold' }}>{applicantHeaderTitle}</th>
-              <th style={{ border: '1px solid #000', padding: '5px 6px', textAlign: 'left', width: '40%', fontWeight: 'bold' }}>Nptel course name</th>
-              <th style={{ border: '1px solid #000', padding: '5px 4px', textAlign: 'center', width: '10%', fontWeight: 'bold' }}>Score</th>
-              <th style={{ border: '1px solid #000', padding: '5px 4px', textAlign: 'center', width: '12%', fontWeight: 'bold' }}>Amount in Rs.</th>
+              <th style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', width: '8%', fontWeight: 'bold' }}>
+                Sr. No
+              </th>
+              <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', width: '31%', fontWeight: 'bold' }}>
+                {applicantHeaderTitle}
+              </th>
+              <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', width: '39%', fontWeight: 'bold' }}>
+                Nptel course name
+              </th>
+              <th style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', width: '10%', fontWeight: 'bold' }}>
+                Score
+              </th>
+              <th style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'center', width: '12%', fontWeight: 'bold' }}>
+                Amount in Rs.
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.length > 0 ? (
               rows.map((row) => (
                 <tr key={row.srNo}>
-                  <td style={{ border: '1px solid #000', padding: '5px 4px', textAlign: 'center', verticalAlign: 'middle' }}>{row.srNo}</td>
-                  <td style={{ border: '1px solid #000', padding: '5px 6px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>{row.applicantName}</td>
-                  <td style={{ border: '1px solid #000', padding: '5px 6px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>{row.courseName}</td>
-                  <td style={{ border: '1px solid #000', padding: '5px 4px', textAlign: 'center', verticalAlign: 'middle' }}>{row.marks}</td>
-                  <td style={{ border: '1px solid #000', padding: '5px 4px', textAlign: 'center', verticalAlign: 'middle' }}>{row.amount}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+                    {row.srNo}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>
+                    {row.applicantName}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left', verticalAlign: 'middle', wordBreak: 'break-word' }}>
+                    {row.courseName}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+                    {row.marks}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                    {row.amount}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} style={{ border: '1px solid #000', padding: '12px', textAlign: 'center' }}>
+                <td colSpan={5} style={{ border: '1px solid #000', padding: '16px', textAlign: 'center' }}>
                   No reimbursement records available.
                 </td>
               </tr>
@@ -271,15 +285,25 @@ const PrintableReport = ({
           </tbody>
         </table>
 
-        {/* Dual Signatures Block Exactly Matching Sample: Left HoD, Right Principal */}
-        <div style={{ marginTop: '45px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '12px' }}>
+        {/* Dual Signatures Matching Physical Document */}
+        <div
+          style={{
+            marginTop: '55px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            fontSize: '11pt',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid'
+          }}
+        >
           <div style={{ textAlign: 'left', width: '45%' }}>
             <div style={{ height: '35px' }}></div>
             <div style={{ fontWeight: 'bold' }}>
               {hodName || 'Dr. Kiran Deshpande'}
             </div>
             <div>
-              {`HoD, ${departmentName && departmentName !== '-' ? departmentName : 'Information Technology'}`}
+              {`HoD, ${cleanDept}`}
             </div>
           </div>
 
