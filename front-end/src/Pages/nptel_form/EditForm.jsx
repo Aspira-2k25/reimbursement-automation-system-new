@@ -15,7 +15,7 @@ export default function EditForm() {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
   const [errors, setErrors] = useState({});
-  const [, setIsStudentForm] = useState(false);
+  const [isStudentForm, setIsStudentForm] = useState(false);
 
   const navigateToRoleRequests = React.useCallback(() => {
     const userRole = user?.role?.toLowerCase();
@@ -45,26 +45,31 @@ export default function EditForm() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        // Detect form type from URL path first (for Accounts role viewing different form types)
-        // Only /student-form/ paths are student forms; /faculty-form/ and /nptel-form/ use role-based detection
-        const isStudent = location.pathname.includes('/student-form/');
-        setIsStudentForm(isStudent);
-
-        // Select API based on URL path or user role
-        // URL path takes precedence (allows Accounts to edit both types)
         const userRole = user?.role?.toLowerCase();
-        let api;
+        let api = (userRole === 'student') ? studentFormsAPI : facultyFormsAPI;
 
-        if (isStudent) {
-          api = studentFormsAPI;
-        } else if (userRole === 'faculty' || userRole === 'coordinator' || userRole === 'hod' || userRole === 'principal' || userRole === 'accounts') {
-          api = facultyFormsAPI;
-        } else {
-          api = studentFormsAPI;
+        let response;
+        try {
+          response = await api.getById(id);
+        } catch (initialErr) {
+          // If the primary role API fails, try the other one
+          const fallbackApi = api === studentFormsAPI ? facultyFormsAPI : studentFormsAPI;
+          response = await fallbackApi.getById(id);
+          api = fallbackApi;
         }
 
-        const response = await api.getById(id);
-        const form = response.form || response; // Handle both structures
+        const form = response.form || response;
+
+        // Detect if this is a student reimbursement form
+        const isStudent = Boolean(
+          form.studentId ||
+          form.division ||
+          (form.applicationId && String(form.applicationId).startsWith('S-')) ||
+          api === studentFormsAPI ||
+          userRole === 'student'
+        );
+
+        setIsStudentForm(isStudent);
 
         const sessionDepartment = user?.department || '';
         if (sessionDepartment) {
@@ -72,19 +77,19 @@ export default function EditForm() {
         }
 
         // Check if the form is still editable based on its status
-        // Student forms: editable only at "Pending"
-        // Faculty/Coordinator forms: editable only at "Under HOD"
-        // HOD forms: editable only at "Under Principal"
-        const editableStatuses = {
-          'Student': 'Pending',
-          'Faculty': 'Under HOD',
-          'Coordinator': 'Under HOD',
-          'HOD': 'Under Principal',
-        };
-        const applicantType = form.applicantType || (isStudent ? 'Student' : 'Faculty');
-        const requiredStatus = editableStatuses[applicantType] || (isStudent ? 'Pending' : 'Under HOD');
+        // 1. Student forms: editable when status is "Pending" (before Coordinator acts)
+        // 2. Faculty / Coordinator forms: editable when status is "Under HOD" or "Pending" (before HOD acts)
+        // 3. HOD forms: editable when status is "Under Principal" or "Pending" (before Principal acts)
+        let isEditable = false;
+        if (isStudent) {
+          isEditable = form.status === 'Pending';
+        } else if (form.applicantType === 'HOD' || userRole === 'hod') {
+          isEditable = form.status === 'Under Principal' || form.status === 'Pending';
+        } else {
+          isEditable = form.status === 'Under HOD' || form.status === 'Pending';
+        }
 
-        if (form.status !== requiredStatus) {
+        if (!isEditable) {
           toast.error('This form can no longer be edited. Once an approver acts on a form, editing is permanently locked.');
           navigateToRoleRequests();
           return;
@@ -115,7 +120,7 @@ export default function EditForm() {
 
     // For faculty forms: validate facultyId
     // For student forms: validate studentId and division
-    const isFacultyForm = formData?.applicantType && formData.applicantType !== 'Student';
+    const isFacultyForm = !isStudentForm;
     if (isFacultyForm) {
       if (!formData.facultyId?.trim()) {
         newErrors.facultyId = 'Faculty ID is required';
@@ -256,10 +261,7 @@ export default function EditForm() {
         if (idCardFile) uploadData.append('idCard', idCardFile);
 
         try {
-          const userRole = user?.role?.toLowerCase();
-          const isFacultyType = ['faculty', 'coordinator', 'hod', 'principal'].includes(userRole);
-          if (isFacultyType) {
-            // Faculty form document upload would go here if you add a similar route for forms
+          if (!isStudentForm) {
             toast.error('Document upload for faculty forms is not available in this flow. Save without new files.');
             setSaving(false);
             return;
@@ -277,10 +279,8 @@ export default function EditForm() {
         }
       }
 
-      // Select API based on user role (Faculty, Coordinator, HOD, Principal use forms API)
-      const userRole = user?.role?.toLowerCase();
-      const isFacultyType = ['faculty', 'coordinator', 'hod', 'principal'].includes(userRole);
-      const api = isFacultyType ? facultyFormsAPI : studentFormsAPI;
+      // Dispatch to corresponding API
+      const api = isStudentForm ? studentFormsAPI : facultyFormsAPI;
       await api.updateById(id, formDataToSend);
 
       toast.success('Changes saved successfully!');
@@ -315,305 +315,268 @@ export default function EditForm() {
 
         <div className="border-b border-gray-200 pb-4 mb-6">
           <h1 className="text-2xl font-bold text-center text-gray-800">
-            Edit NPTEL Reimbursement Application
+            Edit Reimbursement Form
           </h1>
+          <p className="text-center text-gray-600 mt-1">
+            Application ID: {formData?.applicationId}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Name *</label>
-              <input
-                type="text"
-                name="name"
-                value={formData?.name || ''}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.name ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              />
-              {errors.name && (
-                <p className="mt-2 text-sm text-red-600">{errors.name}</p>
-              )}
-            </div>
+          {/* Personal Information */}
+          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+            <h2 className="text-lg font-semibold text-gray-700">Personal Information</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData?.name || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.name ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+              </div>
 
-            {(formData?.applicantType && formData.applicantType !== 'Student') ? (
-              <>
+              {!isStudentForm ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Faculty ID *</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Faculty ID <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="facultyId"
                     value={formData?.facultyId || ''}
                     onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                      ${errors.facultyId ? 'border-red-300' : 'border-gray-300'}
-                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                    className={`mt-1 block w-full rounded-md border ${
+                      errors.facultyId ? 'border-red-500' : 'border-gray-300'
+                    } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
                   />
-                  {errors.facultyId && (
-                    <p className="mt-2 text-sm text-red-600">{errors.facultyId}</p>
-                  )}
+                  {errors.facultyId && <p className="mt-1 text-sm text-red-500">{errors.facultyId}</p>}
                 </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Student ID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="studentId"
+                      value={formData?.studentId || ''}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full rounded-md border ${
+                        errors.studentId ? 'border-red-500' : 'border-gray-300'
+                      } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                    />
+                    {errors.studentId && <p className="mt-1 text-sm text-red-500">{errors.studentId}</p>}
+                  </div>
 
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Student ID *</label>
-                  <input
-                    type="text"
-                    name="studentId"
-                    value={formData?.studentId || ''}
-                    onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                      ${errors.studentId ? 'border-red-300' : 'border-gray-300'}
-                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                  />
-                  {errors.studentId && (
-                    <p className="mt-2 text-sm text-red-600">{errors.studentId}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Division *</label>
-                  <input
-                    type="text"
-                    name="division"
-                    value={formData?.division || ''}
-                    onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                      ${errors.division ? 'border-red-300' : 'border-gray-300'}
-                      focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                  />
-                  {errors.division && (
-                    <p className="mt-2 text-sm text-red-600">{errors.division}</p>
-                  )}
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Department *</label>
-              <input
-                type="text"
-                name="department"
-                value={formData?.department || ''}
-                readOnly
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.department ? 'border-red-300' : 'border-gray-300'}
-                  bg-gray-100 text-gray-600 cursor-not-allowed sm:text-sm`}
-              />
-              {errors.department && (
-                <p className="mt-2 text-sm text-red-600">{errors.department}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Division <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="division"
+                      value={formData?.division || ''}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full rounded-md border ${
+                        errors.division ? 'border-red-500' : 'border-gray-300'
+                      } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                    />
+                    {errors.division && <p className="mt-1 text-sm text-red-500">{errors.division}</p>}
+                  </div>
+                </>
               )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email *</label>
-              <input
-                type="email"
-                name="email"
-                value={formData?.email || ''}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.email ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              />
-              {errors.email && (
-                <p className="mt-2 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData?.email || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.email ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Academic Year *</label>
-              <input
-                type="text"
-                name="academicYear"
-                placeholder="e.g., 2025-2026"
-                value={formData?.academicYear || ''}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.academicYear ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              />
-              {errors.academicYear && (
-                <p className="mt-2 text-sm text-red-600">{errors.academicYear}</p>
-              )}
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Department
+                </label>
+                <input
+                  type="text"
+                  name="department"
+                  value={formData?.department || ''}
+                  disabled
+                  className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm sm:text-sm text-gray-600"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Amount (₹) *</label>
-              <input
-                type="number"
-                name="amount"
-                min="1"
-                max="1500"
-                value={formData?.amount || ''}
-                onChange={handleChange}
-                onWheel={(e) => e.target.blur()}
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                  ${errors.amount ? 'border-red-300' : 'border-gray-300'}
-                  focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-              />
-              {errors.amount && (
-                <p className="mt-2 text-sm text-red-600">{errors.amount}</p>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Academic Year <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="academicYear"
+                  placeholder="YYYY-YYYY (e.g. 2024-2025)"
+                  value={formData?.academicYear || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.academicYear ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.academicYear && <p className="mt-1 text-sm text-red-500">{errors.academicYear}</p>}
+              </div>
             </div>
           </div>
 
-          {/* Bank Details Section */}
-          <div className="border-t pt-6 mt-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Course Details */}
+          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+            <h2 className="text-lg font-semibold text-gray-700">NPTEL Course Details</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Account Holder Name *</label>
-                <input
-                  type="text"
-                  name="accountName"
-                  value={formData?.accountName || ''}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                    ${errors.accountName ? 'border-red-300' : 'border-gray-300'}
-                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                />
-                {errors.accountName && (
-                  <p className="mt-2 text-sm text-red-600">{errors.accountName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">IFSC Code *</label>
-                <input
-                  type="text"
-                  name="ifscCode"
-                  value={formData?.ifscCode || ''}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                    ${errors.ifscCode ? 'border-red-300' : 'border-gray-300'}
-                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                />
-                {errors.ifscCode && (
-                  <p className="mt-2 text-sm text-red-600">{errors.ifscCode}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Account Number *</label>
-                <input
-                  type="text"
-                  name="accountNumber"
-                  value={formData?.accountNumber || ''}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                    ${errors.accountNumber ? 'border-red-300' : 'border-gray-300'}
-                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                />
-                {errors.accountNumber && (
-                  <p className="mt-2 text-sm text-red-600">{errors.accountNumber}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">NPTEL Course Name <span className="text-gray-900 font-bold">*</span></label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Course Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="courseName"
                   value={formData?.courseName || ''}
                   onChange={handleChange}
-                  required
-                  placeholder="Enter NPTEL course name"
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm
-                    ${errors.courseName ? 'border-red-300' : 'border-gray-300'}`}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.courseName ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
                 />
-                {errors.courseName && (
-                  <p className="mt-2 text-sm text-red-600">{errors.courseName}</p>
-                )}
+                {errors.courseName && <p className="mt-1 text-sm text-red-500">{errors.courseName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span></label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Marks Obtained (%) <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="number"
                   name="marks"
                   min="0"
                   max="100"
                   step="0.01"
-                  value={formData?.marks || ''}
+                  value={formData?.marks ?? ''}
                   onChange={handleChange}
-                  onWheel={(e) => e.target.blur()}
-                  required
-                  placeholder="Enter NPTEL marks"
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm
-                    ${errors.marks ? 'border-red-300' : 'border-gray-300'}`}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.marks ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
                 />
-                {errors.marks && (
-                  <p className="mt-2 text-sm text-red-600">{errors.marks}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Update Documents (Optional)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  NPTEL Result
-                </label>
-                <input
-                  type="file"
-                  id="nptelResult"
-                  name="nptelResult"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="mt-1 block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-teal-50 file:text-teal-700
-                    hover:file:bg-teal-100"
-                />
+                {errors.marks && <p className="mt-1 text-sm text-red-500">{errors.marks}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  {(formData?.applicantType && formData.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card'}
+                  Claim Amount (₹) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="file"
-                  id="idCard"
-                  name="idCard"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="mt-1 block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-teal-50 file:text-teal-700
-                    hover:file:bg-teal-100"
+                  type="number"
+                  name="amount"
+                  min="1"
+                  max="1500"
+                  value={formData?.amount || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.amount ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
                 />
+                {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-4">
+          {/* Banking Details */}
+          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+            <h2 className="text-lg font-semibold text-gray-700">Bank Account Details</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Account Holder Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="accountName"
+                  value={formData?.accountName || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.accountName ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.accountName && <p className="mt-1 text-sm text-red-500">{errors.accountName}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Account Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={formData?.accountNumber || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.accountNumber ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.accountNumber && <p className="mt-1 text-sm text-red-500">{errors.accountNumber}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  IFSC Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="ifscCode"
+                  value={formData?.ifscCode || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.ifscCode ? 'border-red-500' : 'border-gray-300'
+                  } px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500 sm:text-sm uppercase`}
+                />
+                {errors.ifscCode && <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button
               type="button"
               onClick={navigateToRoleRequests}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm flex items-center gap-2 transition-colors
-                ${saving ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#3B945E] text-sm font-semibold text-white hover:bg-[#2e744a] transition shadow-md disabled:opacity-50"
             >
               {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving Changes...
                 </>
               ) : (
                 'Save Changes'
@@ -625,4 +588,3 @@ export default function EditForm() {
     </div>
   );
 }
-
