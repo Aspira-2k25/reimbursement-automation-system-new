@@ -29,7 +29,10 @@ const securityHeaders = (req, res, next) => {
     // Content Security Policy with nonce-based script execution
     // 'unsafe-inline' removed for scripts; use the per-request nonce instead
     // For production, consider using CSP hashes or moving styles to external files
-    res.setHeader('Content-Security-Policy', [
+    const reportUri = process.env.CSP_REPORT_URI || '/api/csp-report';
+    const isReportOnly = process.env.CSP_REPORT_ONLY === 'true';
+
+    const cspDirectives = [
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}' https://accounts.google.com https://apis.google.com`,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -41,8 +44,15 @@ const securityHeaders = (req, res, next) => {
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests"
-    ].join('; '));
+        "upgrade-insecure-requests",
+        `report-uri ${reportUri}`
+    ].join('; ');
+
+    // Use Report-Only header in non-enforcement mode for testing new policies
+    const cspHeaderName = isReportOnly
+        ? 'Content-Security-Policy-Report-Only'
+        : 'Content-Security-Policy';
+    res.setHeader(cspHeaderName, cspDirectives);
 
     // Additional security headers
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
