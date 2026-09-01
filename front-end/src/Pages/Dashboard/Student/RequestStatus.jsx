@@ -1,48 +1,115 @@
-
 import React from "react"
+import { useLocation } from "react-router-dom"
+import { toast } from "react-hot-toast"
+import { studentFormsAPI } from "../../../services/api"
 import { FileText, CheckCircle, Clock, XCircle } from "lucide-react"
 import "../Dashboard.css"
 import RequestsTable from "./components/RequestsTable.jsx"
+import { useNotificationContext } from "./NotificationContext"
 
-// Dummy data for student requests
-const studentRequests = [
-  {
-    id: "STU001",
-    category: "NPTEL Certification",
-    status: "Approved",
-    amount: 1000,
-    submittedDate: "2024-01-15",
-    updatedDate: "2024-01-20",
-    description: "Machine Learning course completion certificate"
-  },
-  {
-    id: "STU002",
-    category: "Lab Materials",
-    status: "Pending",
-    amount: 2500,
-    submittedDate: "2024-01-18",
-    updatedDate: "2024-01-18",
-    description: "Arduino components for IoT project"
-  },
-  {
-    id: "STU003",
-    category: "Conference Attendance",
-    status: "Under Review",
-    amount: 5000,
-    submittedDate: "2024-01-10",
-    updatedDate: "2024-01-22",
-    description: "IEEE Conference registration and travel"
-  },
-  {
-    id: "STU004",
-    category: "Workshop Training",
-    status: "Rejected",
-    amount: 1500,
-    submittedDate: "2024-01-05",
-    updatedDate: "2024-01-12",
-    description: "Data Science workshop participation"
-  }
-]
+// Fetched data state
+const useStudentRequests = (addNotification) => {
+  const location = useLocation()
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState(null)
+  const [requests, setRequests] = React.useState([])
+  const [previousRequests, setPreviousRequests] = React.useState([])
+  const mountedRef = React.useRef(true)
+
+  const fetchRequests = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const data = await studentFormsAPI.listMine()
+
+      // Handle different response structures
+      let forms = []
+      if (Array.isArray(data)) {
+        forms = data
+      } else if (Array.isArray(data?.forms)) {
+        forms = data.forms
+      } else if (data?.data && Array.isArray(data.data)) {
+        forms = data.data
+      }
+
+      // Map backend forms to table row shape
+      const mapped = forms.map((f) => ({
+        id: f.applicationId || f._id || f.id || `form-${f._id}`,
+        _id: f._id, // Store MongoDB _id for navigation
+        applicationId: f.applicationId, // Store applicationId as well
+        category: f.reimbursementType || f.category || "NPTEL",
+        status: f.status || "Pending",
+        amount: Number(f.amount || 0),
+        submittedDate: f.createdAt || f.submittedDate || new Date(),
+        updatedDate: f.updatedAt || f.updatedDate || f.createdAt || new Date(),
+        description: f.remarks || f.name || f.description || "",
+        courseName: f.courseName || 'N/A',
+        marks: f.marks ?? null,
+        documents: f.documents || [],
+        accountsRemarks: f.accountsRemarks || '',
+      }))
+
+      // Check for status changes and generate notifications
+      if (mountedRef.current && previousRequests.length > 0) {
+        mapped.forEach(newRequest => {
+          const oldRequest = previousRequests.find(r => r.id === newRequest.id)
+          if (oldRequest && oldRequest.status !== newRequest.status) {
+            const statusMessages = {
+              'Approved': 'Your request has been approved and sent to Accounts for reimbursement',
+              'Rejected': 'Your request has been rejected. Please check the remarks for details',
+              'Reimbursed': 'Your reimbursement has been successfully reimbursed! Funds have been transferred to your account',
+              'Under HOD': 'Your request has been forwarded to HOD for review',
+              'Under Principal': 'Your request has been forwarded to Principal for approval',
+              'Under Coordinator': 'Your request is now under Coordinator review'
+            }
+            addNotification({
+              type: 'status_change',
+              title: 'Request Status Updated',
+              message: `${statusMessages[newRequest.status] || `Your request status changed to ${newRequest.status}`} - ${newRequest.category}`,
+              time: 'Just now'
+            })
+          }
+        })
+      }
+
+      if (mountedRef.current) {
+        setPreviousRequests(mapped)
+        setRequests(mapped)
+      }
+    } catch (e) {
+      if (mountedRef.current) {
+        const errorMessage = e?.error || e?.message || "Failed to load requests"
+        setError(errorMessage)
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false)
+    }
+  }, [addNotification])
+
+  React.useEffect(() => {
+    mountedRef.current = true
+    fetchRequests()
+    return () => { mountedRef.current = false }
+  }, [location.pathname, fetchRequests])
+
+  // Refetch when component becomes visible again (e.g., navigating back from view/edit)
+  React.useEffect(() => {
+    // Check if we're on the requests page
+    const isRequestsPage = location.pathname === '/dashboard/requests' || location.pathname.includes('/requests')
+
+    if (isRequestsPage) {
+      // Small delay to ensure navigation is complete
+      const timeoutId = setTimeout(() => {
+        fetchRequests()
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [location.pathname, fetchRequests])
+
+  return { loading, error, requests, refetch: fetchRequests }
+}
 
 /**
  * SummaryCard Component
@@ -54,23 +121,23 @@ const studentRequests = [
 function SummaryCard({ title, value, sub }) {
   // Icon mapping for consistent icons across summary cards
   const iconMap = {
-    "Total Applications": <FileText className="h-5 w-5" style={{color: '#3B945E'}} />,
-    "Total Approved": <CheckCircle className="h-5 w-5" style={{color: '#3B945E'}} />,
-    "Pending Review": <Clock className="h-5 w-5" style={{color: '#57BA98'}} />,
-    "Rejected": <XCircle className="h-5 w-5" style={{color: '#3B945E'}} />
+    "Total Applications": <FileText className="h-5 w-5" style={{ color: '#3B945E' }} />,
+    "Total Approved": <CheckCircle className="h-5 w-5" style={{ color: '#3B945E' }} />,
+    "Pending Review": <Clock className="h-5 w-5" style={{ color: '#57BA98' }} />,
+    "Rejected": <XCircle className="h-5 w-5" style={{ color: '#3B945E' }} />
   }
 
-  const icon = iconMap[title] || <FileText className="h-5 w-5" style={{color: '#3B945E'}} />
+  const icon = iconMap[title] || <FileText className="h-5 w-5" style={{ color: '#3B945E' }} />
 
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-medium" style={{color: '#182628'}}>{title}</div>
-          <div className="text-2xl font-semibold mt-1" style={{color: '#182628'}}>{value}</div>
-          <div className="text-xs mt-1" style={{color: '#3B945E'}}>{sub}</div>
+          <div className="font-medium" style={{ color: '#182628' }}>{title}</div>
+          <div className="text-2xl font-semibold mt-1" style={{ color: '#182628' }}>{value}</div>
+          <div className="text-xs mt-1" style={{ color: '#3B945E' }}>{sub}</div>
         </div>
-        <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)'}}>
+        <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'color-mix(in oklab, #65CCB8 20%, white)' }}>
           {icon}
         </div>
       </div>
@@ -85,14 +152,16 @@ function SummaryCard({ title, value, sub }) {
 export default function RequestStatus() {
   // State for search functionality
   const [search, setSearch] = React.useState("")
-  
-  // Calculate summary statistics from dummy data
-  const summary = {
-    total: studentRequests.length,
-    approved: studentRequests.filter(r => r.status === "Approved").length,
-    pending: studentRequests.filter(r => ["Pending", "Under Review"].includes(r.status)).length,
-    rejected: studentRequests.filter(r => r.status === "Rejected").length
-  }
+  const { addNotification } = useNotificationContext()
+  const { loading, error, requests, refetch } = useStudentRequests(addNotification)
+
+  // Calculate summary statistics from fetched data
+  const summary = React.useMemo(() => ({
+    total: requests.length,
+    approved: requests.filter(r => String(r.status).toLowerCase() === "approved").length,
+    pending: requests.filter(r => ["pending", "under review", "under coordinator", "under hod", "under principal"].includes(String(r.status).toLowerCase())).length,
+    rejected: requests.filter(r => String(r.status).toLowerCase() === "rejected").length,
+  }), [requests])
 
   return (
     <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content">
@@ -133,10 +202,48 @@ export default function RequestStatus() {
       {/* Requests table section */}
       <div className="section mt-4 sm:mt-6">
         <div className="mb-3 sm:mb-4">
-          <h3 className="section-title text-lg sm:text-xl" style={{color: '#182628'}}>Your Requests</h3>
-          <p className="section-subtitle text-sm sm:text-base" style={{color: '#3B945E'}}>Track the status of your reimbursement applications</p>
+          <h3 className="section-title text-lg sm:text-xl" style={{ color: '#182628' }}>Your Requests</h3>
+          <p className="section-subtitle text-sm sm:text-base" style={{ color: '#3B945E' }}>Track the status of your reimbursement applications</p>
         </div>
-        <RequestsTable search={search} requests={studentRequests} />
+        {error ? (
+          <div className="card p-4 text-red-600">
+            <div className="font-semibold mb-2">Error loading requests:</div>
+            <div>{String(error)}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="card p-8 text-center">
+            <div className="flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-[#3B945E] border-t-transparent rounded-full animate-spin mr-3"></div>
+              <span className="text-slate-600">Loading requests...</span>
+            </div>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="card p-8 text-center">
+            <div className="text-lg font-medium text-slate-700 mb-2">No requests found</div>
+            <div className="text-sm text-slate-500 mb-4">You haven't submitted any reimbursement requests yet.</div>
+            <div className="text-xs text-slate-400">Check the browser console for debugging information.</div>
+          </div>
+        ) : (
+          <RequestsTable
+            search={search}
+            requests={requests}
+            onDelete={async (deletedId) => {
+              try {
+                await studentFormsAPI.deleteById(deletedId);
+                toast.success('Form deleted successfully!');
+                await refetch();
+              } catch (error) {
+                toast.error('Failed to delete form. ' + (error.error || 'Please try again.'));
+              }
+            }}
+          />
+        )}
       </div>
     </main>
   )

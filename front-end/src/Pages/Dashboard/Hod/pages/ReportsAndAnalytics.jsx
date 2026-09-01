@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Download, 
+import { motion as Motion } from 'framer-motion'
+import {
+  BarChart3,
+  TrendingUp,
+  Download,
   Calendar,
   Filter,
   Users,
@@ -14,11 +14,12 @@ import StatCard from '../components/StatCard'
 import ReportLineChart from '../components/ReportLineChart'
 import ReportPieChart from '../components/ReportPieChart'
 import FilterBar from '../components/FilterBar'
+import PrintableReport from '../components/PrintableReport'
 import { useHODContext } from './HODLayout'
 import { calculateStats, getRequestsByType } from '../data/mockData'
 
 const ReportsAndAnalytics = () => {
-  const { allRequests } = useHODContext()
+  const { allRequests, userProfile } = useHODContext()
   const [selectedDateRange, setSelectedDateRange] = useState({ startDate: '', endDate: '' })
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedMemberType, setSelectedMemberType] = useState('All')
@@ -59,16 +60,16 @@ const ReportsAndAnalytics = () => {
   // Calculate filtered statistics with accurate calculations
   const filteredStats = useMemo(() => {
     const stats = calculateStats(filteredRequests)
-    
+
     // Calculate accurate approval rate: (approved / (total - pending)) * 100
     const processedRequests = stats.total - stats.pending
     const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-    
+
     // Calculate trend percentages based on previous period (simplified for demo)
     // In a real app, you'd compare with previous month/quarter data
     const totalTrend = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0
     const approvedTrend = stats.approved > 0 ? Math.round((stats.approvedAmount / stats.approved) / 1000) : 0
-    
+
     return [
       {
         title: "Total Requests",
@@ -81,7 +82,7 @@ const ReportsAndAnalytics = () => {
       {
         title: "Approved",
         value: stats.approved.toString(),
-        subtitle: `₹${stats.approvedAmount.toLocaleString()} disbursed`,
+        subtitle: `₹${stats.approvedAmount.toLocaleString()} reimbursed`,
         icon: TrendingUp,
         color: 'green',
         trend: approvedTrend > 0 ? { direction: 'up', value: `+${approvedTrend}%` } : null
@@ -121,76 +122,119 @@ const ReportsAndAnalytics = () => {
     }))
   }, [filteredRequests])
 
-  // Category breakdown
+  // Category breakdown - include both Approved and Under Principal in amount
   const categoryBreakdown = useMemo(() => {
     const categories = filteredRequests.reduce((acc, request) => {
-      const category = request.category
+      const category = request.category || 'Other'
       if (!acc[category]) {
-        acc[category] = { count: 0, amount: 0 }
+        acc[category] = { count: 0, amount: 0, pending: 0, rejected: 0 }
       }
       acc[category].count += 1
-      if (request.status === 'Approved') {
-        const amount = parseFloat(request.amount.replace(/[₹,]/g, ''))
+
+      // Completed reimbursements are counted only when Accounts marks them reimbursed
+      if (request.status === 'Reimbursed') {
+        const amountStr = String(request.amount || '0')
+        const amount = parseFloat(amountStr.replace(/[₹,]/g, ''))
         acc[category].amount += isNaN(amount) ? 0 : amount
       }
+
+      // Track pending and rejected for additional insights
+      if (request.status === 'Pending' || request.status === 'Under HOD') {
+        acc[category].pending += 1
+      }
+      if (request.status === 'Rejected') {
+        acc[category].rejected += 1
+      }
+
       return acc
     }, {})
 
     return Object.entries(categories).map(([category, data]) => ({
       category,
       count: data.count,
-      amount: data.amount
+      amount: data.amount,
+      pending: data.pending,
+      rejected: data.rejected
     })).sort((a, b) => b.count - a.count)
   }, [filteredRequests])
 
   // Generate dynamic monthly trend data from filtered requests
   const monthlyTrendData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const currentMonth = new Date().getMonth()
     const currentYear = new Date().getFullYear()
-    
+
     // Group filtered requests by month
     const monthlyData = filteredRequests.reduce((acc, request) => {
       const date = new Date(request.submittedDate)
       const month = date.getMonth()
+      const year = date.getFullYear()
       const monthName = months[month]
-      
-      if (!acc[monthName]) {
-        acc[monthName] = { requests: 0, amount: 0 }
+      const key = `${year}-${monthName}`
+
+      if (!acc[key]) {
+        acc[key] = { requests: 0, amount: 0, month: monthName, year }
       }
-      
-      acc[monthName].requests += 1
-      if (request.status === 'Approved') {
-        const amount = parseFloat(request.amount.replace(/[₹,]/g, ''))
-        acc[monthName].amount += isNaN(amount) ? 0 : amount
+
+      acc[key].requests += 1
+      // Completed reimbursements are counted only when Accounts marks them reimbursed
+      if (request.status === 'Reimbursed') {
+        const amountStr = String(request.amount || '0')
+        const amount = parseFloat(amountStr.replace(/[₹,]/g, ''))
+        acc[key].amount += isNaN(amount) ? 0 : amount
       }
-      
+
       return acc
     }, {})
-    
-    // Convert to array format for the chart
-    return months.slice(0, 6).map(month => ({
-      month,
-      requests: monthlyData[month]?.requests || 0,
-      amount: monthlyData[month]?.amount || 0
-    }))
+
+    // Get last 6 months for display
+    const result = []
+    for (let i = 5; i >= 0; i--) {
+      const targetMonth = (currentMonth - i + 12) % 12
+      const targetYear = currentMonth - i < 0 ? currentYear - 1 : currentYear
+      const monthName = months[targetMonth]
+      const key = `${targetYear}-${monthName}`
+
+      result.push({
+        month: monthName,
+        requests: monthlyData[key]?.requests || 0,
+        amount: monthlyData[key]?.amount || 0
+      })
+    }
+
+    return result
   }, [filteredRequests])
 
   // Get unique values for filters
-  const uniqueCategories = [...new Set(allRequests.map(r => r.category))]
-  const uniqueStatuses = [...new Set(allRequests.map(r => r.status))]
+  const uniqueCategories = [...new Set(allRequests.map(r => r.category).filter(Boolean))]
+  const uniqueStatuses = [...new Set(allRequests.map(r => r.status).filter(Boolean))]
 
+  // Export official report using print/PDF flow
   const handleExport = () => {
-    toast.success('Report exported successfully!')
+    document.body.classList.add('hod-report-print')
+
+    const cleanup = () => {
+      document.body.classList.remove('hod-report-print')
+      window.removeEventListener('afterprint', cleanup)
+    }
+
+    window.addEventListener('afterprint', cleanup)
+    window.print()
+
+    toast.success('Print dialog opened for PDF export')
   }
 
   const handleRefresh = () => {
+    // Force re-render by triggering state update
+    setSelectedCategory(prev => prev)
     toast.success('Data refreshed!')
   }
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="reports-screen space-y-6">
       {/* Page Header */}
-      <motion.div 
+      <Motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -200,7 +244,7 @@ const ReportsAndAnalytics = () => {
           <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
           <p className="text-gray-600 mt-1">Comprehensive reimbursement analytics and insights</p>
         </div>
-        <motion.button
+        <Motion.button
           onClick={handleExport}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           whileHover={{ scale: 1.05 }}
@@ -208,8 +252,8 @@ const ReportsAndAnalytics = () => {
         >
           <Download className="w-4 h-4" />
           Export Report
-        </motion.button>
-      </motion.div>
+        </Motion.button>
+      </Motion.div>
 
       {/* Filter Bar */}
       <FilterBar
@@ -226,21 +270,21 @@ const ReportsAndAnalytics = () => {
       {/* Summary Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredStats.map((stat, index) => (
-          <motion.div
+          <Motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
             <StatCard {...stat} />
-          </motion.div>
+          </Motion.div>
         ))}
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trend Chart */}
-        <ReportLineChart 
+        <ReportLineChart
           data={monthlyTrendData}
           title="Monthly Trend"
           height={350}
@@ -262,7 +306,7 @@ const ReportsAndAnalytics = () => {
             <h3 className="text-lg font-semibold text-gray-900">Category Breakdown</h3>
             <Filter className="w-5 h-5 text-gray-400" />
           </div>
-          
+
           <div className="space-y-4">
             {categoryBreakdown.map((category, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -285,32 +329,32 @@ const ReportsAndAnalytics = () => {
             <Users className="w-5 h-5 text-blue-600" />
             <h3 className="text-lg font-semibold text-gray-900">Performance Metrics</h3>
           </div>
-          
+
           <div className="space-y-4">
             {(() => {
               const stats = calculateStats(filteredRequests)
               const processedRequests = stats.total - stats.pending
               const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
               const avgAmount = stats.approved > 0 ? Math.round(stats.approvedAmount / stats.approved) : 0
-              
+
               // Calculate average processing days based on actual data
               const avgProcessingDays = (() => {
-                const processedRequests = filteredRequests.filter(req => 
+                const processedRequests = filteredRequests.filter(req =>
                   req.status === 'Approved' || req.status === 'Rejected'
                 )
-                
+
                 if (processedRequests.length === 0) return 0
-                
+
                 const totalDays = processedRequests.reduce((sum, req) => {
                   const submittedDate = new Date(req.submittedDate)
                   const lastUpdated = new Date(req.lastUpdated)
                   const daysDiff = Math.ceil((lastUpdated - submittedDate) / (1000 * 60 * 60 * 24))
                   return sum + Math.max(1, daysDiff) // Minimum 1 day
                 }, 0)
-                
+
                 return Math.round((totalDays / processedRequests.length) * 10) / 10 // Round to 1 decimal
               })()
-              
+
               return (
                 <>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -320,7 +364,7 @@ const ReportsAndAnalytics = () => {
                       {approvalRate >= 80 ? 'Excellent' : approvalRate >= 60 ? 'Good' : 'Needs improvement'}
                     </div>
                   </div>
-                  
+
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{avgProcessingDays}</div>
                     <div className="text-sm text-gray-600">Avg. Processing Days</div>
@@ -328,7 +372,7 @@ const ReportsAndAnalytics = () => {
                       {avgProcessingDays <= 3 ? 'Fast processing' : avgProcessingDays <= 7 ? 'Good' : 'Slow'}
                     </div>
                   </div>
-                  
+
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
                     <div className="text-2xl font-bold text-purple-600">
                       ₹{avgAmount.toLocaleString()}
@@ -346,7 +390,7 @@ const ReportsAndAnalytics = () => {
       {/* Faculty vs Student Analysis */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Faculty vs Student Analysis</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">Faculty Requests</h4>
@@ -371,7 +415,7 @@ const ReportsAndAnalytics = () => {
               )
             })()}
           </div>
-          
+
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">Student Requests</h4>
             {(() => {
@@ -398,6 +442,12 @@ const ReportsAndAnalytics = () => {
         </div>
       </div>
     </div>
+    <PrintableReport
+      requests={filteredRequests}
+      dateRange={selectedDateRange}
+      departmentName={userProfile?.department || '-'}
+    />
+    </>
   )
 }
 

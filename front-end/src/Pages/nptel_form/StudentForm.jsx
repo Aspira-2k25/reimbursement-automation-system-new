@@ -1,9 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { getCsrfToken, API_BASE_URL } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import apshahLogo from '../../assets/images/Apshah_logo.png';
+import websiteLogo from '../../assets/images/Website_logo.png';
+import { toast } from 'react-hot-toast';
+import { resolveDepartment } from '../../utils/departmentResolver';
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 500 * 1024; // 500KB
+
+  if (!file) return { valid: true };
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 500KB' };
+  }
+
+  return { valid: true };
+};
 
 const StudentNptelForm = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
+    department: '',
     division: '',
     email: '',
     amount: '',
@@ -11,10 +50,21 @@ const StudentNptelForm = () => {
     ifscCode: '',
     accountNumber: '',
     academicYear: '',
-    remarks: ''
+    courseName: '',
+    marks: ''
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
+
+  React.useEffect(() => {
+    const department = resolveDepartment(user?.department);
+    if (department) {
+      setFormData(prev => ({ ...prev, department }));
+    }
+  }, [user?.department]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -31,6 +81,10 @@ const StudentNptelForm = () => {
 
     if (!formData.division.trim()) {
       newErrors.division = 'Division is required';
+    }
+
+    if (!formData.department) {
+      newErrors.department = 'Department is required';
     }
 
     if (!formData.email.trim()) {
@@ -74,6 +128,22 @@ const StudentNptelForm = () => {
       newErrors.accountNumber = 'Please enter a valid account number (9-18 digits)';
     }
 
+    if (!formData.courseName.trim()) {
+      newErrors.courseName = 'NPTEL Course Name is required';
+    } else if (formData.courseName.trim().length < 3) {
+      newErrors.courseName = 'Course name must be at least 3 characters long';
+    }
+
+    // Marks validation
+    if (!formData.marks) {
+      newErrors.marks = 'Marks is required';
+    } else {
+      const marksNum = parseFloat(formData.marks);
+      if (isNaN(marksNum) || marksNum < 0 || marksNum > 100) {
+        newErrors.marks = 'Marks must be between 0 and 100';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -81,8 +151,23 @@ const StudentNptelForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if(name ==="amount") {
-      if (value === "" || (value>0 && value<=1500)) {
+    // SECURITY: Sanitize text inputs
+    let sanitizedValue = value;
+    if (name !== 'amount' && name !== 'marks') {
+      sanitizedValue = sanitizeInput(value);
+    }
+
+    if (name === "amount") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else if (name === "marks") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -91,11 +176,11 @@ const StudentNptelForm = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: sanitizedValue,
       });
     }
 
-    if(errors[name]) {
+    if (errors[name]) {
       setErrors({
         ...errors,
         [name]: "",
@@ -105,53 +190,133 @@ const StudentNptelForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+
     if (!validateForm()) return;
+
+    // Disable button immediately
+    setIsSubmitting(true);
 
     try {
       const formDataToSend = new FormData();
+
+      // SECURITY: Sanitize all text fields before sending
+      // Skip sanitization for numeric fields to prevent any value modification
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key]);
+        if (key === 'amount' || key === 'marks') {
+          formDataToSend.append(key, formData[key]);
+        } else {
+          formDataToSend.append(key, sanitizeInput(formData[key]));
+        }
       });
 
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult", nptelFile);
-      if (idCardFile) formDataToSend.append("idCard", idCardFile);
+      // Enforce trusted department resolved from current session/profile state.
+      formDataToSend.set('department', resolveDepartment());
+
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
+
+      // Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
+      }
+
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
 
       formDataToSend.append("reimbursementType", "NPTEL");
-      const token = localStorage.getItem("token");
 
-      const res = await fetch("http://localhost:5000/api/student-forms/submit", {
+      // SECURITY: Use httpOnly cookies instead of localStorage token
+      const csrfToken = getCsrfToken();
+      const res = await fetch(`${API_BASE_URL}/student-forms/submit`, {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-        },
+        credentials: 'include', // Important: include cookies for auth
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
         body: formDataToSend,
       });
 
       const data = await res.json();
       if (res.ok) {
-        alert("Form submitted successfully!!");
-        console.log(data);
+        toast.success("Application submitted successfully! Your request is now under review.");
+        // Navigate to request status page after successful submission
+        navigate('/dashboard/requests');
+      } else if (res.status === 429) {
+        // Daily submission limit reached — show prominent warning
+        toast.error(data.message || "You have reached the maximum of 3 submissions per day.", {
+          duration: 5000,
+          icon: '⚠️',
+        });
+        setIsSubmitting(false);
+      } else if (res.status === 413) {
+        // File too large — show prominent warning popup
+        toast.error(data.message || "File size exceeds 500KB limit. Please upload a smaller file.", {
+          duration: 5000,
+          icon: '⚠️',
+        });
+        setIsSubmitting(false);
       } else {
-        alert("Error: "+ data.error);
+        toast.error("Error: " + data.error);
+        // Re-enable button on error so user can retry
+        setIsSubmitting(false);
       }
-    } catch (err) {
-      console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+    } catch  {
+      toast.error("Form submission failed. Please try again.");
+      // Re-enable button on error so user can retry
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <div className="border-b border-gray-200 pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-center text-gray-800">
-            Department of Information Technology
-          </h1>
-          <h2 className="text-xl font-semibold text-center text-gray-700 mt-2">
-            Application for Student NPTEL Reimbursement
-          </h2>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back
+        </button>
+
+        <div className="border-b border-gray-200 pb-4 mb-6 mt-2">
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4 sm:gap-0 mb-2">
+
+            {/* Mobile Layout: Logos side by side above the text */}
+            <div className="w-full flex justify-between px-2 sm:hidden">
+              <img src={apshahLogo} alt="A.P. Shah Logo" className="h-18 w-18 object-contain" />
+              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-16 w-16 object-contain" />
+            </div>
+
+            {/* Desktop Layout: Left Logo */}
+            <img src={apshahLogo} alt="A.P. Shah Logo" className="hidden sm:block h-20 w-20 object-contain" />
+
+            <div className="flex-1 px-0 sm:px-4">
+              <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-800 leading-tight">
+                Department of Information Technology
+              </h1>
+              <h2 className="text-lg sm:text-xl font-semibold text-center text-gray-700 mt-2 leading-snug">
+                Application for Student NPTEL Reimbursement
+              </h2>
+            </div>
+
+            {/* Desktop Layout: Right Logo */}
+            <img src={websiteLogo} alt="Reimbursement Portal Logo" className="hidden sm:block h-18 w-18 object-contain mt-1" />
+          </div>
         </div>
 
         <div className="text-right mb-6 text-gray-600">
@@ -160,8 +325,8 @@ const StudentNptelForm = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">
+            <div className="bg-teal-50 p-4 rounded-md">
+              <p className="text-sm text-teal-800 font-medium">
                 This is for NPTEL reimbursement application. Please fill all required details accurately.
               </p>
             </div>
@@ -182,9 +347,8 @@ const StudentNptelForm = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
@@ -200,9 +364,8 @@ const StudentNptelForm = () => {
                   value={formData.studentId}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.studentId ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.studentId ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.studentId && <p className="text-red-500 text-xs mt-1">{errors.studentId}</p>}
               </div>
@@ -218,11 +381,25 @@ const StudentNptelForm = () => {
                   value={formData.division}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.division ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.division ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.division && <p className="text-red-500 text-xs mt-1">{errors.division}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Department *
+                </label>
+                <input
+                  type="text"
+                  id="department"
+                  name="department"
+                  value={formData.department}
+                  readOnly
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
+                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
               <div>
@@ -236,9 +413,8 @@ const StudentNptelForm = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
@@ -261,9 +437,8 @@ const StudentNptelForm = () => {
                   onChange={handleChange}
                   placeholder="e.g. 2023-2024"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.academicYear ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
               </div>
@@ -278,13 +453,13 @@ const StudentNptelForm = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   min="1"
                   max="1500"
-                  step="0.01"
+                  step="1"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.amount ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.amount ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
                 <p className="text-xs text-gray-500 mt-1">Amount must be between ₹1 and ₹1500</p>
@@ -303,7 +478,7 @@ const StudentNptelForm = () => {
                   value="NPTEL"
                   checked
                   readOnly
-                  className="h-4 w-4 text-blue-600"
+                  className="h-4 w-4 text-teal-600 accent-teal-600"
                 />
                 <label htmlFor="nptel" className="ml-2 text-sm text-gray-700 font-medium">
                   NPTEL
@@ -327,9 +502,8 @@ const StudentNptelForm = () => {
                   value={formData.accountName}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountName ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
               </div>
@@ -345,9 +519,8 @@ const StudentNptelForm = () => {
                   value={formData.ifscCode}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.ifscCode ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.ifscCode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="e.g., SBIN0000123"
                 />
                 {errors.ifscCode && <p className="text-red-500 text-xs mt-1">{errors.ifscCode}</p>}
@@ -364,9 +537,8 @@ const StudentNptelForm = () => {
                   value={formData.accountNumber}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountNumber ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountNumber && <p className="text-red-500 text-xs mt-1">{errors.accountNumber}</p>}
               </div>
@@ -374,18 +546,42 @@ const StudentNptelForm = () => {
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-2">
-              Remarks (Optional)
+            <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Course Name <span className="text-gray-900 font-bold">*</span>
             </label>
-            <textarea
-              id="remarks"
-              name="remarks"
-              rows="3"
-              value={formData.remarks}
+            <input
+              type="text"
+              id="courseName"
+              name="courseName"
+              value={formData.courseName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Additional remarks or notes..."
-            ></textarea>
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.courseName ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter NPTEL course name"
+            />
+            {errors.courseName && <p className="text-red-500 text-xs mt-1">{errors.courseName}</p>}
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <label htmlFor="marks" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span>
+            </label>
+            <input
+              type="number"
+              id="marks"
+              name="marks"
+              value={formData.marks}
+              onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.marks ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your NPTEL course marks"
+            />
+            {errors.marks && <p className="text-red-500 text-xs mt-1">{errors.marks}</p>}
+            <p className="text-xs text-gray-500 mt-1">Enter marks between 0 and 100</p>
           </div>
 
           <div className="bg-yellow-50 p-4 rounded-md mt-6">
@@ -407,14 +603,26 @@ const StudentNptelForm = () => {
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
+                  ref={nptelFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`NPTEL Result: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
-                             file:bg-blue-50 file:text-blue-700
-                             hover:file:bg-blue-100"
+                             file:bg-teal-50 file:text-teal-700
+                             hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 500KB</p>
               </div>
 
               <div>
@@ -425,14 +633,26 @@ const StudentNptelForm = () => {
                   type="file"
                   id="idCard"
                   name="idCard"
+                  ref={idCardFileRef}
                   accept=".pdf,.jpg,.jpeg,.png"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`Student ID Card: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
                   className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
-                             file:bg-blue-50 file:text-blue-700
-                             hover:file:bg-blue-100"
+                             file:bg-teal-50 file:text-teal-700
+                             hover:file:bg-teal-100"
                 />
+                <p className="text-xs text-gray-500 mt-1 px-6">PDF, JPEG, or PNG — Max 500KB</p>
               </div>
             </div>
           </div>
@@ -440,9 +660,21 @@ const StudentNptelForm = () => {
           <div className="flex justify-center mt-8">
             <button
               type="submit"
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
+              disabled={isSubmitting}
+              className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
+                ${isSubmitting
+                  ? 'bg-teal-400 cursor-not-allowed text-white'
+                  : 'bg-teal-600 hover:bg-teal-700 text-white'
+                }`}
             >
-              Submit Student NPTEL Reimbursement Application
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Submitting Application...
+                </>
+              ) : (
+                'Submit Student NPTEL Reimbursement Application'
+              )}
             </button>
           </div>
         </form>

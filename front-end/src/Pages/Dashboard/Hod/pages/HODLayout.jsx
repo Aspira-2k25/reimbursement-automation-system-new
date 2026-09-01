@@ -1,16 +1,20 @@
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialHodData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
+import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
+import { toast } from 'react-hot-toast'
+import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
 import ReportsAndAnalytics from './ReportsAndAnalytics'
-import DepartmentRoster from './DepartmentRoster'
 import ApplyForReimbursement from './ApplyForReimbursement'
 import ProfileSettings from './ProfileSettings'
 import RequestStatus from './RequestStatus'
 import AllDepartmentOverview from './AllDepartmentOverview'
+import ChangePassword from '../../../../components/ChangePassword'
 
 // Context for sharing HOD state across components
 const HODContext = createContext()
@@ -24,52 +28,17 @@ export const useHODContext = () => {
 }
 
 const HODLayout = ({ children }) => {
+  const location = useLocation()
   const { user } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
   const [userProfile, setUserProfile] = useState(initialHodData.userProfile)
-  const [allRequests, setAllRequests] = useState(initialHodData.allRequests)
-  const [departmentMembers, setDepartmentMembers] = useState(initialHodData.departmentMembers)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'request',
-      title: 'New Reimbursement Request',
-      message: 'Rajesh Kumar submitted a new request for ₹3,500',
-      time: '5 min ago',
-      unread: true,
-      timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    },
-    {
-      id: 2,
-      type: 'approval',
-      title: 'Request Approved',
-      message: 'Dr. Priya Sharma\'s research grant has been approved',
-      time: '1 hour ago',
-      unread: true,
-      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 3,
-      type: 'reminder',
-      title: 'Pending Reviews',
-      message: '3 requests are pending your review',
-      time: '2 hours ago',
-      unread: false,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 4,
-      type: 'system',
-      title: 'System Update',
-      message: 'New features have been added to the dashboard',
-      time: '1 day ago',
-      unread: false,
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    }
-  ])
+  const [allRequests, setAllRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [departmentMembers, setDepartmentMembers] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('Pending') // Default to show pending/Under HOD requests
   const [typeFilter, setTypeFilter] = useState('All')
 
   // Handle responsive behavior - auto-collapse on mobile
@@ -106,21 +75,173 @@ const HODLayout = ({ children }) => {
     return () => window.removeEventListener('error', handleGlobalError)
   }, [])
 
+  // Helper function to map backend data to HOD dashboard format
+  const mapFormToRequest = useCallback((f) => {
+    // Ensure amount is a number for calculations, but format as string for display
+    const amountNum = typeof f.amount === 'number' ? f.amount : parseFloat(f.amount) || 0
+
+    // Ensure _id is preserved as a string for API calls
+    const mongoId = f._id ? String(f._id) : null
+
+    return {
+      id: f.applicationId || f._id || `form-${f._id}`,
+      _id: mongoId, // Always preserve MongoDB _id as string
+      applicationId: f.applicationId,
+      userId: f.userId,
+      applicantName: f.name || 'N/A',
+      applicantId: f.studentId || f.facultyId || 'N/A',
+      applicantType: f.applicantType || 'Student',
+      applicantEmail: f.email,
+      department: f.department || 'N/A',
+      category: f.reimbursementType || f.category || "NPTEL",
+      amount: `₹${amountNum.toLocaleString()}`,
+      amountNum: amountNum,
+      status: f.status || "Pending", // Preserve exact status from backend
+      submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      lastUpdated: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      year: f.academicYear || f.year || 'N/A',
+      description: f.remarks || f.description || f.name || 'N/A',
+      // Preserve all backend fields for the view modal
+      email: f.email,
+      division: f.division,
+      studentId: f.studentId,
+      facultyId: f.facultyId,
+      name: f.name,
+      remarks: f.remarks,
+      academicYear: f.academicYear,
+      createdAt: f.createdAt,
+      updatedAt: f.updatedAt,
+      documents: f.documents || [], // Very important for viewing documents!
+      reimbursementType: f.reimbursementType,
+      courseName: f.courseName || 'N/A',
+      marks: f.marks ?? 'N/A',
+    }
+  }, [])
+
+  // Fetch both student AND faculty requests from API
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true)
+
+      // Fetch student forms AND faculty forms in parallel
+      const [
+        studentHodData, studentApprovedData, studentRejectedData,
+        facultyHodData, facultyApprovedData, facultyRejectedData
+      ] = await Promise.allSettled([
+        studentFormsAPI.listForHOD(),
+        studentFormsAPI.listApproved(),
+        studentFormsAPI.listRejected(),
+        facultyFormsAPI.listForHOD(),
+        facultyFormsAPI.listApproved(),
+        facultyFormsAPI.listRejected()
+      ])
+
+      let allForms = []
+
+      // Process student forms (add applicantType: 'Student')
+      if (studentHodData.status === 'fulfilled') {
+        const forms = (studentHodData.value?.forms || studentHodData.value || [])
+          .map(f => ({ ...f, applicantType: 'Student' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      if (studentApprovedData.status === 'fulfilled') {
+        const forms = (studentApprovedData.value?.forms || studentApprovedData.value || [])
+          .map(f => ({ ...f, applicantType: 'Student' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      if (studentRejectedData.status === 'fulfilled') {
+        const forms = (studentRejectedData.value?.forms || studentRejectedData.value || [])
+          .map(f => ({ ...f, applicantType: 'Student' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      // Process faculty forms (already have applicantType from backend)
+      if (facultyHodData.status === 'fulfilled') {
+        const forms = (facultyHodData.value?.forms || facultyHodData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      if (facultyApprovedData.status === 'fulfilled') {
+        const forms = (facultyApprovedData.value?.forms || facultyApprovedData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      if (facultyRejectedData.status === 'fulfilled') {
+        const forms = (facultyRejectedData.value?.forms || facultyRejectedData.value || [])
+          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
+        allForms = [...allForms, ...forms]
+      }
+
+      // Map backend data to HOD dashboard format
+      const mappedRequests = allForms.map(mapFormToRequest)
+
+
+      setAllRequests(mappedRequests)
+    } catch (error) {
+      console.error('Error fetching HOD requests:', error)
+      toast.error(error?.error || 'Failed to fetch requests')
+      setAllRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }, [mapFormToRequest])
+
+  // Fetch requests on component mount
+  useEffect(() => {
+    fetchRequests()
+  }, [fetchRequests])
+
   // Update userProfile when user data from AuthContext changes
   useEffect(() => {
     if (user) {
+
+
+      // Build email: prefer stored email, otherwise construct from username
+      let userEmail = user.email
+      if (!userEmail && user.username) {
+        // If username looks like an email, use it; otherwise append domain
+        userEmail = user.username.includes('@')
+          ? user.username
+          : `${user.username.toLowerCase()}@apsit.edu.in`
+      }
+
       setUserProfile({
-        fullName: user.fullName || user.name || 'Dr. Jagan Kumar',
-        department: user.department || 'Information Technology',
-        designation: user.designation || user.role || 'Head of Department',
-        role: user.role || 'HOD',
-        email: user.email || 'jagan.kumar@college.edu',
-        phone: user.phone || '+91-9876543210',
-        joinDate: user.joinDate || 'August 15, 2018',
-        employeeId: user.employeeId || user.id || 'IT-HOD-001'
+        fullName: user.fullName || user.name,
+        department: resolveDepartment(user.department),
+        designation: user.designation || user.role,
+        role: user.role,
+        email: userEmail,
+        phone: user.phone,
+        joinDate: user.joinDate,
+        employeeId: user.employeeId || user.id
       })
     }
   }, [user])
+
+  // Keep HOD internal tab state aligned with direct URL navigation.
+  // This is important when returning from shared edit/view pages.
+  useEffect(() => {
+    const path = location.pathname.toLowerCase()
+    if (!path.startsWith('/dashboard/hod')) return
+
+    if (path.includes('/request-status')) {
+      setActiveTab('request-status')
+      return
+    }
+
+    if (path.includes('/profile')) {
+      setActiveTab('profile')
+      return
+    }
+
+    if (path.endsWith('/dashboard/hod') || path.endsWith('/dashboard/hod/')) {
+      setActiveTab('home')
+    }
+  }, [location.pathname])
 
   // Function to render content based on active tab
   const renderContent = () => {
@@ -129,8 +250,6 @@ const HODLayout = ({ children }) => {
         return <HomeDashboard />
       case 'reports':
         return <ReportsAndAnalytics />
-      case 'roster':
-        return <DepartmentRoster />
       case 'apply':
         return <ApplyForReimbursement />
       case 'request-status':
@@ -139,6 +258,8 @@ const HODLayout = ({ children }) => {
         return <AllDepartmentOverview />
       case 'profile':
         return <ProfileSettings />
+      case 'change-password':
+        return <ChangePassword />
       default:
         return <HomeDashboard />
     }
@@ -151,18 +272,20 @@ const HODLayout = ({ children }) => {
     setActiveTab,
     isCollapsed,
     setIsCollapsed,
-    
+
     // Data State
     userProfile,
     setUserProfile,
     allRequests,
     setAllRequests,
+    loading,
     departmentMembers,
     setDepartmentMembers,
-    
+    fetchRequests,
+
     // Computed values
     reimbursementOptions: initialHodData.reimbursementOptions,
-    
+
     // UI State
     notifications,
     setNotifications,
@@ -172,36 +295,168 @@ const HODLayout = ({ children }) => {
     setStatusFilter,
     typeFilter,
     setTypeFilter,
-    
-  // Helper methods
-  updateRequestStatus: useCallback((requestId, newStatus) => {
-    setAllRequests(prev => 
-      prev.map(req => 
-        req.id === requestId 
-          ? { ...req, status: newStatus, lastUpdated: new Date().toISOString().split('T')[0] }
-          : req
-      )
-    )
-    
-    // Add notification for status change
-    const request = allRequests.find(req => req.id === requestId)
-    if (request) {
-      const newNotification = {
-        id: Date.now(),
-        type: 'status_change',
-        title: `Request ${newStatus}`,
-        message: `${request.applicantName}'s request has been ${newStatus.toLowerCase()}`,
-        time: 'Just now',
-        unread: true,
-        timestamp: new Date().toISOString()
+
+    // Helper methods
+    updateRequestStatus: useCallback(async (requestId, newStatus, remarks = '') => {
+      try {
+        // Try to find request by multiple ID fields
+        const request = allRequests.find(req =>
+          req.id === requestId ||
+          req._id === requestId ||
+          req.applicationId === requestId ||
+          String(req.id) === String(requestId) ||
+          String(req._id) === String(requestId) ||
+          String(req.applicationId) === String(requestId)
+        )
+
+        if (!request) {
+          console.error('Request not found:', requestId)
+          console.error('Available requests:', allRequests.map(r => ({
+            id: r.id,
+            _id: r._id,
+            applicationId: r.applicationId,
+            applicantName: r.applicantName,
+            status: r.status
+          })))
+          toast.error(`Request ${requestId} not found. Please refresh the page.`)
+          return false
+        }
+
+        // Validate request status - Backend requires exactly "Under HOD" for updates
+        const currentStatus = String(request.status || '').trim()
+
+        // CRITICAL: Backend validation requires exactly "Under HOD" status
+        // Student forms backend (line 385 in StudentFormRoutes.js) requires exactly "Under HOD"
+        // Faculty forms backend (line 252 in formRoutes.js) doesn't check status, but we validate for consistency
+        if (currentStatus !== 'Under HOD') {
+          const statusMap = {
+            'Pending': 'Request is still pending coordinator approval. Coordinator must approve it first to change status to "Under HOD".',
+            'Under Coordinator': 'Request is under coordinator review. Coordinator must approve it first.',
+            'Under Principal': 'Request has already been sent to Principal and cannot be modified.',
+            'Approved': 'Request has already been approved and cannot be modified.',
+            'Rejected': 'Request has already been rejected and cannot be modified.'
+          }
+
+          const errorMsg = statusMap[currentStatus] || `Cannot update request. Current status is "${currentStatus}". Only requests with status "Under HOD" can be approved/rejected by HOD.`
+          toast.error(errorMsg)
+          console.error('Invalid status for HOD update:', {
+            currentStatus,
+            requestId,
+            formId: request._id || request.applicationId,
+            applicantType: request.applicantType,
+            applicantName: request.applicantName,
+            request: {
+              id: request.id,
+              _id: request._id,
+              applicationId: request.applicationId,
+              status: request.status
+            },
+            expectedStatus: 'Under HOD',
+            allRequestStatuses: allRequests.map(r => ({ id: r.id, status: r.status }))
+          })
+          return false
+        }
+
+        // Get the correct form ID - backend expects MongoDB _id for student forms
+        // For faculty forms, it can use either _id or applicationId
+        let formId = null
+
+        if (request.applicantType === 'Student') {
+          // Student forms: backend uses MongoDB _id (line 336 in StudentFormRoutes.js)
+          formId = request._id
+          if (!formId) {
+            // Fallback: try to extract from id if it's a MongoDB ObjectId format
+            const idStr = String(request.id || request.applicationId || '')
+            // MongoDB ObjectId is 24 hex characters
+            if (/^[0-9a-fA-F]{24}$/.test(idStr)) {
+              formId = idStr
+            } else if (idStr.startsWith('form-')) {
+              formId = idStr.replace('form-', '')
+            }
+          }
+        } else {
+          // Faculty forms: backend tries applicationId first, then _id (line 252 in formRoutes.js)
+          formId = request.applicationId || request._id || request.id
+        }
+
+        // If formId is still a string like "form-123", extract the actual ID
+        if (formId && String(formId).startsWith('form-')) {
+          formId = String(formId).replace('form-', '')
+        }
+
+        if (!formId) {
+          console.error('No valid form ID found for request:', {
+            request,
+            _id: request._id,
+            applicationId: request.applicationId,
+            id: request.id,
+            applicantType: request.applicantType
+          })
+          toast.error('Invalid request ID. Please refresh the page.')
+          return false
+        }
+
+        // Ensure formId is a string
+        formId = String(formId)
+
+
+        // Update status via API - choose correct API based on applicantType
+        const updateData = { status: newStatus }
+        if (remarks) {
+          updateData.remarks = remarks
+          // Add rejectionRemarks for workflow tracking when rejecting
+          if (newStatus === 'Rejected') {
+            updateData.rejectionRemarks = remarks
+          }
+        }
+
+        // Use correct API based on request type
+        let response
+        try {
+          if (request.applicantType === 'Student') {
+            response = await studentFormsAPI.updateById(formId, updateData)
+          } else {
+            response = await facultyFormsAPI.updateById(formId, updateData)
+          }
+        } catch (apiError) {
+          console.error('API call failed:', apiError)
+          const apiErrorMessage = apiError?.response?.data?.error || apiError?.error || apiError?.message || 'API call failed'
+          throw new Error(apiErrorMessage)
+        }
+
+        // Refresh requests from server
+        await fetchRequests()
+
+        // Add notification for status change
+        const newNotification = {
+          id: Date.now(),
+          type: 'status_change',
+          title: `Request ${newStatus}`,
+          message: `${request.applicantName}'s request has been ${newStatus.toLowerCase()}`,
+          time: 'Just now',
+          unread: true,
+          timestamp: new Date().toISOString()
+        }
+        setNotifications(prev => [newNotification, ...prev])
+
+        return true
+      } catch (error) {
+        console.error('Error updating request status:', error)
+        console.error('Error details:', {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status,
+          statusText: error?.response?.statusText
+        })
+        const errorMessage = error?.response?.data?.error || error?.error || error?.message || 'Failed to update request status'
+        toast.error(errorMessage)
+        return false
       }
-      setNotifications(prev => [newNotification, ...prev])
-    }
-  }, [allRequests]),
-    
+    }, [allRequests, fetchRequests]),
+
     addNewRequest: useCallback((newRequest) => {
       setAllRequests(prev => [newRequest, ...prev])
-      
+
       // Add notification for new request
       const newNotification = {
         id: Date.now(),
@@ -214,28 +469,28 @@ const HODLayout = ({ children }) => {
       }
       setNotifications(prev => [newNotification, ...prev])
     }, []),
-    
+
     deleteRequest: useCallback((requestId) => {
       setAllRequests(prev => prev.filter(req => req.id !== requestId))
     }, []),
-    
+
     // Notification management
     markNotificationAsRead: useCallback((notificationId) => {
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === notificationId
             ? { ...notification, unread: false }
             : notification
         )
       )
     }, []),
-    
+
     markAllNotificationsAsRead: useCallback(() => {
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(notification => ({ ...notification, unread: false }))
       )
     }, []),
-    
+
     addNotification: useCallback((notification) => {
       const newNotification = {
         id: Date.now(),
@@ -244,26 +499,48 @@ const HODLayout = ({ children }) => {
       }
       setNotifications(prev => [newNotification, ...prev])
     }, []),
-    
+
     // Filtering and search
     getFilteredRequests: useCallback(() => {
-      return allRequests.filter(request => {
-        const matchesSearch = 
+      const filtered = allRequests.filter(request => {
+        const matchesSearch =
           request.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           request.category.toLowerCase().includes(searchQuery.toLowerCase())
-        
-        const matchesStatus = statusFilter === 'All' || request.status === statusFilter
+
+        // Handle status filtering - "Under HOD" should match "Pending" filter for HOD dashboard
+        let matchesStatus = false
+        if (statusFilter === 'All') {
+          matchesStatus = true
+        } else if (statusFilter === 'Pending') {
+          // For HOD, "Under HOD" status means pending
+          matchesStatus = request.status === 'Pending' || request.status === 'Under HOD'
+        } else if (statusFilter === 'Under HOD') {
+          // Explicitly handle "Under HOD" filter
+          matchesStatus = request.status === 'Under HOD'
+        } else if (statusFilter === 'Under Accounts') {
+          // "Under Accounts" = approved by principal, now with accounts department
+          matchesStatus = request.status === 'Approved'
+        } else if (statusFilter === 'Approved') {
+          // "Approved" includes fully approved and reimbursed
+          matchesStatus = request.status === 'Approved' || request.status === 'Reimbursed'
+        } else {
+          matchesStatus = request.status === statusFilter
+        }
+
         const matchesType = typeFilter === 'All' || request.applicantType === typeFilter
-        
+
         return matchesSearch && matchesStatus && matchesType
       })
+
+
+      return filtered
     }, [allRequests, searchQuery, statusFilter, typeFilter])
   }
 
   return (
     <HODContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10">
         {/* Sidebar - Fixed positioned, independent of main content scroll */}
         <motion.div
           initial={false}
@@ -281,21 +558,21 @@ const HODLayout = ({ children }) => {
         </motion.div>
 
         {/* Main Content Area - Has left margin to account for fixed sidebar */}
-        <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'ml-16' : 'ml-64'
-        }`}>
+        <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'
+          }`}>
           {/* Header */}
-          <Header 
+          <Header
             userProfile={userProfile}
             currentPage={
               activeTab === 'home' ? 'HOD Dashboard' :
-              activeTab === 'reports' ? 'Reports & Analytics' :
-              activeTab === 'roster' ? 'Department Roster' :
-              activeTab === 'apply' ? 'Apply for Reimbursement' :
-              activeTab === 'request-status' ? 'Request Status' :
-              activeTab === 'all-departments' ? 'ALL Department Overview' :
-              activeTab === 'profile' ? 'Profile Settings' :
-              'HOD Dashboard'
+                activeTab === 'reports' ? 'Reports & Analytics' :
+                  activeTab === 'roster' ? 'Department Roster' :
+                    activeTab === 'apply' ? 'Apply for Reimbursement' :
+                      activeTab === 'request-status' ? 'Request Status' :
+                        activeTab === 'all-departments' ? 'ALL Department Overview' :
+                          activeTab === 'profile' ? 'Profile Settings' :
+                            activeTab === 'change-password' ? 'Change Password' :
+                              'HOD Dashboard'
             }
           />
 
@@ -308,8 +585,8 @@ const HODLayout = ({ children }) => {
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                  transition={{ 
-                    duration: 0.4, 
+                  transition={{
+                    duration: 0.4,
                     ease: [0.4, 0, 0.2, 1],
                     scale: { duration: 0.3 }
                   }}

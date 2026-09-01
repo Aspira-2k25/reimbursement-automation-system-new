@@ -2,55 +2,8 @@ import React from "react"
 import "../Dashboard.css"
 import { Clock, CheckCircle, XCircle, FileText } from "lucide-react"
 import RequestsTable from "./components/RequestsTable.jsx"
-
-// Dummy data for faculty requests
-const facultyRequests = [
-  {
-    id: "FAC001",
-    category: "Research Grant",
-    status: "Approved",
-    amount: 50000,
-    submittedDate: "2024-01-10",
-    updatedDate: "2024-01-15",
-    description: "Machine Learning research project funding"
-  },
-  {
-    id: "FAC002",
-    category: "FDP Program",
-    status: "Under Review",
-    amount: 15000,
-    submittedDate: "2024-01-12",
-    updatedDate: "2024-01-18",
-    description: "Advanced Data Structures workshop"
-  },
-  {
-    id: "FAC003",
-    category: "Conference",
-    status: "Pending",
-    amount: 25000,
-    submittedDate: "2024-01-08",
-    updatedDate: "2024-01-08",
-    description: "IEEE Conference registration and travel"
-  },
-  {
-    id: "FAC004",
-    category: "Workshop",
-    status: "Rejected",
-    amount: 8000,
-    submittedDate: "2024-01-05",
-    updatedDate: "2024-01-12",
-    description: "Cloud Computing workshop participation"
-  },
-  {
-    id: "FAC005",
-    category: "Travel Alliance",
-    status: "Approved",
-    amount: 12000,
-    submittedDate: "2024-01-03",
-    updatedDate: "2024-01-10",
-    description: "Academic conference travel expenses"
-  }
-]
+import { useNotificationContext } from "./NotificationContext"
+import { facultyFormsAPI } from "../../../services/api"
 
 /**
  * SummaryCard Component
@@ -93,13 +46,103 @@ function SummaryCard({ title, value, sub }) {
 export default function RequestStatus() {
   // State for search functionality
   const [search, setSearch] = React.useState("")
-  
-  // Calculate summary statistics from dummy data
+  const [requests, setRequests] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState(null)
+  const [previousRequests, setPreviousRequests] = React.useState([])
+  const { addNotification } = useNotificationContext()
+
+  // Fetch data on mount
+  React.useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true)
+        const data = await facultyFormsAPI.listMine()
+
+        // Map backend data to frontend model
+        // Handle both simple array response and paginated object response
+        const formsArray = Array.isArray(data) ? data : (data?.forms || [])
+        const mapped = formsArray.map(f => ({
+          id: f.applicationId || f._id,
+          _id: f._id,
+          category: f.reimbursementType || "NPTEL",
+          status: f.status || "Pending",
+          amount: f.amount,
+          submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          updatedDate: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          description: f.remarks || f.name || "NPTEL Reimbursement",
+          courseName: f.courseName || 'N/A',
+          marks: f.marks ?? null,
+          documents: f.documents || [],
+        }))
+
+        // Check for status changes and generate notifications
+        if (previousRequests.length > 0) {
+          mapped.forEach(newRequest => {
+            const oldRequest = previousRequests.find(r => r.id === newRequest.id)
+            if (oldRequest && oldRequest.status !== newRequest.status) {
+              const statusMessages = {
+                'Approved': 'Your request has been approved and sent to Accounts for reimbursement',
+                'Rejected': 'Your request has been rejected. Please check the remarks for details',
+                'Reimbursed': 'Your reimbursement has been successfully reimbursed! Funds have been transferred to your account',
+                'Under HOD': 'Your request has been forwarded to HOD for review',
+                'Under Principal': 'Your request has been forwarded to Principal for approval'
+              }
+              addNotification({
+                type: 'status_change',
+                title: 'Request Status Updated',
+                message: `${statusMessages[newRequest.status] || `Your request status changed to ${newRequest.status}`} - ${newRequest.category}`,
+                time: 'Just now'
+              })
+            }
+          })
+        }
+
+        setPreviousRequests(mapped)
+        setRequests(mapped)
+        setError(null)
+      } catch {
+        setError("Failed to load your requests. Please try again.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRequests()
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchRequests, 30000)
+    return () => clearInterval(interval)
+  }, [addNotification])
+
+  // Calculate summary statistics from dynamic data
   const summary = {
-    total: facultyRequests.length,
-    approved: facultyRequests.filter(r => r.status === "Approved").length,
-    pending: facultyRequests.filter(r => ["Pending", "Under Review"].includes(r.status)).length,
-    rejected: facultyRequests.filter(r => r.status === "Rejected").length
+    total: requests.length,
+    approved: requests.filter(r => r.status === "Approved").length,
+    pending: requests.filter(r => ["Pending", "Under Review", "submitted"].includes(r.status.toLowerCase())).length,
+    rejected: requests.filter(r => r.status === "Rejected").length
+  }
+
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="w-8 h-8 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4"></div>
+          <p className="text-gray-500">Loading your requests...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content flex items-center justify-center">
+        <div className="text-center p-6 bg-red-50 rounded-lg border border-red-200">
+          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-red-800 mb-1">Error Loading Data</h3>
+          <p className="text-red-600">{error}</p>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -128,7 +171,7 @@ export default function RequestStatus() {
           <h3 className="section-title text-lg sm:text-xl">Your Faculty Requests</h3>
           <p className="section-subtitle text-sm sm:text-base">Complete list of your reimbursement applications</p>
         </div>
-        <RequestsTable search={search} requests={facultyRequests} />
+        <RequestsTable search={search} requests={requests} />
       </div>
     </main>
   )

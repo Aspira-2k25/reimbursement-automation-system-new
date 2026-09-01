@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext.jsx'
+import { resolveDepartment } from '../../../utils/departmentResolver'
 
 // Create the Profile Context
 const ProfileContext = createContext()
 
-// Default profile data for Faculty
+// Default profile data for Faculty (overwritten by actual user data from auth)
 const defaultProfile = {
   name: "Faculty",
-  department: "Computer Science",
-  designation: "Associate Professor",
+  department: "",
+  designation: "",
   role: "Faculty"
 }
 
@@ -25,8 +26,8 @@ export function ProfileProvider({ children }) {
     if (user) {
       setProfile({
         name: user.name || user.username || "Faculty",
-        department: user.department || "Computer Science",
-        designation: user.designation || "Associate Professor",
+        department: resolveDepartment(user.department),
+        designation: user.designation || "",
         role: user.role || "Faculty",
         email: user.email || null
       })
@@ -71,7 +72,18 @@ export function ProfileProvider({ children }) {
 export function useProfile() {
   const context = useContext(ProfileContext)
   if (!context) {
-    throw new Error('useProfile must be used within a ProfileProvider')
+    console.warn('useProfile used outside a ProfileProvider - returning safe default')
+    return {
+      profileData: {
+        name: '',
+        facultyId: '',
+        designation: '',
+        department: '',
+        email: ''
+      },
+      updateProfileData: () => { },
+      isProfileComplete: false
+    }
   }
   return context
 }

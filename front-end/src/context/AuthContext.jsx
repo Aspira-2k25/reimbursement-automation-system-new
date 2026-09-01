@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { fetchCsrfToken, getCsrfToken, API_BASE_URL } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -12,93 +13,172 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const normalizeUser = useCallback((rawUser) => {
+    if (!rawUser) return null;
+    return {
+      ...rawUser,
+      id: rawUser.id || rawUser.userId || rawUser.email,
+      department: rawUser.department || '',
+    };
+  }, []);
+
+  const refreshUserProfile = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const normalized = normalizeUser(data?.user);
+      if (normalized) {
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
+      }
+      return normalized;
+    } catch {
+      return null;
+    }
+  }, [normalizeUser]);
 
   // Check if user is logged in on app start
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const initAuth = async () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(normalizeUser(JSON.parse(storedUser)));
+        } catch {
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+        // Run CSRF refresh and profile sync in parallel — both are needed but independent
+        await Promise.all([fetchCsrfToken(), refreshUserProfile()]);
+      } else {
+        // No stored user — just fetch CSRF token for login form
+        await fetchCsrfToken();
+      }
+      setLoading(false);
+    };
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-
-    setLoading(false);
-  }, []);
+    initAuth();
+  }, [normalizeUser, refreshUserProfile]);
 
   // Login function
-  const login = async (username, password) => {
+  const login = async (username, email, password) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        credentials: 'include', // Important: include cookies
+        body: JSON.stringify({ username, email, password }),
       });
+
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(errorData.error || `Login failed: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
+      // Store only user data (token is in httpOnly cookie)
+      const normalizedUser = normalizeUser(data.user);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      setUser(normalizedUser);
 
-      // Store token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
-      setToken(data.token);
-      setUser(data.user);
+      // Refresh CSRF token and profile in parallel — do NOT await them sequentially
+      // The login response already has full user data, so refreshUserProfile is only
+      // needed to sync any server-side updates (run in background, non-blocking).
+      Promise.all([fetchCsrfToken(), refreshUserProfile()]).catch(() => {});
 
       return data;
     } catch (error) {
+      // Enhanced error handling
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        throw new Error('Cannot connect to server. Please check your internet connection and try again.');
+      }
       throw error;
     }
   };
 
   // Logout function
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = useCallback(async () => {
+    // Clear local session first so UI exits authenticated routes immediately.
     localStorage.removeItem('user');
-    setToken(null);
     setUser(null);
-  };
 
-  // Google login function (client-side only placeholder)
-  // In production, send the credential to your backend to verify with Google
-  // and return an app-specific JWT and user object with role
-  const loginWithGoogle = async (credential) => {
-    const response = await fetch('http://localhost:5000/api/auth/google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.error || 'Google login failed');
+    try {
+      // CSRF: ensure token is available for cookie-authenticated logout
+      if (!getCsrfToken()) {
+        await fetchCsrfToken();
+      }
+      const csrfToken = getCsrfToken();
+
+      // Call backend logout to clear httpOnly cookie
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+      });
+    } catch {
+      // Silently handle logout errors - user is logged out locally anyway
     }
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setToken(data.token);
-    setUser(data.user);
-    return data;
+  }, []);
+
+  // Google login function
+  const loginWithGoogle = async (credential) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Important: include cookies
+        body: JSON.stringify({ credential })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(errorData?.error || `Google login failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // Store only user data (token is in httpOnly cookie)
+      const normalizedUser = normalizeUser(data.user);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      setUser(normalizedUser);
+      await refreshUserProfile();
+      return data;
+    } catch (error) {
+      // Enhanced error handling
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        throw new Error('Cannot connect to server. Please check your internet connection and try again.');
+      }
+      throw error;
+    }
   };
 
   // Check if user is authenticated
-  const isAuthenticated = () => {
-    return !!token && !!user;
-  };
+  const isAuthenticated = useCallback(() => {
+    return !!user;
+  }, [user]);
 
   const value = {
     user,
-    token,
     loading,
     login,
     loginWithGoogle,
     logout,
     isAuthenticated,
+    refreshUserProfile,
   };
 
   return (

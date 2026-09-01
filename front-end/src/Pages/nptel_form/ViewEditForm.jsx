@@ -1,0 +1,210 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { studentFormsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+
+const ViewEditForm = ({ mode = 'view' }) => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchForm = async () => {
+      try {
+        // SECURITY: Use centralized API service with httpOnly cookies
+        const data = await studentFormsAPI.getById(id);
+        setFormData(data.form);
+      } catch (error) {
+        toast.error(error.error || 'Failed to fetch form');
+        if (error.status === 401) {
+          navigate('/login');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchForm();
+  }, [id, navigate]);
+
+  const handleBack = () => {
+    navigate('/dashboard/requests');
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+
+    if (!formData.studentId.trim()) {
+      newErrors.studentId = 'Student ID is required';
+    }
+
+    // Add other validations as needed...
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    if (mode !== 'edit' || !validateForm()) return;
+
+    // Disable button immediately
+    setIsSubmitting(true);
+
+    try {
+      // SECURITY: Use centralized API service with httpOnly cookies
+      const payload = {
+        ...formData,
+      };
+      await studentFormsAPI.updateById(id, payload);
+      toast.success('Changes saved successfully!');
+      navigate('/dashboard/requests');
+    } catch (error) {
+      toast.error(error.error || 'Failed to update form');
+      // Re-enable button on error
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!formData) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="text-red-500">Form not found</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <div className="mb-4">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Request Status
+          </button>
+        </div>
+
+        <div className="border-b border-gray-200 pb-4 mb-6">
+          <h1 className="text-2xl font-bold text-center text-gray-800">
+            {mode === 'edit' ? 'Edit Student NPTEL Reimbursement' : 'View Student NPTEL Reimbursement'}
+          </h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                disabled={mode !== 'edit'}
+                className={`w-full px-3 py-2 border rounded-md ${mode === 'edit'
+                    ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                    : 'bg-gray-50 border-gray-200'
+                  }`}
+              />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Student ID</label>
+              <input
+                type="text"
+                name="studentId"
+                value={formData.studentId}
+                onChange={handleChange}
+                disabled={mode !== 'edit'}
+                className={`w-full px-3 py-2 border rounded-md ${mode === 'edit'
+                    ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                    : 'bg-gray-50 border-gray-200'
+                  }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <input
+                type="text"
+                name="department"
+                value={user?.department || formData.department || ''}
+                readOnly
+                disabled
+                className="w-full px-3 py-2 border rounded-md bg-gray-50 border-gray-200"
+              />
+            </div>
+
+            {/* Add other form fields here... */}
+          </div>
+
+          {mode === 'edit' && (
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-colors
+                  ${isSubmitting 
+                    ? 'bg-blue-400 cursor-not-allowed text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ViewEditForm;

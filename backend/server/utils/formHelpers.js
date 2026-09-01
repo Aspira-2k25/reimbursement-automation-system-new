@@ -1,0 +1,186 @@
+/**
+ * Shared form helper utilities
+ * Extracted from formRoutes.js and StudentFormRoutes.js to eliminate duplication.
+ */
+
+const mongoose = require('mongoose');
+const { DEPARTMENT_LIST } = require('../constants/statusEnums');
+
+// Department aliases for flexible matching between short codes and full names
+const DEPARTMENT_ALIASES = {
+    'IT': 'Information Technology',
+    'INFOTECH': 'Information Technology',
+    'CE': 'Computer Engineering',
+    'COMPS': 'Computer Engineering',
+    'COMP': 'Computer Engineering',
+    'AIML': 'CSE AI and ML',
+    'AI ML': 'CSE AI and ML',
+    'DS': 'CSE Data Science',
+    'DATA SCIENCE': 'CSE Data Science',
+    'CIVIL': 'Civil Engineering',
+    'MECH': 'Mechanical Engineering',
+};
+
+/**
+ * Sanitize a string by removing MongoDB operators and dangerous characters.
+ * @param {string} str
+ * @returns {string}
+ */
+const sanitizeString = (str) => {
+    if (typeof str !== 'string') return '';
+    return str.replace(/[${}<>]/g, '').trim();
+};
+
+/**
+ * Sanitize an application ID to only allow alphanumeric, hyphens, and underscores.
+ * @param {string} id
+ * @returns {string}
+ */
+const sanitizeApplicationId = (id) => {
+    if (typeof id !== 'string') return '';
+    return id.replace(/[^a-zA-Z0-9\-_]/g, '');
+};
+
+/**
+ * Validate MongoDB ObjectId format.
+ * @param {string} id
+ * @returns {boolean}
+ */
+const isValidObjectId = (id) => {
+    return mongoose.Types.ObjectId.isValid(id);
+};
+
+/**
+ * Get all possible department name variants for a given department value.
+ * Maps short codes to full names and vice versa.
+ * @param {string} department
+ * @returns {string[]}
+ */
+const getDepartmentVariants = (department) => {
+    if (!department) return [];
+    const variants = [department];
+    const upperDept = department.toUpperCase().trim();
+
+    // If department is a short alias, add its full name
+    if (DEPARTMENT_ALIASES[upperDept]) {
+        variants.push(DEPARTMENT_ALIASES[upperDept]);
+    }
+
+    // If department is a full name, add the short alias
+    for (const [alias, fullName] of Object.entries(DEPARTMENT_ALIASES)) {
+        if (fullName.toLowerCase() === department.toLowerCase().trim()) {
+            variants.push(alias);
+        }
+    }
+
+    return [...new Set(variants)]; // deduplicate
+};
+
+/**
+ * Build a strict department filter for MongoDB queries based on user role and their department.
+ * Principals, Accounts, and Admins can see all departments.
+ * HODs and Coordinators can only see applications matching their department precisely.
+ * 
+ * @param {string} userRole 
+ * @param {string} userDepartment 
+ * @returns {object} MongoDB query object for department filtering
+ */
+const buildDepartmentFilter = (userRole, userDepartment) => {
+    const role = (userRole || '').toLowerCase();
+
+    // Principals, Accounts, and Admins can see all requests
+    if (['principal', 'accounts', 'admin'].includes(role)) {
+        return {};
+    }
+
+    // Coordinators and HODs are strictly filtered to their own department
+    if (['coordinator', 'hod'].includes(role)) {
+        if (!userDepartment) {
+            // Edge case: if an HOD/Coordinator has no department assigned, they technically
+            // shouldn't see anything, but we'll return an unsatisfiable query to be safe.
+            return { department: "__NONE__" };
+        }
+
+        const deptVariants = getDepartmentVariants(userDepartment);
+        const deptPattern = deptVariants
+            .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .join('|');
+        const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+
+        return {
+            $or: [
+                { department: { $in: deptVariants } },
+                { department: { $regex: deptRegex } }
+            ]
+        };
+    }
+
+    // Fallback for students and faculty is usually handled via user owner IDs elsewhere.
+    return {};
+};
+
+/**
+ * Get the standardized full name for a department alias or variant.
+ * @param {string} dept
+ * @returns {string}
+ */
+const getNormalizedDepartment = (dept) => {
+    if (!dept) return '';
+    const trimmed = dept.trim();
+    const upper = trimmed.toUpperCase();
+    
+    // Check if it's a known short code alias
+    if (DEPARTMENT_ALIASES[upper]) {
+        return DEPARTMENT_ALIASES[upper];
+    }
+    
+    // Check if it matches a full name with different casing
+    for (const fullName of Object.values(DEPARTMENT_ALIASES)) {
+        if (fullName.toLowerCase() === trimmed.toLowerCase()) {
+            return fullName;
+        }
+    }
+
+    for (const fullName of DEPARTMENT_LIST) {
+        if (fullName.toLowerCase() === trimmed.toLowerCase()) {
+            return fullName;
+        }
+    }
+    
+    return trimmed;
+};
+
+/**
+ * Check whether the user can access a form based on role and department.
+ * Coordinators and HODs are restricted to their own normalized department variants.
+ * @param {string} userRole
+ * @param {string} userDepartment
+ * @param {string} formDepartment
+ * @returns {boolean}
+ */
+const hasDepartmentAccess = (userRole, userDepartment, formDepartment) => {
+    const role = (userRole || '').toLowerCase();
+    if (!['coordinator', 'hod'].includes(role)) {
+        return true;
+    }
+    if (!userDepartment || !formDepartment) {
+        return false;
+    }
+
+    const allowed = new Set(
+        getDepartmentVariants(getNormalizedDepartment(userDepartment)).map((d) => d.toLowerCase())
+    );
+
+    return allowed.has(getNormalizedDepartment(formDepartment).toLowerCase());
+};
+
+module.exports = {
+    DEPARTMENT_ALIASES,
+    sanitizeString,
+    sanitizeApplicationId,
+    isValidObjectId,
+    getDepartmentVariants,
+    buildDepartmentFilter,
+    getNormalizedDepartment,
+    hasDepartmentAccess,
+};

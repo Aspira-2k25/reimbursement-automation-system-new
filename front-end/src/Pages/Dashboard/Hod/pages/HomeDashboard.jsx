@@ -1,27 +1,31 @@
 import React, { useMemo, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Users, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Users,
+  Clock,
+  CheckCircle,
+  XCircle,
   FileText,
   TrendingUp,
   Building,
   Loader2,
-  Search
+  Search,
+  X,
+  Bell
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import RequestTable from '../components/RequestTable'
 import { useHODContext } from './HODLayout'
-import { calculateStats, getRequestsByStatus } from '../data/mockData'
+import { calculateStats } from '../data/mockData'
+import { useAnnouncement } from '../../../../hooks/useAnnouncement'
+import { announcementAPI } from '../../../../services/api'
 
 const HomeDashboard = () => {
-  const { 
-    userProfile, 
-    allRequests, 
-    updateRequestStatus, 
+  const {
+    userProfile,
+    allRequests,
+    updateRequestStatus,
     getFilteredRequests,
     searchQuery,
     setSearchQuery,
@@ -31,24 +35,95 @@ const HomeDashboard = () => {
     setTypeFilter
   } = useHODContext()
   const [rejectModal, setRejectModal] = useState({ show: false, request: null })
+  const [viewModal, setViewModal] = useState({ show: false, request: null })
   const [rejectReason, setRejectReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [viewLoading, setViewLoading] = useState(false)
+  const [requestDetails, setRequestDetails] = useState(null)
+
+  // Announcement manager state
+  const { announcement, refresh: refreshAnnouncement } = useAnnouncement()
+  const [announcementMsg, setAnnouncementMsg] = useState('')
+  const [announcementActive, setAnnouncementActive] = useState(true)
+  const [announcementTargetRoles, setAnnouncementTargetRoles] = useState([])
+  const [announcementSaving, setAnnouncementSaving] = useState(false)
+
+  const ROLE_OPTIONS = [
+    { value: 'Student', label: 'Students' },
+    { value: 'Faculty', label: 'Faculty' },
+    { value: 'Coordinator', label: 'Coordinators' }
+  ]
+
+  // Sync editor with fetched announcement
+  React.useEffect(() => {
+    if (announcement) {
+      setAnnouncementMsg(announcement.message || '')
+      setAnnouncementActive(announcement.isActive ?? true)
+      setAnnouncementTargetRoles(announcement.targetRoles || [])
+    }
+  }, [announcement])
 
   // Handler functions - declared first to avoid hoisting issues
-  const handleViewRequest = useCallback((request) => {
-    toast.info(`Viewing request ${request.id} for ${request.applicantName}`)
-    // In a real app, this would navigate to a detailed view or open a modal
+  const handleViewRequest = useCallback(async (request) => {
+    setViewModal({ show: true, request })
+    setViewLoading(true)
+
+    try {
+      // Fetch full request details from API - use correct API based on applicant type
+      const { studentFormsAPI, facultyFormsAPI } = await import('../../../../services/api')
+      const formId = request._id || request.applicationId || request.id
+
+      let data
+      // Use Faculty API for Faculty/Coordinator, Student API for Students
+      if (request.applicantType === 'Student') {
+        data = await studentFormsAPI.getById(formId)
+      } else {
+        data = await facultyFormsAPI.getById(formId)
+      }
+
+      const formData = data?.form || data
+      setRequestDetails(formData)
+    } catch (error) {
+      console.error('Error fetching request details:', error)
+      // Don't show error toast anymore since we'll use fallback data
+      // Instead, check if request already has documents
+      if (request.documents && request.documents.length > 0) {
+        setRequestDetails(request) // Use the request data which now includes documents
+      } else {
+        toast.error('Failed to load full request details')
+        setRequestDetails(request) // Fallback to basic request data
+      }
+    } finally {
+      setViewLoading(false)
+    }
+  }, [])
+
+  const closeViewModal = useCallback(() => {
+    setViewModal({ show: false, request: null })
+    setRequestDetails(null)
   }, [])
 
   const handleApproveRequest = useCallback(async (request) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      updateRequestStatus(request.id, 'Approved')
-      toast.success(`Request ${request.id} approved for ${request.applicantName}`)
+      // Use the most reliable ID - prioritize _id, then applicationId, then id
+      const requestId = request._id || request.applicationId || request.id
+
+      if (!requestId) {
+        toast.error('Invalid request: Missing ID')
+        setIsLoading(false)
+        return
+      }
+
+      const success = await updateRequestStatus(requestId, 'Under Principal')
+      if (success) {
+        toast.success(`Request ${request.id || requestId} approved and sent to Principal for ${request.applicantName}`)
+      } else {
+        // Error message already shown by updateRequestStatus
+      }
     } catch (error) {
-      toast.error('Failed to approve request. Please try again.')
+      console.error('Error in handleApproveRequest:', error)
+      toast.error(error?.message || 'Failed to approve request. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -72,7 +147,7 @@ const HomeDashboard = () => {
         setSearchQuery('')
         break
       case 'Approved Requests':
-        setStatusFilter('Approved')
+        setStatusFilter('Under Accounts')
         setTypeFilter('All')
         setSearchQuery('')
         break
@@ -84,29 +159,28 @@ const HomeDashboard = () => {
       default:
         break
     }
-    toast.info(`Filtered to show ${statType.toLowerCase()}`)
+    toast(`Filtered to show ${statType.toLowerCase()}`)
   }, [setStatusFilter, setTypeFilter, setSearchQuery])
 
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
     const stats = calculateStats(allRequests)
-    
+
     // Calculate dynamic trends based on actual data
     const processedRequests = stats.total - stats.pending
     const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-    const avgAmount = stats.approved > 0 ? Math.round(stats.approvedAmount / stats.approved) : 0
-    
+
     return [
       {
         title: "Total Requests",
         value: stats.total.toString(),
         subtitle: `${approvalRate}% approval rate`,
         icon: FileText,
-        color: 'blue',
+        color: 'teal',
         onClick: () => handleStatCardClick('Total Requests')
       },
       {
-        title: "Pending Requests", 
+        title: "Pending Requests",
         value: stats.pending.toString(),
         subtitle: "Awaiting approval",
         icon: Clock,
@@ -115,8 +189,8 @@ const HomeDashboard = () => {
       },
       {
         title: "Approved Requests",
-        value: stats.approved.toString(), 
-        subtitle: `₹${stats.approvedAmount.toLocaleString()} disbursed`,
+        value: stats.approved.toString(),
+        subtitle: `₹${stats.approvedAmount.toLocaleString()} reimbursed`,
         icon: CheckCircle,
         color: 'green',
         onClick: () => handleStatCardClick('Approved Requests')
@@ -124,7 +198,7 @@ const HomeDashboard = () => {
       {
         title: "Rejected Requests",
         value: stats.rejected.toString(),
-        subtitle: "Need revision", 
+        subtitle: "Need revision",
         icon: XCircle,
         color: 'red',
         onClick: () => handleStatCardClick('Rejected Requests')
@@ -144,17 +218,29 @@ const HomeDashboard = () => {
   }, [filteredRequests])
 
   const confirmReject = useCallback(async () => {
-    if (rejectReason.trim()) {
+    if (rejectReason.trim() && rejectModal.request) {
       setIsLoading(true)
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        updateRequestStatus(rejectModal.request.id, 'Rejected')
-        toast.error(`Request ${rejectModal.request.id} rejected: ${rejectReason}`)
-        setRejectModal({ show: false, request: null })
-        setRejectReason('')
+        // Use the most reliable ID - prioritize _id, then applicationId, then id
+        const requestId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
+
+        if (!requestId) {
+          toast.error('Invalid request: Missing ID')
+          setIsLoading(false)
+          return
+        }
+
+        const success = await updateRequestStatus(requestId, 'Rejected', rejectReason)
+        if (success) {
+          toast.error(`Request ${rejectModal.request.id || requestId} rejected: ${rejectReason}`)
+          setRejectModal({ show: false, request: null })
+          setRejectReason('')
+        } else {
+          // Error message already shown by updateRequestStatus
+        }
       } catch (error) {
-        toast.error('Failed to reject request. Please try again.')
+        console.error('Error in confirmReject:', error)
+        toast.error(error?.message || 'Failed to reject request. Please try again.')
       } finally {
         setIsLoading(false)
       }
@@ -166,11 +252,24 @@ const HomeDashboard = () => {
     setRejectReason('')
   }, [])
 
+  const saveAnnouncement = useCallback(async () => {
+    setAnnouncementSaving(true)
+    try {
+      await announcementAPI.update({ message: announcementMsg.trim(), isActive: announcementActive, targetRoles: announcementTargetRoles })
+      toast.success('Reminder updated successfully')
+      refreshAnnouncement(true) // bust cache so next render picks up new data
+    } catch (err) {
+      toast.error(err?.error || 'Failed to save reminder')
+    } finally {
+      setAnnouncementSaving(false)
+    }
+  }, [announcementMsg, announcementActive, announcementTargetRoles, refreshAnnouncement])
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <motion.div 
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-4 sm:p-6 text-white shadow-lg"
+      <motion.div
+        className="bg-gradient-to-r from-[#3B945E] to-[#57BA98] rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -178,12 +277,12 @@ const HomeDashboard = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold mb-2">
-              Welcome back, {userProfile?.fullName || 'Dr. Jagan Kumar'} 👋
+              Welcome back, {userProfile?.fullName || 'HOD'} 👋
             </h1>
-            <p className="text-blue-100 mb-4 text-sm sm:text-base">
-              Head of Department • {userProfile?.department || 'Civil Engineering'}
+            <p className="text-green-100 mb-4 text-sm sm:text-base">
+              Head of Department • {userProfile?.department || 'Department not set'}
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-blue-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
               <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
                 <span>Engineering College</span>
@@ -195,7 +294,7 @@ const HomeDashboard = () => {
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div 
+            <motion.div
               className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
@@ -221,47 +320,47 @@ const HomeDashboard = () => {
       </div>
 
       {/* Department Overview */}
-      <motion.div 
+      <motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Department Overview</h3>
-            <TrendingUp className="w-5 h-5 text-green-600" />
-          </div>
-          
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Department Overview</h3>
+          <TrendingUp className="w-5 h-5 text-green-600" />
+        </div>
+
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
             const stats = calculateStats(allRequests)
             const processedRequests = stats.total - stats.pending
             const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-            
+
             return [
-              { 
+              {
                 value: allRequests.filter(r => r.applicantType === 'Faculty').length,
                 label: 'Faculty Requests',
-                color: 'blue'
+                color: 'teal'
               },
-              { 
+              {
                 value: allRequests.filter(r => r.applicantType === 'Student').length,
                 label: 'Student Requests',
                 color: 'green'
               },
-              { 
+              {
                 value: `₹${stats.approvedAmount.toLocaleString()}`,
-                label: 'Total Disbursed',
+                label: 'Total Reimbursed',
                 color: 'purple'
               },
-              { 
+              {
                 value: `${approvalRate}%`,
                 label: 'Approval Rate',
                 color: 'orange'
               }
             ]
           })().map((item, index) => (
-            <motion.div 
+            <motion.div
               key={index}
               className={`text-center p-3 sm:p-4 bg-${item.color}-50 rounded-lg`}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -271,7 +370,7 @@ const HomeDashboard = () => {
             >
               <div className={`text-lg sm:text-2xl font-bold text-${item.color}-600`}>
                 {item.value}
-            </div>
+              </div>
               <div className="text-xs sm:text-sm text-gray-600">{item.label}</div>
             </motion.div>
           ))}
@@ -297,7 +396,7 @@ const HomeDashboard = () => {
                 placeholder="Search requests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full sm:w-64"
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm w-full sm:w-64"
               />
             </div>
 
@@ -306,20 +405,20 @@ const HomeDashboard = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Under HOD">Under HOD</option>
+                <option value="Pending">Pending / Under HOD</option>
                 <option value="Under Principal">Under Principal</option>
+                <option value="Under Accounts">Under Accounts</option>
+                <option value="Reimbursed">Reimbursed</option>
+                <option value="Rejected">Rejected</option>
               </select>
 
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Types</option>
                 <option value="Faculty">Faculty</option>
@@ -341,58 +440,310 @@ const HomeDashboard = () => {
         />
       </div>
 
-      {/* Reject Modal */}
+      {/* Announcement Manager */}
+      <motion.div
+        className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100">
+            <Bell className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Reminder Banner</h3>
+            <p className="text-sm text-gray-500">Message shown to students and faculty on their dashboards</p>
+          </div>
+        </div>
+
+        <textarea
+          value={announcementMsg}
+          onChange={(e) => setAnnouncementMsg(e.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="e.g. Submit NPTEL reimbursement before 30 March."
+          className="w-full p-3 border border-gray-200 rounded-lg resize-none text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+        />
+
+        {/* Target roles — empty = show to all */}
+        <div className="mt-3">
+          <p className="text-xs text-gray-500 mb-2">Show to: <span className="text-gray-400">(leave all unchecked = show to everyone)</span></p>
+          <div className="flex flex-wrap gap-3">
+            {ROLE_OPTIONS.map(r => (
+              <label key={r.value} className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={announcementTargetRoles.includes(r.value)}
+                  onChange={(e) => {
+                    setAnnouncementTargetRoles(prev =>
+                      e.target.checked ? [...prev, r.value] : prev.filter(x => x !== r.value)
+                    )
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                {r.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-3">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={announcementActive}
+              onChange={(e) => setAnnouncementActive(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <span className="text-sm text-gray-700">Show banner to users</span>
+          </label>
+          <button
+            onClick={saveAnnouncement}
+            disabled={announcementSaving || !announcementMsg.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {announcementSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {announcementSaving ? 'Saving…' : 'Save Reminder'}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* View Modal */}
       <AnimatePresence>
-      {rejectModal.show && (
-          <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={closeRejectModal}
+        {viewModal.show && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center z-[100] p-4"
+            onClick={closeViewModal}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.5)'
+            }}
           >
-            <motion.div 
-              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-xl"
+            <motion.div
+              className="bg-white rounded-lg p-6 w-full max-w-3xl mx-auto shadow-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Request Details
+                </h3>
+                <button
+                  onClick={closeViewModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {viewLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Basic Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Request ID</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.applicationId || viewModal.request?.id || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${requestDetails?.status === 'Approved' || viewModal.request?.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                          requestDetails?.status === 'Rejected' || viewModal.request?.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                            requestDetails?.status === 'Under Principal' || viewModal.request?.status === 'Under Principal' ? 'bg-blue-100 text-blue-800' :
+                              requestDetails?.status === 'Under HOD' || viewModal.request?.status === 'Under HOD' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
+                          }`}>
+                          {requestDetails?.status || viewModal.request?.status || 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Applicant Name</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.name || viewModal.request?.applicantName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Student ID' : 'Faculty ID'}
+                      </label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.facultyId || requestDetails?.studentId || viewModal.request?.applicantId || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Course Name</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.courseName || viewModal.request?.courseName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Marks</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.marks !== undefined && requestDetails?.marks !== null ? `${requestDetails.marks}%` : (viewModal.request?.marks !== undefined && viewModal.request?.marks !== null ? `${viewModal.request.marks}%` : 'N/A')}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Category</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.reimbursementType || requestDetails?.category || viewModal.request?.category || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Amount</label>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                        {requestDetails?.amount ? `₹${requestDetails.amount.toLocaleString()}` : viewModal.request?.amount || '₹0'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Academic Year</label>
+                      <p className="text-sm text-gray-900 mt-1">{requestDetails?.academicYear || viewModal.request?.year || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student' ? 'Division' : 'Role / Designation'}
+                      </label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {(requestDetails?.applicantType || viewModal.request?.applicantType) === 'Student'
+                          ? (requestDetails?.division || 'N/A')
+                          : (requestDetails?.applicantType || viewModal.request?.applicantType || 'N/A')
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Submitted Date</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {requestDetails?.createdAt
+                          ? new Date(requestDetails.createdAt).toLocaleDateString()
+                          : viewModal.request?.submittedDate || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Last Updated</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {requestDetails?.updatedAt
+                          ? new Date(requestDetails.updatedAt).toLocaleDateString()
+                          : viewModal.request?.lastUpdated || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Documents */}
+                  {requestDetails?.documents && requestDetails.documents.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">Documents</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {requestDetails.documents.map((doc, index) => {
+                          // SECURITY: Validate URL before rendering to prevent XSS
+                          const isValidUrl = doc.url && (
+                            doc.url.startsWith('https://') ||
+                            doc.url.startsWith('http://')
+                          );
+
+                          // Only allow Cloudinary URLs (trusted domain)
+                          const isTrustedDomain = doc.url && (
+                            doc.url.includes('cloudinary.com') ||
+                            doc.url.includes('res.cloudinary.com')
+                          );
+
+                          if (!isValidUrl || !isTrustedDomain) {
+                            console.warn('Blocked potentially unsafe document URL:', doc.url);
+                            return null;
+                          }
+
+                          return (
+                            <a
+                              key={index}
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              <FileText className="w-5 h-5 text-green-600" />
+                              <span className="text-sm text-green-600 hover:underline">
+                                {index === 0 ? 'NPTEL Result' : ((requestDetails?.applicantType && requestDetails.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
+                              </span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Close Button */}
+                  <div className="flex justify-end pt-4 border-t border-gray-200">
+                    <button
+                      onClick={closeViewModal}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reject Modal */}
+      <AnimatePresence>
+        {rejectModal.show && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+            onClick={closeRejectModal}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-2xl relative z-[101]"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.3 }}
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Reject Request {rejectModal.request?.id}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Please provide a reason for rejecting {rejectModal.request?.applicantName}'s request:
-            </p>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-              rows="3"
-              placeholder="Enter rejection reason..."
-              autoFocus
-            />
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={closeRejectModal}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmReject}
-                disabled={!rejectReason.trim() || isLoading}
-                className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center gap-2"
-              >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isLoading ? 'Rejecting...' : 'Reject Request'}
-              </button>
-            </div>
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Reject Request {rejectModal.request?.id}
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please provide a reason for rejecting {rejectModal.request?.applicantName}'s request:
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                rows="3"
+                placeholder="Enter rejection reason..."
+                autoFocus
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={closeRejectModal}
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReject}
+                  disabled={!rejectReason.trim() || isLoading}
+                  className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center gap-2"
+                >
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isLoading ? 'Rejecting...' : 'Reject Request'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
-      )}
+        )}
       </AnimatePresence>
     </div>
   )

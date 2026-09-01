@@ -1,7 +1,9 @@
-
-
 import React from "react"
-import { Eye, Pencil, X } from "lucide-react"
+import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "react-hot-toast"
+import { jsPDF } from "jspdf"
+import { studentFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
 
@@ -10,20 +12,23 @@ function StatusBadge({ status }) {
 
   const pendingStatuses = new Set([
     "pending",
-    "at under cordinator",
+    "at under coordinator",
     "under coordinator",
-    "under hod",
     "under principal",
   ])
 
   const cls =
     normalized === "approved"
       ? "badge badge-approved"
-      : normalized === "rejected"
-        ? "badge badge-rejected"
-        : pendingStatuses.has(normalized)
-          ? "badge badge-pending"
-          : "badge badge-pending"
+      : normalized === "reimbursed"
+        ? "badge badge-reimbursed"
+        : normalized === "rejected"
+          ? "badge badge-rejected"
+          : normalized === "under hod"
+            ? "badge badge-under-hod"
+            : pendingStatuses.has(normalized)
+              ? "badge badge-pending"
+              : "badge badge-pending"
 
   return <span className={cls}>{status}</span>
 }
@@ -34,10 +39,11 @@ function StatusBadge({ status }) {
  * @param {string} search - Search term for filtering requests
  * @param {Array} requests - Array of request objects to display
  */
-export default function RequestsTable({ search, requests = [] }) {
-  // State for modal visibility
-  const [viewItem, setViewItem] = React.useState(null)
-  const [editItem, setEditItem] = React.useState(null)
+export default function RequestsTable({ search, requests = [], onDelete }) {
+  const navigate = useNavigate();
+  const [viewItem, setViewItem] = React.useState(null);
+  const [editItem, setEditItem] = React.useState(null);
+  const [deleteItem, setDeleteItem] = React.useState(null);
 
   // Filter requests based on search term
   const filtered = React.useMemo(() => {
@@ -56,6 +62,8 @@ export default function RequestsTable({ search, requests = [] }) {
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
@@ -64,36 +72,161 @@ export default function RequestsTable({ search, requests = [] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
-          {filtered.length > 0 ? filtered.map((r) => (
-            <tr key={r.id} className="hover:bg-slate-50/60">
-              <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
-              <td className="px-4 py-3">{r.category}</td>
-              <td className="px-4 py-3">
-                <StatusBadge status={r.status} />
-              </td>
-              <td className="px-4 py-3">₹{r.amount.toLocaleString("en-IN")}</td>
-              <td className="px-4 py-3">{new Date(r.submittedDate).toLocaleDateString()}</td>
-              <td className="px-4 py-3">{new Date(r.updatedDate).toLocaleDateString()}</td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    className="icon-btn"
-                    onClick={() => setViewItem(r)}
-                    aria-label="View"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="icon-btn"
-                    onClick={() => setEditItem(r)}
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          )) : (
+          {filtered.length > 0 ? filtered.map((r) => {
+            // Helper function to safely format dates
+            const formatDate = (dateValue) => {
+              if (!dateValue) return 'N/A';
+              try {
+                const date = new Date(dateValue);
+                if (isNaN(date.getTime())) return 'N/A';
+                return date.toLocaleDateString();
+              } catch {
+                return 'N/A';
+              }
+            };
+
+            return (
+              <tr key={r.id || r._id} className="hover:bg-slate-50/60">
+                <td className="px-4 py-3 font-medium text-slate-900">{r.id || r._id || 'N/A'}</td>
+                <td className="px-4 py-3">{r.category || r.reimbursementType || 'NPTEL'}</td>
+                <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
+                <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1 items-center">
+                    <StatusBadge status={r.status || 'Pending'} />
+                    {r.status === 'Rejected' && r.accountsRemarks && (
+                      <span className="text-xs text-red-600 italic truncate max-w-[150px]" title={r.accountsRemarks}>
+                        {r.accountsRemarks}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3">₹{(r.amount || 0).toLocaleString("en-IN")}</td>
+                <td className="px-4 py-3">{formatDate(r.submittedDate || r.createdAt)}</td>
+                <td className="px-4 py-3">{formatDate(r.updatedDate || r.updatedAt)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="icon-btn hover:bg-blue-50"
+                      onClick={() => {
+                        // Generate PDF
+                        const doc = new jsPDF();
+                        const pageWidth = doc.internal.pageSize.getWidth();
+                        let y = 20;
+
+                        // Title
+                        doc.setFontSize(18);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT APPLICATION FORM', pageWidth / 2, y, { align: 'center' });
+                        y += 15;
+
+                        // Application ID and Status
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Application ID: ${r.applicationId || r._id || r.id || 'N/A'}`, 20, y);
+                        y += 7;
+                        doc.text(`Status: ${r.status || 'Pending'}`, 20, y);
+                        y += 12;
+
+                        // Applicant Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('APPLICANT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Name: ${r.name || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Student ID: ${r.studentId || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Email: ${r.email || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Department: ${r.department || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Division: ${r.division || 'N/A'}`, 20, y); y += 12;
+
+                        // Reimbursement Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Type: ${r.reimbursementType || r.category || 'NPTEL'}`, 20, y); y += 7;
+                        doc.text(`Amount: Rs. ${(r.amount || 0).toLocaleString('en-IN')}`, 20, y); y += 7;
+                        doc.text(`Academic Year: ${r.academicYear || 'N/A'}`, 20, y); y += 12;
+
+                        // Bank Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('BANK DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Account Name: ${r.accountName || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Account Number: ${r.accountNumber || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`IFSC Code: ${r.ifscCode || 'N/A'}`, 20, y); y += 12;
+
+                        // Dates Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('DATES', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        const submittedDate = r.submittedDate || r.createdAt ? new Date(r.submittedDate || r.createdAt).toLocaleDateString() : 'N/A';
+                        const updatedDate = r.updatedDate || r.updatedAt ? new Date(r.updatedDate || r.updatedAt).toLocaleDateString() : 'N/A';
+                        doc.text(`Submitted: ${submittedDate}`, 20, y); y += 7;
+                        doc.text(`Last Updated: ${updatedDate}`, 20, y); y += 12;
+
+                        // Remarks Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REMARKS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(r.remarks || r.rejectionRemarks || 'No remarks', 20, y); y += 15;
+
+                        // Footer
+                        doc.setFontSize(9);
+                        doc.setTextColor(128);
+                        doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, 280, { align: 'center' });
+
+                        // Save PDF
+                        doc.save(`Application_${r.applicationId || r._id || 'form'}.pdf`);
+                      }}
+                      title="Download Application Form"
+                      aria-label="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-btn hover:bg-blue-50"
+                      onClick={() => navigate(`/nptel-form/view/${r._id || r.applicationId || r.id}`)}
+                      aria-label="View"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-btn hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => navigate(`/nptel-form/edit/${r._id || r.applicationId || r.id}`)}
+                      aria-label="Edit"
+                      disabled={r.status !== 'Pending'}
+                      title={r.status !== 'Pending' ? 'Editing locked — form has been acted upon' : 'Edit'}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-btn text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setDeleteItem(r)}
+                      aria-label="Delete"
+                      disabled={r.status !== 'Pending'}
+                      title={r.status !== 'Pending' ? 'Deletion locked — form has been acted upon' : 'Delete'}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          }) : (
             <tr>
               <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                 <div className="text-lg">No requests found</div>
@@ -104,35 +237,29 @@ export default function RequestsTable({ search, requests = [] }) {
         </tbody>
       </table>
 
-      {viewItem && (
-        <div className={modalStyle} role="dialog" aria-modal="true">
-          <div 
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200" 
-            onClick={() => setViewItem(null)}
-          ></div>
-          <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Request Details</h3>
-              <button 
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150" 
-                onClick={() => setViewItem(null)} 
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-slate-500">Application ID</div>
-                <div className="font-medium">{viewItem.id}</div>
-              </div>
-              <div>
-                <div className="text-slate-500">Category</div>
-                <div className="font-medium">{viewItem.category}</div>
+      {
+        viewItem && (
+          <div className={modalStyle} role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+              onClick={() => setViewItem(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Request Details</h3>
+                <button
+                  className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
+                  onClick={() => setViewItem(null)}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
               <div>
                 <div className="text-slate-500">Status</div>
-                <div className="font-medium">{viewItem.status}</div>
+                <div className="font-medium">
+                  <StatusBadge status={viewItem.status} />
+                </div>
               </div>
               <div>
                 <div className="text-slate-500">Amount</div>
@@ -140,51 +267,159 @@ export default function RequestsTable({ search, requests = [] }) {
               </div>
               <div>
                 <div className="text-slate-500">Submitted</div>
-                <div className="font-medium">{new Date(viewItem.submittedDate).toLocaleDateString()}</div>
-              </div>
-              <div>
-                <div className="text-slate-500">Updated</div>
-                <div className="font-medium">{new Date(viewItem.updatedDate).toLocaleDateString()}</div>
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-slate-500">Description</div>
-                <div className="font-medium">{viewItem.description}</div>
+                <div className="font-medium">
+                  {(() => {
+                    const date = viewItem.submittedDate || viewItem.createdAt;
+                    if (!date) return 'N/A';
+                    try {
+                      const d = new Date(date);
+                      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+                    } catch {
+                      return 'N/A';
+                    }
+                  })()}
+                </div>
+                <div>
+                  <div className="text-slate-500">Category</div>
+                  <div className="font-medium">{viewItem.category}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Status</div>
+                  <div className="font-medium">{viewItem.status}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Amount</div>
+                  <div className="font-medium">₹{viewItem.amount.toLocaleString("en-IN")}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Submitted</div>
+                  <div className="font-medium">
+                    {(() => {
+                      const date = viewItem.submittedDate || viewItem.createdAt;
+                      if (!date) return 'N/A';
+                      try {
+                        const d = new Date(date);
+                        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+                      } catch {
+                        return 'N/A';
+                      }
+                    })()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Updated</div>
+                  <div className="font-medium">
+                    {(() => {
+                      const date = viewItem.updatedDate || viewItem.updatedAt;
+                      if (!date) return 'N/A';
+                      try {
+                        const d = new Date(date);
+                        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+                      } catch {
+                        return 'N/A';
+                      }
+                    })()}
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="text-slate-500">Description</div>
+                  <div className="font-medium">{viewItem.description}</div>
+                </div>
+                {/* Show rejection remarks if rejected by Accounts */}
+                {viewItem.status === 'Rejected' && viewItem.accountsRemarks && (
+                  <div className="md:col-span-2 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-600 font-medium text-sm">Rejection Reason</div>
+                    <div className="text-red-700 mt-1">{viewItem.accountsRemarks}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {editItem && (
-        <div className={modalStyle} role="dialog" aria-modal="true">
-          <div 
-            className="fixed inset-0 bg-black/30 transition-opacity duration-200" 
-            onClick={() => setEditItem(null)}
-          ></div>
-          <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Edit Request</h3>
-              <button 
-                className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150" 
-                onClick={() => setEditItem(null)} 
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      {/* Delete Confirmation Modal */}
+      {
+        deleteItem && (
+          <div className={modalStyle} role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+              onClick={() => setDeleteItem(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl transform transition-all duration-200 scale-100">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Confirmation</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to delete this form? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+                  onClick={() => setDeleteItem(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
+                  onClick={async () => {
+                    try {
+                      await onDelete?.(deleteItem._id);
+                      setDeleteItem(null);
+                    } catch {
+                      toast.error('Failed to delete form. Please try again.');
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-            <EditForm
-              item={editItem}
-              onCancel={() => setEditItem(null)}
-              onSave={(payload) => {
-                // TODO: Implement actual save logic
-                console.log('Saving request:', payload)
-                setEditItem(null)
-              }}
-            />
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+
+      {
+        editItem && (
+          <div className={modalStyle} role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-black/30 transition-opacity duration-200"
+              onClick={() => setEditItem(null)}
+            ></div>
+            <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Edit Request</h3>
+                <button
+                  className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
+                  onClick={() => setEditItem(null)}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <EditForm
+                item={editItem}
+                onCancel={() => setEditItem(null)}
+                onSave={async (payload) => {
+                  try {
+                    await studentFormsAPI.updateById(editItem._id || editItem.id, payload);
+                    toast.success('Request updated successfully!');
+                    setEditItem(null);
+                    // Trigger a refetch if parent provided a callback
+                    window.location.reload();
+                  } catch {
+                    toast.error('Failed to update form. Please try again.');
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )
+      }
+    </div >
   )
 }
 
@@ -192,7 +427,6 @@ function EditForm({ item, onSave, onCancel }) {
   const [form, setForm] = React.useState({
     category: item.category,
     description: item.description,
-    status: item.status,
     amount: item.amount,
   })
 
@@ -222,50 +456,43 @@ function EditForm({ item, onSave, onCancel }) {
       <label className="grid gap-1">
         <span className="text-sm text-slate-600">Description</span>
         <textarea
-          className="input min-h-[80px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
+          className="input min-h-20 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           required
         />
       </label>
       <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Status</span>
-        <select
-          className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          value={form.status}
-          onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-          required
-        >
-          {["Approved", "Pending", "Rejected"].map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1">
         <span className="text-sm text-slate-600">Amount (₹)</span>
         <input
           className="input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
           type="number"
-          min="0"
-          step="0.01"
+          min="1"
+          max="1500"
+          step="1"
           value={form.amount}
-          onChange={(e) => setForm((f) => ({ ...f, amount: Number(e.target.value || 0) }))}
+          onChange={(e) => {
+            const val = e.target.value;
+            const numVal = parseFloat(val);
+            if (val === '' || (!isNaN(numVal) && numVal > 0 && numVal <= 1500)) {
+              setForm((f) => ({ ...f, amount: val === '' ? '' : numVal }));
+            }
+          }}
+          onWheel={(e) => e.target.blur()}
           required
         />
       </label>
 
       <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
-        <button 
-          type="button" 
-          className="btn btn-outline hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150" 
+        <button
+          type="button"
+          className="btn btn-outline hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150"
           onClick={handleCancel}
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="btn btn-primary hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all duration-150"
         >
           Save Changes

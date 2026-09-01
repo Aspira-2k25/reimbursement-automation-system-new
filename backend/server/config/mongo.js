@@ -1,16 +1,34 @@
-const mongoose =  require("mongoose");
+// Only load dotenv in local development (not in Vercel/serverless)
+if (!process.env.VERCEL && !process.env.VERCEL_ENV && process.env.NODE_ENV !== 'production') {
+  require("dotenv").config({ quiet: true }); // Suppress dotenv logs
+}
+const mongoose = require("mongoose");
+
+// Cache connection state across serverless invocations
+let isConnected = false;
 
 const connectMongoDB = async () => {
-    try {
-        await mongoose.connect("mongodb://localhost:27017/reimbursement", {
-           useNewUrlParser: true,
-           useUnifiedTopology: true,
-        });
-        console.log("mongodb connected");
-    }  catch(err) {
-        console.log("mongobd connection error", err);
-        process.exit(1);
-    }
+  // Reuse existing connection if already established
+  if (isConnected && mongoose.connection.readyState === 1) {
+    return;
+  }
+
+  if (!process.env.MONGO_URI) {
+    // In serverless environments we should not crash the process,
+    // instead throw and let the caller / error handler respond with 500.
+    throw new Error("MONGO_URI is not set in environment variables");
+  }
+
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+
+    isConnected = conn.connection.readyState === 1;
+    console.log("MongoDB connected successfully ✅");
+  } catch (err) {
+    console.error("MongoDB connection error ❌", err);
+    // Do NOT call process.exit() in serverless – just rethrow
+    throw err;
+  }
 };
 
 module.exports = connectMongoDB;

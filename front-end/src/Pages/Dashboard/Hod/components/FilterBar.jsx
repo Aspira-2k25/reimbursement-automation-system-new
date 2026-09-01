@@ -19,11 +19,13 @@ const FilterBar = ({
   onCategoryChange,
   onMemberTypeChange,
   onStatusChange,
+  onDepartmentChange,
   onExport,
   onRefresh,
   categories = [],
   statuses = [],
-  memberTypes = ['All', 'Faculty', 'Student']
+  memberTypes = ['All', 'Faculty', 'Student'],
+  departments = []
 }) => {
   const [dateRange, setDateRange] = useState({
     startDate: '',
@@ -32,6 +34,7 @@ const FilterBar = ({
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedMemberType, setSelectedMemberType] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
+  const [selectedDepartment, setSelectedDepartment] = useState('All')
 
   /**
    * Handle date range changes
@@ -75,6 +78,16 @@ const FilterBar = ({
   }
 
   /**
+   * Handle department filter changes
+   */
+  const handleDepartmentChange = (value) => {
+    setSelectedDepartment(value)
+    if (onDepartmentChange) {
+      onDepartmentChange(value)
+    }
+  }
+
+  /**
    * Clear all active filters
    */
   const clearFilters = () => {
@@ -82,11 +95,13 @@ const FilterBar = ({
     setSelectedCategory('All')
     setSelectedMemberType('All')
     setSelectedStatus('All')
+    setSelectedDepartment('All')
 
     if (onDateRangeChange) onDateRangeChange({ startDate: '', endDate: '' })
     if (onCategoryChange) onCategoryChange('All')
     if (onMemberTypeChange) onMemberTypeChange('All')
     if (onStatusChange) onStatusChange('All')
+    if (onDepartmentChange) onDepartmentChange('All')
   }
 
   return (
@@ -96,7 +111,7 @@ const FilterBar = ({
         <h3 className="text-lg font-semibold text-gray-900">Filter & Search</h3>
         <button
           onClick={clearFilters}
-          className="ml-auto text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="ml-auto text-sm text-green-600 hover:text-green-700 font-medium"
         >
           Clear All
         </button>
@@ -116,7 +131,7 @@ const FilterBar = ({
                   type="date"
                   value={dateRange.startDate}
                   onChange={(e) => handleDateChange('startDate', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
                   placeholder="Start Date"
                 />
               </div>
@@ -126,7 +141,7 @@ const FilterBar = ({
                 type="date"
                 value={dateRange.endDate}
                 onChange={(e) => handleDateChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
                 placeholder="End Date"
               />
             </div>
@@ -183,6 +198,25 @@ const FilterBar = ({
           </select>
         </div>
 
+        {/* Department Filter — only shown when departments list is provided */}
+        {departments.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Department
+            </label>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => handleDepartmentChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="All">All Departments</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex flex-col gap-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -198,7 +232,7 @@ const FilterBar = ({
             </button>
             <button
               onClick={onExport}
-              className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
               title="Export Data"
             >
               <Download className="w-4 h-4" />
@@ -213,13 +247,13 @@ const FilterBar = ({
           <span className="text-sm font-medium text-gray-700">Active Filters:</span>
 
           {dateRange.startDate && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
               From: {new Date(dateRange.startDate).toLocaleDateString()}
             </span>
           )}
 
           {dateRange.endDate && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
               To: {new Date(dateRange.endDate).toLocaleDateString()}
             </span>
           )}
@@ -242,7 +276,13 @@ const FilterBar = ({
             </span>
           )}
 
-          {(dateRange.startDate || dateRange.endDate || selectedCategory !== 'All' || selectedMemberType !== 'All' || selectedStatus !== 'All') ? null : (
+          {selectedDepartment !== 'All' && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+              Dept: {selectedDepartment}
+            </span>
+          )}
+
+          {(dateRange.startDate || dateRange.endDate || selectedCategory !== 'All' || selectedMemberType !== 'All' || selectedStatus !== 'All' || selectedDepartment !== 'All') ? null : (
             <span className="text-sm text-gray-500">No filters applied</span>
           )}
         </div>

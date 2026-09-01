@@ -1,18 +1,19 @@
-
 import React from "react"
+import { useAnnouncement } from "../../../../hooks/useAnnouncement"
 
 export default function ReminderBanner() {
   const [dismissed, setDismissed] = React.useState(false)
-  if (dismissed) return null
-  const message = "Faculty reminder message"
+  const { announcement } = useAnnouncement()
+
+  if (dismissed || !announcement?.isActive || !announcement?.message) return null
 
   return (
     <div className="mx-auto max-w-7xl px-4 md:px-6 py-4">
-      <div className="relative overflow-hidden rounded-2xl shadow-sm" style={{backgroundColor: 'var(--color-light-teal)', border: '1px solid var(--color-medium-teal)'}}>
-        <div className="absolute inset-0" style={{background: 'linear-gradient(90deg, transparent, var(--color-light-teal)/20)'}}></div>
+      <div className="relative overflow-hidden rounded-2xl shadow-sm" style={{ backgroundColor: 'var(--color-light-teal)', border: '1px solid var(--color-medium-teal)' }}>
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, var(--color-light-teal)/20)' }}></div>
         <div className="relative flex items-center justify-between gap-4 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{backgroundColor: 'var(--color-medium-teal)'}}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--color-medium-teal)' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="16" x2="12" y2="12" />
@@ -21,17 +22,17 @@ export default function ReminderBanner() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold" style={{color: 'var(--color-dark-gray)'}}>Important Reminder</span>
-                <div className="h-1 w-1 rounded-full" style={{backgroundColor: 'var(--color-dark-gray)'}}></div>
-                <span className="text-sm" style={{color: 'var(--color-dark-gray)'}}>Faculty Alert</span>
+                <span className="font-semibold" style={{ color: 'var(--color-dark-gray)' }}>Important Reminder</span>
+                <div className="h-1 w-1 rounded-full" style={{ backgroundColor: 'var(--color-dark-gray)' }}></div>
+                <span className="text-sm" style={{ color: 'var(--color-dark-gray)' }}>Faculty Alert</span>
               </div>
-              <p className="mt-1 font-medium" style={{color: 'var(--color-dark-gray)'}}>{message}</p>
+              <p className="mt-1 font-medium" style={{ color: 'var(--color-dark-gray)' }}>{announcement.message}</p>
             </div>
           </div>
           <button
             onClick={() => setDismissed(true)}
             className="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
-            style={{color: 'var(--color-dark-gray)'}}
+            style={{ color: 'var(--color-dark-gray)' }}
             aria-label="Dismiss reminder"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -24,7 +24,7 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
     if (onView) {
       onView(request)
     } else {
-      toast.info(`Viewing details for request ${request.id}`)
+      toast(`Viewing details for request ${request.id}`)
     }
   }
 
@@ -33,15 +33,19 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
    */
   const handleApprove = async (e) => {
     e.stopPropagation()
+    e.preventDefault()
+
     setActionLoading(true)
     try {
       if (onApprove) {
         await onApprove(request)
       } else {
-        toast.success(`Request ${request.id} approved`)
+        console.warn('No onApprove handler provided')
+        toast.error('Approve handler not configured')
       }
     } catch (error) {
-      toast.error('Failed to approve request')
+      console.error('Error in handleApprove:', error)
+      toast.error(error?.message || 'Failed to approve request')
     } finally {
       setActionLoading(false)
     }
@@ -60,8 +64,14 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
   }
 
   // Determine which actions to show based on status
-  const canApprove = ['Pending', 'Under HOD'].includes(request.status)
-  const canReject = ['Pending', 'Under HOD', 'Under Principal'].includes(request.status)
+  // CRITICAL: Backend requires exactly "Under HOD" status for HOD to approve/reject
+  // Student forms backend (line 385) requires exactly "Under HOD"
+  // Faculty forms backend is more lenient but we should follow the same rule
+  const status = String(request.status || '').trim()
+
+  // Only show approve/reject buttons for "Under HOD" status (strict backend requirement)
+  const canApprove = status === 'Under HOD'
+  const canReject = status === 'Under HOD'
 
   if (variant === 'compact') {
     return (
@@ -160,25 +170,25 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
         <span className="hidden sm:inline">View</span>
       </motion.button>
 
-        {canApprove && (
-          <motion.button
-            onClick={handleApprove}
-            disabled={actionLoading || isLoading}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Approve Request"
-            whileHover={{ scale: actionLoading || isLoading ? 1 : 1.05 }}
-            whileTap={{ scale: actionLoading || isLoading ? 1 : 0.95 }}
-          >
-            {actionLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Check className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">
-              {actionLoading ? 'Approving...' : 'Approve'}
-            </span>
-          </motion.button>
-        )}
+      {canApprove && (
+        <motion.button
+          onClick={handleApprove}
+          disabled={actionLoading || isLoading}
+          className="flex items-center gap-1 px-3 py-1.5 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Approve Request"
+          whileHover={{ scale: actionLoading || isLoading ? 1 : 1.05 }}
+          whileTap={{ scale: actionLoading || isLoading ? 1 : 0.95 }}
+        >
+          {actionLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Check className="w-4 h-4" />
+          )}
+          <span className="hidden sm:inline">
+            {actionLoading ? 'Approving...' : 'Approve'}
+          </span>
+        </motion.button>
+      )}
 
       {canReject && (
         <motion.button

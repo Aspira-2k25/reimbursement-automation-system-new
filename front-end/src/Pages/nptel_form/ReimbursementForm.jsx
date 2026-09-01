@@ -1,20 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext.jsx";
+import apshahLogo from "../../assets/images/Apshah_logo.png";
+import websiteLogo from "../../assets/images/Website_logo.png";
+import { getCsrfToken, fetchCsrfToken, API_BASE_URL } from '../../services/api';
+import { resolveDepartment } from '../../utils/departmentResolver';
+
+// SECURITY: Input sanitization helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .trim();
+};
+
+// SECURITY: Validate file type and size
+const validateFile = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const maxSize = 500 * 1024; // 500KB
+
+  if (!file) return { valid: true };
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'Only JPEG, PNG, and PDF files are allowed' };
+  }
+
+  if (file.size > maxSize) {
+    return { valid: false, error: 'File size must be less than 500KB' };
+  }
+
+  return { valid: true };
+};
 
 const ReimbursementForm = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
     name: '',
-    id: '',
-    jobTitle: '',
+    facultyId: '',
+    department: '',
     email: '',
     amount: '',
     accountName: '',
     ifscCode: '',
     accountNumber: '',
     academicYear: '',
-    remarks: ''
+    courseName: '',
+    marks: ''
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // SECURITY: Use refs for file inputs instead of direct DOM access
+  const nptelFileRef = useRef(null);
+  const idCardFileRef = useRef(null);
+
+  React.useEffect(() => {
+    const department = resolveDepartment(user?.department);
+    if (department) {
+      setFormData(prev => ({ ...prev, department: department }));
+    }
+  }, [user?.department]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -26,14 +77,16 @@ const ReimbursementForm = () => {
       newErrors.name = 'Name must be at least 2 characters long';
     }
 
-    // ID validation
-    if (!formData.id.trim()) {
-      newErrors.id = 'ID is required';
+    // Faculty ID validation
+    if (!formData.facultyId.trim()) {
+      newErrors.facultyId = 'Faculty ID is required';
     }
 
-    // Job Title validation
-    if (!formData.jobTitle.trim()) {
-      newErrors.jobTitle = 'Job Title is required';
+
+
+    // Department validation
+    if (!formData.department) {
+      newErrors.department = 'Department is required';
     }
 
     // Email validation
@@ -83,17 +136,49 @@ const ReimbursementForm = () => {
       newErrors.accountNumber = 'Please enter a valid account number (9-18 digits)';
     }
 
+    // NPTEL Course Name validation
+    if (!formData.courseName.trim()) {
+      newErrors.courseName = 'NPTEL Course Name is required';
+    } else if (formData.courseName.trim().length < 3) {
+      newErrors.courseName = 'Course name must be at least 3 characters long';
+    }
+
+    // Marks validation
+    if (!formData.marks) {
+      newErrors.marks = 'Marks is required';
+    } else {
+      const marksNum = parseFloat(formData.marks);
+      if (isNaN(marksNum) || marksNum < 0 || marksNum > 100) {
+        newErrors.marks = 'Marks must be between 0 and 100';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  //handle input change
+  //handle input change - SECURITY: Sanitize inputs
   const handleChange = (e) => {
-    const { name, value } =e.target;
+    const { name, value } = e.target;
+
+    // SECURITY: Sanitize text inputs
+    let sanitizedValue = value;
+    if (name !== 'amount' && name !== 'marks') {
+      sanitizedValue = sanitizeInput(value);
+    }
 
     //for amount field
-    if(name ==="amount") {
-      if (value === "" || (value>0 && value<=1500)) {
+    if (name === "amount") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue > 0 && numValue <= 1500)) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else if (name === "marks") {
+      const numValue = parseFloat(value);
+      if (value === "" || (!isNaN(numValue) && numValue >= 0 && numValue <= 100)) {
         setFormData({
           ...formData,
           [name]: value,
@@ -102,12 +187,12 @@ const ReimbursementForm = () => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: sanitizedValue,
       });
     }
 
-    //clear errors when user sttarts typing
-    if(errors[name]) {
+    //clear errors when user starts typing
+    if (errors[name]) {
       setErrors({
         ...errors,
         [name]: "",
@@ -119,44 +204,129 @@ const ReimbursementForm = () => {
   //handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+
     if (!validateForm()) return;
 
-    try{
+    // Disable button immediately
+    setIsSubmitting(true);
+
+    try {
       const formDataToSend = new FormData();
 
-      //append all text fields
-      Object.keys(formData).forEach((key)=> {
-        formDataToSend.append(key, formData[key]);
+      //append all text fields - SECURITY: Sanitize before sending
+      // Skip sanitization for numeric fields to prevent any value modification
+      Object.keys(formData).forEach((key) => {
+        if (key === 'amount' || key === 'marks') {
+          formDataToSend.append(key, formData[key]);
+        } else {
+          formDataToSend.append(key, sanitizeInput(formData[key]));
+        }
       });
 
-      //append files
-      const nptelFile = document.getElementById("nptelResult").files[0];
-      const idCardFile = document.getElementById("idCard").files[0];
-      if (nptelFile) formDataToSend.append("nptelResult",nptelFile);
-      if (idCardFile) formDataToSend.append("idCard",idCardFile);
+      // Enforce trusted department resolved from current session state.
+      formDataToSend.set('department', resolveDepartment());
 
-      //get jwt tocken from login
-      const token = localStorage.getItem("token");
+      // Set applicantType based on user role
+      const userRole = user?.role || 'Faculty';
+      formDataToSend.append('applicantType', userRole); // Will be HOD, Coordinator, or Faculty
 
-      const res = await fetch("http://localhost:5000/api/forms/submit",{
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,  // add tocken for authorization
-        },
-        body: formDataToSend,
-      });
+      // SECURITY: Use refs instead of direct DOM access
+      const nptelFile = nptelFileRef.current?.files[0];
+      const idCardFile = idCardFileRef.current?.files[0];
 
-      const data =  await res.json();
-      if (res.ok) {
-        alert("Form submitted successfully!!");
-        console.log(data);
-
-      } else {
-        alert("Error: "+ data.error);
+      // SECURITY: Validate files before appending
+      if (nptelFile) {
+        const validation = validateFile(nptelFile);
+        if (!validation.valid) {
+          toast.error(`NPTEL Result: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("nptelResult", nptelFile);
       }
-    }  catch (err) {
+
+      if (idCardFile) {
+        const validation = validateFile(idCardFile);
+        if (!validation.valid) {
+          toast.error(`ID Card: ${validation.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+        formDataToSend.append("idCard", idCardFile);
+      }
+
+      // CSRF: ensure token is available before submit
+      if (!getCsrfToken()) {
+        await fetchCsrfToken();
+      }
+      const headers = {};
+      if (getCsrfToken()) {
+        headers['X-CSRF-Token'] = getCsrfToken();
+      }
+
+      const doSubmit = () =>
+        fetch(`${API_BASE_URL}/forms/submit`, {
+          method: "POST",
+          credentials: 'include',
+          headers,
+          body: formDataToSend,
+        });
+
+      let res = await doSubmit();
+      let data = await res.json();
+
+      // On 403 Invalid CSRF token, refresh token and retry once
+      if (res.status === 403 && data?.error === 'Invalid CSRF token') {
+        await fetchCsrfToken();
+        const newToken = getCsrfToken();
+        if (newToken) {
+          const retryHeaders = { ...headers, 'X-CSRF-Token': newToken };
+          res = await fetch(`${API_BASE_URL}/forms/submit`, {
+            method: "POST",
+            credentials: 'include',
+            headers: retryHeaders,
+            body: formDataToSend,
+          });
+          data = await res.json();
+        }
+      }
+
+      if (res.ok) {
+        toast.success("Application submitted successfully! Your request is now under review.");
+        // Navigate based on user role after successful submission
+        const navRole = user?.role?.toLowerCase();
+        if (navRole === 'coordinator') {
+          navigate('/dashboard/coordinator');
+        } else if (navRole === 'hod') {
+          navigate('/dashboard/hod/request-status');
+        } else if (navRole === 'principal') {
+          navigate('/dashboard/principal');
+        } else {
+          navigate('/dashboard/faculty/requests');
+        }
+      } else if (res.status === 413) {
+        // File too large — show prominent warning popup
+        toast.error(data.message || "File size exceeds 500KB limit. Please upload a smaller file.", {
+          duration: 5000,
+          icon: '⚠️',
+        });
+        setIsSubmitting(false);
+      } else {
+        const message =
+          res.status === 403 && data?.error === 'Invalid CSRF token'
+            ? 'Invalid CSRF token. Please refresh the page and try again.'
+            : (data?.error && `Error: ${data.error}`) || 'Something went wrong.';
+        toast.error(message);
+        setIsSubmitting(false);
+      }
+    } catch (err) {
       console.error("Error submitting form:", err);
-      alert("Form submission failed. Try Again");
+      toast.error("Form submission failed. Please try again.");
+      // Re-enable button on error so user can retry
+      setIsSubmitting(false);
     }
   };
 
@@ -166,13 +336,37 @@ const ReimbursementForm = () => {
   return (
     <div className="min-h-screen bg-green-50 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <div className="border-b border-gray-200 pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-center text-gray-800">
-            Department of Information Technology
-          </h1>
-          <h2 className="text-xl font-semibold text-center text-gray-700 mt-2">
-            Application for Faculty Reimbursement
-          </h2>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back
+        </button>
+        <div className="border-b border-gray-200 pb-4 mb-6 mt-2">
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4 sm:gap-0 mb-2">
+
+            {/* Mobile Layout: Logos side by side above the text */}
+            <div className="w-full flex justify-between px-2 sm:hidden">
+              <img src={apshahLogo} alt="A.P. Shah Logo" className="h-18 w-18 object-contain" />
+              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-16 w-16 object-contain" />
+            </div>
+
+            {/* Desktop Layout: Left Logo */}
+            <img src={apshahLogo} alt="A.P. Shah Logo" className="hidden sm:block h-20 w-20 object-contain" />
+
+            <div className="flex-1 px-0 sm:px-4">
+              <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-800 leading-tight">
+                Department of Information Technology
+              </h1>
+              <h2 className="text-lg sm:text-xl font-semibold text-center text-gray-700 mt-2 leading-snug">
+                Application for Faculty Reimbursement
+              </h2>
+            </div>
+
+            {/* Desktop Layout: Right Logo */}
+            <img src={websiteLogo} alt="Reimbursement Portal Logo" className="hidden sm:block h-18 w-18 object-contain mt-1" />
+          </div>
         </div>
 
         <div className="text-right mb-6 text-gray-600">
@@ -181,8 +375,8 @@ const ReimbursementForm = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">
+            <div className="bg-teal-50 p-4 rounded-md">
+              <p className="text-sm text-teal-800 font-medium">
                 This is for NPTEL reimbursement application. Please fill all the required details accurately.
               </p>
             </div>
@@ -203,78 +397,75 @@ const ReimbursementForm = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
 
-              {/* ID Field */}
+              {/* Faculty ID Field */}
               <div>
-                <label htmlFor="id" className="block text-sm font-medium text-gray-700 mb-1">
-                  ID *
+                <label htmlFor="facultyId" className="block text-sm font-medium text-gray-700 mb-1">
+                  Faculty ID *
                 </label>
                 <input
                   type="text"
-                  id="id"
-                  name="id"
-                  value={formData.id}
+                  id="facultyId"
+                  name="facultyId"
+                  value={formData.facultyId}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.id
-                      ? 'border-red-500'
-                      : formData.id.trim()
-                      ? 'border-blue-500 bg-blue-50'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.facultyId
+                    ? 'border-red-500'
+                    : formData.facultyId.trim()
+                      ? 'border-teal-500 bg-teal-50'
                       : 'border-gray-300'
-                  }`}
+                    }`}
                 />
-                {errors.id && <p className="text-red-500 text-xs mt-1">{errors.id}</p>}
+                {errors.facultyId && <p className="text-red-500 text-xs mt-1">{errors.facultyId}</p>}
               </div>
 
+
+
+              {/* Department Field */}
               <div>
-                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Title *
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Department *
                 </label>
                 <input
                   type="text"
-                  id="jobTitle"
-                  name="jobTitle"
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.id ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  id="department"
+                  name="department"
+                  value={formData.department}
+                  readOnly
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
                 />
-                {errors.jobTitle && <p className="text-red-500 text-xs mt-1">{errors.jobTitle}</p>}
+                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
               </div>
 
               {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
-                Email *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.email
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.email
                     ? 'border-red-500'
                     : formData.email.trim()
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300'
-                }`}
-              />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                      ? 'border-teal-500 bg-teal-50'
+                      : 'border-gray-300'
+                    }`}
+                />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              </div>
             </div>
-            </div>
-            </div>
+          </div>
 
 
 
@@ -294,9 +485,8 @@ const ReimbursementForm = () => {
                   onChange={handleChange}
                   placeholder="e.g. 2023-2024"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.academicYear ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
               </div>
@@ -312,22 +502,22 @@ const ReimbursementForm = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   min="1"
                   max="1500"
-                  step="0.01"
+                  step="1"
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.amount
-                      ? 'border-red-500'
-                      : formData.amount
-                      ? 'border-blue-500 bg-blue-50'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.amount
+                    ? 'border-red-500'
+                    : formData.amount
+                      ? 'border-teal-500 bg-teal-50'
                       : 'border-gray-300'
-                  }`}
+                    }`}
                 />
                 {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
                 <p className="text-xs text-gray-500 mt-1">Amount must be between ₹1 and ₹1500</p>
               </div>
-              </div>
+            </div>
 
 
             <div className="mt-4">
@@ -342,7 +532,7 @@ const ReimbursementForm = () => {
                   value="NPTEL"
                   checked
                   readOnly
-                  className="h-4 w-4 text-blue-600"
+                  className="h-4 w-4 text-teal-600 accent-teal-600"
                 />
                 <label htmlFor="nptel" className="ml-2 text-sm text-gray-700 font-medium">
                   NPTEL
@@ -366,9 +556,8 @@ const ReimbursementForm = () => {
                   value={formData.accountName}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountName ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
               </div>
@@ -384,9 +573,8 @@ const ReimbursementForm = () => {
                   value={formData.ifscCode}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.ifscCode ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.ifscCode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="e.g., SBIN0000123"
                 />
                 {errors.ifscCode && <p className="text-red-500 text-xs mt-1">{errors.ifscCode}</p>}
@@ -403,9 +591,8 @@ const ReimbursementForm = () => {
                   value={formData.accountNumber}
                   onChange={handleChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.accountNumber ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {errors.accountNumber && <p className="text-red-500 text-xs mt-1">{errors.accountNumber}</p>}
               </div>
@@ -413,18 +600,42 @@ const ReimbursementForm = () => {
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-2">
-              Remarks (Optional)
+            <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Course Name <span className="text-gray-900 font-bold">*</span>
             </label>
-            <textarea
-              id="remarks"
-              name="remarks"
-              rows="3"
-              value={formData.remarks}
+            <input
+              type="text"
+              id="courseName"
+              name="courseName"
+              value={formData.courseName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Additional remarks or notes..."
-            ></textarea>
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.courseName ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter NPTEL course name"
+            />
+            {errors.courseName && <p className="text-red-500 text-xs mt-1">{errors.courseName}</p>}
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <label htmlFor="marks" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span>
+            </label>
+            <input
+              type="number"
+              id="marks"
+              name="marks"
+              value={formData.marks}
+              onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.marks ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your NPTEL course marks"
+            />
+            {errors.marks && <p className="text-red-500 text-xs mt-1">{errors.marks}</p>}
+            <p className="text-xs text-gray-500 mt-1">Enter marks between 0 and 100</p>
           </div>
 
           <div className="bg-yellow-50 p-4 rounded-md mt-6">
@@ -434,67 +645,103 @@ const ReimbursementForm = () => {
           </div>
 
           {/* Document Upload Section */}
-<div className="border-t border-gray-200 pt-4">
-  <h3 className="text-lg font-medium text-gray-800 mb-4">
-    Supporting Documents (pdf)
-  </h3>
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">
+              Supporting Documents (pdf)
+            </h3>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* NPTEL Result */}
-    <div>
-      <label
-        htmlFor="nptelResult"
-        className="block text-sm font-semibold text-gray-800 mb-2"
-      >
-        Upload NPTEL Result *
-      </label>
-      <input
-        type="file"
-        id="nptelResult"
-        name="nptelResult"
-        accept=".pdf,.jpg,.jpeg,.png"
-        required
-        className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* NPTEL Result */}
+              <div>
+                <label
+                  htmlFor="nptelResult"
+                  className="block text-sm font-semibold text-gray-800 mb-2"
+                >
+                  Upload NPTEL Result *
+                </label>
+                <input
+                  type="file"
+                  id="nptelResult"
+                  name="nptelResult"
+                  ref={nptelFileRef}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`NPTEL Result: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
+                  className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
-                   file:bg-blue-50 file:text-blue-700
-                   hover:file:bg-blue-100"
-      />
+                   file:bg-teal-50 file:text-teal-700
+                   hover:file:bg-teal-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 500KB</p>
 
-    </div>
+              </div>
 
-    {/* Faculty ID Card */}
-    <div>
-      <label
-        htmlFor="idCard"
-        className="block text-sm font-semibold text-gray-800 mb-2"
-      >
-        Upload Faculty ID Card *
-      </label>
-      <input
-        type="file"
-        id="idCard"
-        name="idCard"
-        accept=".pdf,.jpg,.jpeg,.png"
-        required
-        className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
+              {/* Faculty ID Card */}
+              <div>
+                <label
+                  htmlFor="idCard"
+                  className="block text-sm font-semibold text-gray-800 mb-2"
+                >
+                  Upload Faculty ID Card *
+                </label>
+                <input
+                  type="file"
+                  id="idCard"
+                  name="idCard"
+                  ref={idCardFileRef}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  required
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const validation = validateFile(file);
+                      if (!validation.valid) {
+                        toast.error(`Faculty ID Card: ${validation.error}`);
+                        e.target.value = '';
+                      }
+                    }
+                  }}
+                  className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4
                    file:rounded-md file:border-0
                    file:text-sm file:font-medium
-                   file:bg-blue-50 file:text-blue-700
-                   hover:file:bg-blue-100"
-      />
+                   file:bg-teal-50 file:text-teal-700
+                   hover:file:bg-teal-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 500KB</p>
 
-    </div>
-  </div>
-</div>
+              </div>
+            </div>
+          </div>
 
 
           <div className="flex justify-center mt-8">
             <button
               type="submit"
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
+              disabled={isSubmitting}
+              className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
+                ${isSubmitting
+                  ? 'bg-teal-400 cursor-not-allowed text-white'
+                  : 'bg-teal-600 hover:bg-teal-700 text-white'
+                }`}
             >
-              Submit NPTEL Reimbursement Application
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Submitting Application...
+                </>
+              ) : (
+                'Submit NPTEL Reimbursement Application'
+              )}
             </button>
           </div>
         </form>

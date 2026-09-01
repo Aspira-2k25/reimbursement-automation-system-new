@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock,} from 'lucide-react';
-import { GoogleLogin} from '@react-oauth/google';
+import { motion } from 'framer-motion';
+import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useNavigate } from 'react-router-dom'
-
+import { useNavigate, useLocation } from 'react-router-dom'
+import apshahLogo from '../../assets/images/Apshah_logo.png'
+// import websiteLogo from '../../assets/images/Website_logo.png'
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -16,12 +19,15 @@ export default function LoginPage() {
   const [focusedField, setFocusedField] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+
   };
 
   const handleSubmit = async (e) => {
@@ -29,9 +35,11 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
     try {
-      const { user } = await login(formData.name, formData.password);
+      const { user } = await login(formData.name, formData.email, formData.password);
       const role = (user?.role || '').toLowerCase();
-      if (role === 'coordinator') {
+      if (role === 'admin') {
+        navigate('/dashboard/admin', { replace: true });
+      } else if (role === 'coordinator') {
         navigate('/dashboard/coordinator', { replace: true });
       } else if (role === 'faculty') {
         navigate('/dashboard/faculty', { replace: true });
@@ -47,10 +55,29 @@ export default function LoginPage() {
 
   // Note: Faculty/Coordinator should authenticate via backend flow.
 
+  // Match Landing page animation: simple fade-in-up on mount
+  const fadeInUp = {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6 }
+  }
+
   return (
-        <div className="min-h-screen flex">
-          {/* Left Side - Welcome Section */}
-          <div className="w-1/2 relative overflow-hidden flex items-center justify-center" style={{background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)'}}>
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left Side - Welcome Section */}
+      <motion.div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
+
+        {/* College Branding Top Left */}
+        <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+          <img
+            src={apshahLogo}
+            alt="A.P. Shah Institute of Technology Logo"
+            className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-sm"
+          />
+          <span className="font-bold text-white text-sm sm:text-base tracking-wide drop-shadow-md max-w-[200px] leading-tight">
+            PCT's A. P. Shah Institute of Technology
+          </span>
+        </div>
         {/* Decorative geometric shapes */}
         <div className="absolute inset-0">
           {/* Diamond shapes */}
@@ -73,84 +100,115 @@ export default function LoginPage() {
         </div>
 
         {/* Content */}
-        <div className="flex flex-col justify-center items-center p-16 relative z-10 text-center">
-          <h1 className="text-5xl font-bold text-white mb-8 leading-tight">
+        <motion.div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center" {...fadeInUp}>
+          {/* Large System Logo on the Green Panel */}
+          {/* <img
+            // src={websiteLogo}
+            // alt="Reimbursement Portal Logo"
+            className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 object-contain drop-shadow-lg mb-6 lg:mb-8"
+          /> */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 leading-tight">
             Welcome Back!
           </h1>
-          <p className="text-xl text-white/90 leading-relaxed max-w-md">
+          <p className="text-base sm:text-lg lg:text-xl text-white/90 leading-relaxed max-w-md px-4">
             To keep connected with us please login with your personal info
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-          {/* Right Side - Form Section */}
-          <div className="w-1/2 flex items-center justify-center p-8" style={{background: '#F2F2F2'}}>
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+      {/* Right Side - Form Section */}
+      <motion.div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }} {...fadeInUp}>
+        <div className="w-full max-w-md px-4 sm:px-0">
+          <motion.div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8" {...fadeInUp}>
             {/* Header */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{color: '#182628'}}>
-                Login In
+            <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
+              {/* <img
+                // src={websiteLogo}
+                // alt="Reimbursement System Logo"
+                className="h-20 w-20 sm:h-24 sm:w-24 mb-5 object-contain drop-shadow-md"
+              /> */}
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#182628' }}>
+                Log In
               </h2>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                <div className="text-xs sm:text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
                   {error}
                 </div>
               )}
               {/* Name Input */}
               <div className="relative">
-                    <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                      focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
-                    }`} />
+                <User className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
+                  }`} />
                 <input
                   type="text"
                   placeholder="Username"
+                  name="username"
+                  autoComplete="username"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   onFocus={() => setFocusedField('name')}
                   onBlur={() => setFocusedField('')}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
               </div>
 
               {/* Email Input */}
               <div className="relative">
-                    <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                      focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
-                    }`} />
+                <Mail className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
+                  }`} />
                 <input
                   type="email"
                   placeholder="Email"
+                  name="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField('')}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
               </div>
 
               {/* Password Input */}
               <div className="relative">
-                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                      focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
-                    }`} />
+                <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
+                  }`} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
+                  name="password"
+                  autoComplete="current-password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField('')}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-gray-700 placeholder-gray-500"
+                  className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors duration-200 focus:outline-none"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
+                  ) : (
+                    <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                  )}
+                </button>
+              </div>
+
+
+              <div className="text-right">
+                <a href="/forgot-password" className="text-gray-400 text-sm mr-3"><u>Forgot password?</u>
+                </a>
               </div>
 
               {/* Social Login Text */}
-              <div className="text-center py-4">
+              <div className="text-center py-0.5">
                 <p className="text-gray-400 text-sm">
                   or use google account to sign in
                 </p>
@@ -173,7 +231,6 @@ export default function LoginPage() {
                         }
                       }, 50);
                     } catch (err) {
-                      console.error('Google login error:', err);
                       setError(err.message || 'Google login failed. Please try again.');
                     }
                   }}
@@ -187,31 +244,31 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                    className="w-full text-white font-semibold py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                    style={{
-                      background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)',
-                      boxShadow: '0 4px 15px rgba(59, 148, 94, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #182628 0%, #3B945E 50%, #57BA98 100%)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)';
-                    }}
+                className="w-full text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-full transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
+                style={{
+                  background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)',
+                  boxShadow: '0 4px 15px rgba(59, 148, 94, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'linear-gradient(135deg, #182628 0%, #3B945E 50%, #57BA98 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)';
+                }}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2"></div>
-                    Loging in...
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2"></div>
+                    Logging in...
                   </div>
                 ) : (
                   'LOG IN'
                 )}
               </button>
             </form>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

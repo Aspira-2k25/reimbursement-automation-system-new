@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Hide number input spinner arrows to prevent accidental scroll changes */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Subtle animations for hero shapes */
 @keyframes floatY {
   0% { transform: translateY(0); }
@@ -31,9 +42,9 @@
 }
 
 /* Mossy Hollow theme palette */
-@theme {
+/* @theme {
   --color-moss-olive: #636B2F;
   --color-moss-sage: #BAC095;
   --color-moss-lime: #D4DE95;
   --color-moss-deep: #3D4127;
-}
+} */

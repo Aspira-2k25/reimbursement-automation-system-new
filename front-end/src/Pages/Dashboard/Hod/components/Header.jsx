@@ -1,19 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Bell,
-  ChevronDown,
-  Settings,
-  LogOut,
-  Calendar,
-  Clock,
-  Check,
-  CheckCheck
-} from 'lucide-react'
+import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle, Check, CheckCheck } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useHODContext } from '../pages/HODLayout'
 import { useAuth } from '../../../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import apshahLogo from '../../../../assets/images/Apshah_logo.png'
+import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   const { logout } = useAuth()
@@ -33,11 +26,11 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
   const unreadCount = notifications.filter(n => n.unread).length
 
-  // Update time every minute
+  // Update time every second for real-time clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-    }, 60000) // Update every minute
+    }, 1000) // Update every second
 
     return () => clearInterval(timer)
   }, [])
@@ -67,8 +60,8 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     setShowNotifications(false)
   }, [showProfileMenu])
 
-  const handleLogout = useCallback(() => {
-    logout()
+  const handleLogout = useCallback(async () => {
+    await logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
     navigate('/')
@@ -78,6 +71,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     return currentTime.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hour12: true
     })
   }
@@ -92,18 +86,29 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   }
 
   return (
-    <header className="px-6 py-4" style={{backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)'}}>
+    <header className="px-6 py-4" style={{ backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)' }}>
       <div className="flex items-center justify-between">
-        {/* Left Section - Current Page & Time */}
-        <div className="flex items-center gap-6">
+        {/* Left Section - College Logo & Current Page */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 pr-0 sm:pr-6 border-b sm:border-b-0 sm:border-r border-gray-200 pb-2 sm:pb-0">
+            <img
+              src={apshahLogo}
+              alt="A.P. Shah Logo"
+              className="h-12 w-12 sm:h-14 sm:w-14 rounded-sm object-contain drop-shadow-sm"
+            />
+            <span className="font-bold text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block" style={{ color: 'var(--color-dark-gray)' }}>
+              PCT's A. P. Shah Institute of Technology
+            </span>
+          </div>
+
           <div>
-            <h1 className="text-2xl font-semibold" style={{color: 'var(--color-dark-gray)'}}>{currentPage}</h1>
+            <h1 className="text-2xl font-semibold" style={{ color: 'var(--color-dark-gray)' }}>{currentPage}</h1>
             <div className="flex items-center gap-4 mt-1">
-              <div className="flex items-center gap-1 text-sm" style={{color: 'var(--color-dark-gray)'}}>
+              <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--color-dark-gray)' }}>
                 <Calendar className="w-4 h-4" />
                 <span>{getCurrentDate()}</span>
               </div>
-              <div className="flex items-center gap-1 text-sm" style={{color: 'var(--color-dark-gray)'}}>
+              <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--color-dark-gray)' }}>
                 <Clock className="w-4 h-4" />
                 <span>{getCurrentTime()}</span>
               </div>
@@ -113,12 +118,14 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
 
         {/* Right Section - Notifications & Profile */}
         <div className="flex items-center gap-4">
+
+
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
             <button
               onClick={handleNotificationClick}
               className="relative p-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
-              style={{color: 'var(--color-dark-gray)'}}
+              style={{ color: 'var(--color-dark-gray)' }}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -138,71 +145,68 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                 >
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
-                    <span className="text-xs text-gray-500">{unreadCount} unread</span>
-                  </div>
-                </div>
-
-                <div className="max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      No notifications
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                      <span className="text-xs text-gray-500">{unreadCount} unread</span>
                     </div>
-                  ) : (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        onClick={() => markNotificationAsRead(notification.id)}
-                        className={`p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${
-                          notification.unread ? 'bg-blue-50/50' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${
-                            notification.unread ? 'bg-blue-600' : 'bg-gray-300'
-                          }`}></div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <div className={`text-sm font-medium ${
-                                notification.unread ? 'text-gray-900' : 'text-gray-700'
-                              }`}>
-                                {notification.title}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No notifications
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          onClick={() => markNotificationAsRead(notification.id)}
+                          className={`p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${notification.unread ? 'bg-[#65CCB8]/20' : ''
+                            }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-[#3B945E]' : 'bg-gray-300'
+                              }`}></div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className={`text-sm font-medium ${notification.unread ? 'text-gray-900' : 'text-gray-700'
+                                  }`}>
+                                  {notification.title}
+                                </div>
+                                {notification.unread && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      markNotificationAsRead(notification.id)
+                                    }}
+                                    className="p-1 text-[#3B945E] hover:text-[#2d7048] rounded transition-colors"
+                                    title="Mark as read"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
-                              {notification.unread && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    markNotificationAsRead(notification.id)
-                                  }}
-                                  className="p-1 text-blue-600 hover:text-blue-700 rounded transition-colors"
-                                  title="Mark as read"
-                                >
-                                  <Check className="w-3 h-3" />
-                                </button>
-                              )}
+                              <div className="text-sm text-gray-600 mt-1">{notification.message}</div>
+                              <div className="text-xs text-gray-500 mt-2">{notification.time}</div>
                             </div>
-                            <div className="text-sm text-gray-600 mt-1">{notification.message}</div>
-                            <div className="text-xs text-gray-500 mt-2">{notification.time}</div>
                           </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {notifications.length > 0 && (
-                  <div className="p-3 border-t border-gray-200">
-                    <button
-                      onClick={markAllNotificationsAsRead}
-                      className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2"
-                    >
-                      <CheckCheck className="w-4 h-4" />
-                      Mark all as read
-                    </button>
+                      ))
+                    )}
                   </div>
-                )}
+
+                  {notifications.length > 0 && (
+                    <div className="p-3 border-t border-gray-200">
+                      <button
+                        onClick={markAllNotificationsAsRead}
+                        className="w-full text-sm text-[#3B945E] hover:text-[#2d7048] font-medium flex items-center justify-center gap-2"
+                      >
+                        <CheckCheck className="w-4 h-4" />
+                        Mark all as read
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -212,27 +216,26 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
           <div className="relative" ref={profileRef}>
             <button
               onClick={handleProfileClick}
-              className="flex items-center gap-3 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex items-center gap-3 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#65CCB8]"
             >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))'}}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName
                     ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
-                    : 'JK'
+                    : 'H'
                   }
                 </span>
               </div>
               <div className="hidden md:block text-left">
-                <div className="text-sm font-medium" style={{color: 'var(--color-dark-gray)'}}>
-                  {userProfile?.fullName || 'Dr. Jagan Kumar'}
+                <div className="text-sm font-medium" style={{ color: 'var(--color-dark-gray)' }}>
+                  {userProfile?.fullName || 'Head of Department'}
                 </div>
-                <div className="text-xs" style={{color: 'var(--color-dark-gray)'}}>
+                <div className="text-xs" style={{ color: 'var(--color-dark-gray)' }}>
                   {userProfile?.designation || 'Head of Department'}
                 </div>
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
-                showProfileMenu ? 'rotate-180' : ''
-              }`} />
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''
+                }`} />
             </button>
 
             {/* Profile Dropdown */}
@@ -245,46 +248,46 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                 >
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm font-medium">
-                        {userProfile?.fullName
-                          ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
-                          : 'JK'
-                        }
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">
-                        {userProfile?.fullName || 'Dr. Jagan Kumar'}
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
+                        <span className="text-white text-sm font-medium">
+                          {userProfile?.fullName
+                            ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
+                            : 'H'
+                          }
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {userProfile?.email || 'jagan.kumar@college.edu'}
-                      </div>
-                      <div className="text-xs text-blue-600 truncate">
-                        {userProfile?.department || 'Civil Engineering'}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {userProfile?.fullName || 'Head of Department'}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {userProfile?.email || 'No email set'}
+                        </div>
+                        <div className="text-xs text-[#3B945E] truncate">
+                          {userProfile?.department || 'Department not set'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-2">
-                  <button
-                    onClick={() => { setActiveTab('profile'); setShowProfileMenu(false) }}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Profile Settings
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
-                </div>
+                  <div className="p-2">
+                    <button
+                      onClick={() => { setActiveTab('profile'); setShowProfileMenu(false) }}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Profile Settings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

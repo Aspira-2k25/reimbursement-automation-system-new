@@ -9,17 +9,15 @@ import { useProfile } from "./ProfileContext"
  */
 export default function ProfileSettings() {
   const { profile, updateProfile, resetProfile } = useProfile()
-  
+
   // State for form inputs
   const [name, setName] = React.useState(profile.name)
-  const [dept, setDept] = React.useState(profile.department)
   const [designation, setDesignation] = React.useState(profile.designation)
   const [isLoading, setIsLoading] = React.useState(false)
 
   // Sync form state with profile context when profile changes
   React.useEffect(() => {
     setName(profile.name)
-    setDept(profile.department)
     setDesignation(profile.designation)
   }, [profile])
 
@@ -30,23 +28,20 @@ export default function ProfileSettings() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // Update profile in context
       updateProfile({
         name: name,
-        department: dept,
         designation: designation
       })
-      
+
       // Show success message
       toast.success("Faculty profile updated successfully!")
-      
-      console.log("Faculty profile updated:", { name, department: dept, designation })
-    } catch (error) {
+    } catch {
       toast.error("Failed to update profile. Please try again.")
     } finally {
       setIsLoading(false)
@@ -59,7 +54,6 @@ export default function ProfileSettings() {
   const handleReset = () => {
     resetProfile()
     setName(profile.name)
-    setDept(profile.department)
     setDesignation(profile.designation)
     toast.success("Form reset to default values")
   }
@@ -71,7 +65,7 @@ export default function ProfileSettings() {
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold">Faculty Profile Settings</h1>
           <p className="text-slate-600 mt-1 text-sm sm:text-base">
-            Update your faculty information. Changes reflect across the portal instantly.
+            Update your faculty information. Department is synced from your authenticated profile.
           </p>
         </div>
 
@@ -83,44 +77,43 @@ export default function ProfileSettings() {
           {/* Full Name input */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Full Name</span>
-            <input 
-              className="input w-full" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              required 
+            <input
+              className="input w-full"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
             />
           </label>
-          
+
           {/* Department input */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Department</span>
-            <input 
-              className="input w-full" 
-              value={dept} 
-              onChange={(e) => setDept(e.target.value)} 
-              required 
+            <input
+              className="input w-full"
+              value={profile.department || 'Not assigned'}
+              readOnly
             />
           </label>
-          
+
           {/* Designation input */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Designation</span>
-            <input 
-              className="input w-full" 
-              value={designation} 
-              onChange={(e) => setDesignation(e.target.value)} 
-              required 
-              placeholder="e.g., Associate Professor" 
+            <input
+              className="input w-full"
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              required
+              placeholder="e.g., Associate Professor"
             />
           </label>
-          
+
           {/* Role input (disabled) */}
           <label className="grid gap-1">
             <span className="text-sm text-slate-600">Role</span>
-            <input 
-              className="input w-full" 
-              value="Faculty" 
-              disabled 
+            <input
+              className="input w-full"
+              value="Faculty"
+              disabled
             />
           </label>
 
@@ -134,8 +127,8 @@ export default function ProfileSettings() {
             >
               Reset
             </button>
-            <button 
-              className="btn btn-primary w-full sm:w-auto" 
+            <button
+              className="btn btn-primary w-full sm:w-auto"
               type="submit"
               disabled={isLoading}
             >
@@ -143,6 +136,7 @@ export default function ProfileSettings() {
             </button>
           </div>
         </form>
+
       </div>
     </main>
   )

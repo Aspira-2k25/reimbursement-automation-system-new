@@ -1,14 +1,15 @@
 import React, { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Home, 
-  BarChart3, 
+import {
+  Home,
+  BarChart3,
   Users,
   Settings,
-  ChevronLeft, 
+  ChevronLeft,
   ChevronRight,
   Building2,
-  User
+  User,
+  KeyRound
 } from 'lucide-react'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
@@ -18,7 +19,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
     { id: 'home', label: 'Home Dashboard', icon: Home },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     { id: 'roster', label: 'Department Roster', icon: Users },
-    { id: 'profile', label: 'Profile Settings', icon: Settings }
+    { id: 'profile', label: 'Profile Settings', icon: Settings },
+    { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
   const handleTabClick = useCallback((tabId) => {
@@ -38,8 +40,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
   }, [setIsCollapsed])
 
   return (
-    <motion.div 
-      className="bg-white border-r border-gray-200 flex flex-col shadow-sm"
+    <motion.div
+      className="bg-white border-r border-gray-200 flex flex-col shadow-sm h-screen"
       initial={false}
       animate={{ width: isCollapsed ? 64 : 256 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -49,14 +51,14 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
         <div className="flex items-center justify-between">
           <AnimatePresence>
             {!isCollapsed && (
-              <motion.div 
+              <motion.div
                 className="flex items-center gap-3"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-inner">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))' }}>
                   <div className="w-5 h-5 bg-white rounded-md opacity-95"></div>
                 </div>
                 <div className="flex flex-col">
@@ -66,10 +68,10 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               </motion.div>
             )}
           </AnimatePresence>
-          
+
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4 text-gray-600" />
@@ -84,7 +86,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
       <div className="p-4 border-b border-gray-200">
         <AnimatePresence mode="wait">
           {isCollapsed ? (
-            <motion.div 
+            <motion.div
               key="collapsed"
               className="flex justify-center"
               initial={{ opacity: 0, scale: 0.8 }}
@@ -92,12 +94,12 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <User className="w-4 h-4 text-white" />
               </div>
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               key="expanded"
               className="flex items-center gap-3"
               initial={{ opacity: 0, x: -20 }}
@@ -105,7 +107,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'P'}
                 </span>
@@ -118,7 +120,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                   <div className="text-xs text-gray-500 truncate">{userProfile.designation}</div>
                 )}
                 {userProfile?.college && (
-                  <div className="text-xs text-blue-600 truncate">{userProfile.college}</div>
+                  <div className="text-xs text-green-600 truncate">{userProfile.college}</div>
                 )}
               </div>
             </motion.div>
@@ -143,9 +145,9 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left
                     transition-all duration-200 ease-in-out
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    ${isActive 
-                      ? 'bg-blue-600/10 text-blue-800 border border-blue-200 shadow-sm' 
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                    ${isActive
+                      ? 'bg-[#65CCB8]/20 text-[#3B945E] border border-[#65CCB8] shadow-sm'
                       : isHovered
                         ? 'bg-gray-50 text-gray-900'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -154,12 +156,12 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 >
                   <Icon className={`
                     w-5 h-5 flex-shrink-0 transition-colors duration-200
-                    ${isActive ? 'text-blue-600' : 'text-gray-500'}
+                    ${isActive ? 'text-[#3B945E]' : 'text-gray-500'}
                   `} />
-                  
+
                   <AnimatePresence>
                     {!isCollapsed && (
-                      <motion.span 
+                      <motion.span
                         className="text-sm font-medium leading-tight"
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -175,7 +177,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                 {/* Tooltip for collapsed state */}
                 <AnimatePresence>
                   {isCollapsed && isHovered && (
-                    <motion.div 
+                    <motion.div
                       className="fixed left-16 bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg z-50 pointer-events-none"
                       initial={{ opacity: 0, x: -10, scale: 0.8 }}
                       animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -195,7 +197,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
       {/* Footer with College Info */}
       <AnimatePresence>
         {!isCollapsed && (
-          <motion.div 
+          <motion.div
             className="p-4 border-t border-gray-200"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
