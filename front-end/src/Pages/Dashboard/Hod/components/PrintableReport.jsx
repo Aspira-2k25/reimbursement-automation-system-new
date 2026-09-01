@@ -73,6 +73,14 @@ const safeValue = (value) => {
 const PrintableReport = ({ requests = [], dateRange = {}, departmentName = '-' }) => {
   const titleRange = useMemo(() => formatDateRangeLabel(dateRange, requests), [dateRange, requests])
 
+  const totalSum = useMemo(() => {
+    return requests.reduce((sum, r) => {
+      const cleaned = String(r.amount || '0').replace(/[^\d.]/g, '')
+      const parsed = parseFloat(cleaned) || 0
+      return sum + parsed
+    }, 0)
+  }, [requests])
+
   const rows = useMemo(() => {
     return requests.map((request, index) => ({
       srNo: index + 1,
@@ -96,7 +104,7 @@ const PrintableReport = ({ requests = [], dateRange = {}, departmentName = '-' }
           @media print {
             @page {
               size: A4;
-              margin: 10mm;
+              margin: 12mm 10mm;
             }
 
             html,
@@ -105,6 +113,7 @@ const PrintableReport = ({ requests = [], dateRange = {}, departmentName = '-' }
               padding: 0;
               height: auto;
               overflow: visible;
+              background: #fff !important;
             }
 
             body.hod-report-print * {
@@ -132,7 +141,7 @@ const PrintableReport = ({ requests = [], dateRange = {}, departmentName = '-' }
               width: 100%;
               color: #000;
               background: #fff;
-              font-family: "Times New Roman", serif;
+              font-family: "Times New Roman", Times, serif;
             }
 
             .hod-print-container {
@@ -173,66 +182,108 @@ const PrintableReport = ({ requests = [], dateRange = {}, departmentName = '-' }
       </style>
 
       <div className="hod-print-container">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+        {/* Official College Letterhead */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '2px solid #000', paddingBottom: '10px', marginBottom: '14px' }}>
           <img
             src={apshahLogo}
             alt="AP Shah Institute Logo"
-            style={{ width: '62px', height: '62px', objectFit: 'contain' }}
+            style={{ width: '68px', height: '68px', objectFit: 'contain' }}
           />
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.2 }}>
-              PCT&apos;s A. P. Shah Institute of Technology
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '19px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.2 }}>
+              Parshvanath Charitable Trust&apos;s
             </div>
-            <div style={{ fontSize: '14px', marginTop: '4px' }}>
+            <div style={{ fontSize: '21px', fontWeight: 900, color: '#000', lineHeight: 1.2 }}>
+              A. P. SHAH INSTITUTE OF TECHNOLOGY
+            </div>
+            <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+              Survey No. 12, Opp. Hypercity Mall, Kasarvadavali, Ghodbunder Road, Thane West, Maharashtra 400615
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '4px', color: '#111' }}>
               Department: {safeValue(departmentName)}
             </div>
           </div>
         </div>
 
-        <h2 style={{ textAlign: 'center', fontSize: '18px', fontWeight: 700, margin: '10px 0 18px 0' }}>
+        {/* Report Statement Title */}
+        <h2 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 800, textTransform: 'uppercase', margin: '14px 0 16px 0', textDecoration: 'underline' }}>
           {titleRange
-            ? `NPTEL reimbursement details for ${titleRange}`
-            : 'NPTEL reimbursement details'}
+            ? `Department NPTEL Reimbursement Statement (${titleRange})`
+            : 'Department NPTEL Reimbursement Statement'}
         </h2>
 
+        {/* Tabulated Records */}
         <table
           className="hod-print-table"
           style={{
             width: '100%',
             borderCollapse: 'collapse',
             tableLayout: 'fixed',
-            fontSize: '12px'
+            fontSize: '11.5px'
           }}
         >
           <thead>
-            <tr>
-              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', width: '8%' }}>Sr. No</th>
-              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', width: '32%' }}>Applicant Name</th>
-              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', width: '30%' }}>Course Name</th>
-              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', width: '12%' }}>Marks</th>
-              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', width: '18%' }}>Amount (₹)</th>
+            <tr style={{ backgroundColor: '#f2f2f2' }}>
+              <th style={{ border: '1px solid #000', padding: '8px 4px', textAlign: 'center', width: '8%', fontWeight: 700 }}>Sr. No</th>
+              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'left', width: '32%', fontWeight: 700 }}>Applicant Name</th>
+              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'left', width: '32%', fontWeight: 700 }}>Course / Expense Name</th>
+              <th style={{ border: '1px solid #000', padding: '8px 4px', textAlign: 'center', width: '10%', fontWeight: 700 }}>Score %</th>
+              <th style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'right', width: '18%', fontWeight: 700 }}>Amount (₹)</th>
             </tr>
           </thead>
           <tbody>
             {rows.length > 0 ? (
               rows.map((row) => (
                 <tr key={row.srNo}>
-                  <td style={{ border: '1px solid #000', padding: '7px 6px', textAlign: 'center', verticalAlign: 'top' }}>{row.srNo}</td>
-                  <td style={{ border: '1px solid #000', padding: '7px 6px', textAlign: 'center', verticalAlign: 'top', wordBreak: 'break-word' }}>{row.applicantName}</td>
-                  <td style={{ border: '1px solid #000', padding: '7px 6px', textAlign: 'center', verticalAlign: 'top', wordBreak: 'break-word' }}>{row.courseName}</td>
-                  <td style={{ border: '1px solid #000', padding: '7px 6px', textAlign: 'center', verticalAlign: 'top' }}>{row.marks}</td>
-                  <td style={{ border: '1px solid #000', padding: '7px 6px', textAlign: 'center', verticalAlign: 'top' }}>{row.amount}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}>{row.srNo}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'left', verticalAlign: 'top', wordBreak: 'break-word' }}>{row.applicantName}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'left', verticalAlign: 'top', wordBreak: 'break-word' }}>{row.courseName}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}>{row.marks}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px 6px', textAlign: 'right', verticalAlign: 'top' }}>{row.amount}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} style={{ border: '1px solid #000', padding: '10px', textAlign: 'center' }}>
-                  No data available
+                <td colSpan={5} style={{ border: '1px solid #000', padding: '14px', textAlign: 'center' }}>
+                  No reimbursement records available for the selected period.
                 </td>
               </tr>
             )}
           </tbody>
+          {/* Summary Row */}
+          {rows.length > 0 && (
+            <tfoot>
+              <tr style={{ backgroundColor: '#f8f8f8', fontWeight: 800 }}>
+                <td colSpan={4} style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'right', textTransform: 'uppercase' }}>
+                  Total Recommended Amount ({rows.length} Claim{rows.length > 1 ? 's' : ''}):
+                </td>
+                <td style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'right', fontSize: '12px' }}>
+                  ₹{totalSum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+            </tfoot>
+          )}
         </table>
+
+        {/* Verification & Signature Endorsement Block */}
+        <div style={{ marginTop: '55px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '12px', fontWeight: 700 }}>
+          <div style={{ textAlign: 'center', width: '30%' }}>
+            <div style={{ borderBottom: '1px solid #000', marginBottom: '6px', height: '30px' }}></div>
+            <div>Department Coordinator</div>
+            <div style={{ fontSize: '10px', fontWeight: 400, color: '#555' }}>Signature & Date</div>
+          </div>
+          <div style={{ textAlign: 'center', width: '30%' }}>
+            <div style={{ borderBottom: '1px solid #000', marginBottom: '6px', height: '30px' }}></div>
+            <div>Head of Department (HOD)</div>
+            <div style={{ fontSize: '10px', fontWeight: 400, color: '#555' }}>Recommended & Forwarded</div>
+          </div>
+          <div style={{ textAlign: 'center', width: '30%' }}>
+            <div style={{ borderBottom: '1px solid #000', marginBottom: '6px', height: '30px' }}></div>
+            <div>Principal Approval</div>
+            <div style={{ fontSize: '10px', fontWeight: 400, color: '#555' }}>Sanctioned for Disbursement</div>
+          </div>
+        </div>
+
       </div>
     </div>
   )
