@@ -85,6 +85,9 @@ const getDepartmentVariants = (department) => {
  * @param {string} userDepartment 
  * @returns {object} MongoDB query object for department filtering
  */
+// Cache compiled RegExp objects per department to avoid recompilation per request
+const departmentRegexCache = new Map();
+
 const buildDepartmentFilter = (userRole, userDepartment) => {
     const role = (userRole || '').toLowerCase();
 
@@ -102,10 +105,16 @@ const buildDepartmentFilter = (userRole, userDepartment) => {
         }
 
         const deptVariants = getDepartmentVariants(userDepartment);
-        const deptPattern = deptVariants
-            .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-            .join('|');
-        const deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+        const cacheKey = deptVariants.sort().join('|');
+
+        let deptRegex = departmentRegexCache.get(cacheKey);
+        if (!deptRegex) {
+            const deptPattern = deptVariants
+                .map(d => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                .join('|');
+            deptRegex = new RegExp(`^(${deptPattern})$`, 'i');
+            departmentRegexCache.set(cacheKey, deptRegex);
+        }
 
         return {
             $or: [

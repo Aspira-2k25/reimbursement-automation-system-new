@@ -161,18 +161,10 @@ router.get(
         return res.status(400).json({ error: "User ID not found in token" });
       }
 
-      // Try to find forms matching userId (could be numeric ID or email)
-      // Convert userId to string for comparison since MongoDB might store it as string
-      const userIdStr = String(userId);
-
-      // Try multiple query patterns to handle different userId formats
+      // Use direct string match (after normalizeUserIds migration)
       const forms = await StudentForm.find({
-        $or: [
-          { userId: userIdStr },
-          { userId: userId },
-          { userId: Number(userId) }
-        ]
-      }).sort({ createdAt: -1 });
+        userId: String(userId)
+      }).select('-documents').sort({ createdAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -198,7 +190,7 @@ router.get(
       const deptFilter = buildDepartmentFilter(userRole, req.user.department);
       const query = { $and: [{ status: "Pending" }, deptFilter] };
 
-      const forms = await StudentForm.find(query).sort({ createdAt: -1 });
+      const forms = await StudentForm.find(query).select('-documents').sort({ createdAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -228,7 +220,7 @@ router.get(
           deptFilter
         ]
       };
-      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
+      const forms = await StudentForm.find(query).select('-documents').sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -275,7 +267,7 @@ router.get(
         ]
       };
 
-      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
+      const forms = await StudentForm.find(query).select('-documents').sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -300,7 +292,7 @@ router.get(
       // Fetch forms with status "Under Principal" (awaiting principal approval)
       const forms = await StudentForm.find({
         status: "Under Principal"
-      }).sort({ updatedAt: -1 });
+      }).select('-documents').sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -333,7 +325,7 @@ router.get(
           { status: "Reimbursed" },
           { status: "Rejected", rejectedBy: "Accounts" }
         ]
-      }).sort({ updatedAt: -1 });
+      }).select('-documents').sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {
@@ -369,7 +361,7 @@ router.get(
         ]
       };
 
-      const forms = await StudentForm.find(query).sort({ updatedAt: -1 });
+      const forms = await StudentForm.find(query).select('-documents').sort({ updatedAt: -1 });
 
       return res.json({ forms });
     } catch (err) {

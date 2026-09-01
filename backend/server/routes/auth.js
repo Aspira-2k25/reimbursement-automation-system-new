@@ -9,6 +9,7 @@ const { validateLogin, validateRegister } = require('../middleware/validation');
 router.post('/login', validateLogin, authController.login);
 // /register removed — user creation is restricted to Principal via /create-user
 router.post('/google', authController.googleLogin);
+router.post('/refresh', authController.refreshToken);
 router.post('/logout', verifyToken, csrfProtection, authController.logout);
 
 

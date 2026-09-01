@@ -16,8 +16,24 @@ if (missingEnvVars.length > 0) {
   throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
+// Default INSTITUTIONAL_EMAIL_DOMAIN if not set
+if (!process.env.INSTITUTIONAL_EMAIL_DOMAIN) {
+  console.warn('⚠️  INSTITUTIONAL_EMAIL_DOMAIN not set. Defaulting to apsit.edu.in');
+  process.env.INSTITUTIONAL_EMAIL_DOMAIN = 'apsit.edu.in';
+}
+
+// Default REDIS_URL for local development
+if (!process.env.REDIS_URL) {
+  console.warn('⚠️  REDIS_URL not set. Email queue will fall back to synchronous sending.');
+}
+
+// Default CSP_REPORT_URI
+if (!process.env.CSP_REPORT_URI) {
+  process.env.CSP_REPORT_URI = '/api/csp-report';
+}
+
 // Validate JWT secret strength
-const JWT_MIN_LENGTH = 64;
+const SECRET_MIN_LENGTH = 32;
 const KNOWN_WEAK_SECRETS = [
   'your_super_secret_jwt_key_here',
   'secret',
@@ -29,23 +45,32 @@ const KNOWN_WEAK_SECRETS = [
   'your_64_character_or_longer_random_secret_here_minimum_sixty_four_chars'
 ];
 
-// In development, warn but don't crash for weak secrets
-// In production, enforce strict validation
+// Validate REFRESH_TOKEN_SECRET
+if (process.env.JWT_SECRET === process.env.REFRESH_TOKEN_SECRET) {
+  console.warn('⚠️  REFRESH_TOKEN_SECRET should be different from JWT_SECRET for better security.');
+}
+
 if (process.env.NODE_ENV === 'production') {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < JWT_MIN_LENGTH) {
-    throw new Error(`JWT_SECRET must be at least ${JWT_MIN_LENGTH} characters. Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`);
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < SECRET_MIN_LENGTH) {
+    throw new Error(`JWT_SECRET must be at least ${SECRET_MIN_LENGTH} characters. Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`);
+  }
+  if (!process.env.REFRESH_TOKEN_SECRET || process.env.REFRESH_TOKEN_SECRET.length < SECRET_MIN_LENGTH) {
+    throw new Error(`REFRESH_TOKEN_SECRET must be at least ${SECRET_MIN_LENGTH} characters.`);
   }
 
   if (KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
     throw new Error('JWT_SECRET is a known weak/default value. Generate a secure random string.');
   }
-  console.log('✅ JWT secret validation passed');
+  if (KNOWN_WEAK_SECRETS.includes(process.env.REFRESH_TOKEN_SECRET.toLowerCase())) {
+    throw new Error('REFRESH_TOKEN_SECRET is a known weak/default value. Generate a secure random string.');
+  }
+  console.log('✅ JWT and Refresh secret validation passed');
 } else {
   // Development mode - warn but allow
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < JWT_MIN_LENGTH ||
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < SECRET_MIN_LENGTH ||
     KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
     console.warn('⚠️  JWT_SECRET is weak or using default value. This is OK for development only.');
-    console.warn('   For production, generate a secure 64+ character secret.');
+    console.warn('   For production, generate a secure 32+ character secret.');
   } else {
     console.log('✅ JWT secret validation passed');
   }
@@ -57,7 +82,7 @@ const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
-const { csrfProtection } = require('./middleware/csrf');
+const { csrfProtection, csrfTokenHandler } = require('./middleware/csrf');
 const http = require('http');
 const { Server: IOServer } = require('socket.io');
 
@@ -65,6 +90,7 @@ const { Server: IOServer } = require('socket.io');
 const connectMongoDB = require('./config/mongo');
 const dbUtils = require('./utils/database');
 const logger = require('./utils/logger');
+const ActivityLog = require('./models/ActivityLog');
 
 const notificationRoutes = require('./routes/notificationRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
@@ -348,19 +374,35 @@ app.use('/api/notifications', notificationRoutes);
 // Announcement routes (dynamic reminder banner)
 app.use('/api/announcements', announcementRoutes);
 
-// CSRF token endpoint for frontend
-app.get('/api/csrf-token', csrfProtection, (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
+// CSRF token endpoint for frontend (uses new custom handler)
+app.get('/api/csrf-token', csrfTokenHandler);
+
+// CSP violation report endpoint (non-blocking)
+app.post('/api/csp-report', express.json({ type: 'application/csp-report', limit: '10kb' }), (req, res) => {
+  const report = req.body?.['csp-report'] || req.body;
+  if (report) {
+    logger.info('CSP Violation Report', {
+      documentUri: report['document-uri'],
+      violatedDirective: report['violated-directive'],
+      blockedUri: report['blocked-uri'],
+      sourceFile: report['source-file'],
+    });
+  }
+  res.status(204).end();
 });
 
-// Admin logs - returns recent activity logs (excludes admin user actions)
+// Admin logs - returns recent activity logs from MongoDB
 app.get('/api/admin/logs',
   authMiddleware.verifyToken,
   authMiddleware.requireRole(['Admin']),
-  (req, res) => {
+  async (req, res) => {
     try {
+      // Ensure MongoDB is connected
+      await connectMongoDB();
+
       const roleFilter = String(req.query.role || 'All');
       const departmentFilter = String(req.query.department || 'All');
+      const actionFilter = String(req.query.action || 'All');
       const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : null;
       const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : null;
       const rawLimit = Number.parseInt(String(req.query.limit || '200'), 10);
@@ -368,44 +410,55 @@ app.get('/api/admin/logs',
       const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 200;
       const page = Number.isFinite(rawPage) ? Math.max(rawPage, 1) : 1;
 
+      // Build MongoDB filter (no default level filter — show all levels)
+      const filter = {};
+
+      if (roleFilter !== 'All') filter.role = roleFilter;
+      if (departmentFilter !== 'All') filter.department = departmentFilter;
+      if (actionFilter !== 'All') filter.action = actionFilter;
+
+      // Date range filter
+      if (startDate && !Number.isNaN(startDate.getTime())) {
+        filter.timestamp = filter.timestamp || {};
+        filter.timestamp.$gte = startDate;
+      }
       if (endDate && !Number.isNaN(endDate.getTime())) {
-        // Include the full end day for date-only filters from the UI.
-        endDate.setHours(23, 59, 59, 999);
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        filter.timestamp = filter.timestamp || {};
+        filter.timestamp.$lte = endOfDay;
       }
 
-      const allLogs = logger.getLogs();
-      // Filter to only show activity logs from non-admin users
-      const activityLogs = allLogs.filter(log => {
-        // Only include INFO-level logs that have user activity data
-        if (log.level !== 'INFO') return false;
-        if (!log.data || !log.data.role) return false;
-        // Exclude admin actions
-        if (log.data.role?.toLowerCase() === 'admin') return false;
-
-        if (roleFilter !== 'All' && log.data.role !== roleFilter) return false;
-        if (departmentFilter !== 'All' && log.data.department !== departmentFilter) return false;
-
-        if (startDate && !Number.isNaN(startDate.getTime())) {
-          const logDate = new Date(log.timestamp);
-          if (logDate < startDate) return false;
-        }
-
-        if (endDate && !Number.isNaN(endDate.getTime())) {
-          const logDate = new Date(log.timestamp);
-          if (logDate > endDate) return false;
-        }
-
-        return true;
-      });
-
-      const total = activityLogs.length;
+      // Get total count for pagination
+      const total = await ActivityLog.countDocuments(filter);
       const totalPages = Math.max(1, Math.ceil(total / limit));
       const safePage = Math.min(page, totalPages);
-      const startIndex = (safePage - 1) * limit;
-      const pagedLogs = activityLogs.slice(startIndex, startIndex + limit);
+      const skip = (safePage - 1) * limit;
+
+      // Fetch paginated logs from MongoDB, newest first
+      const logs = await ActivityLog.find(filter)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      // Map to response format (compatible with existing frontend)
+      const formattedLogs = logs.map(log => ({
+        timestamp: log.timestamp,
+        level: log.level,
+        message: log.message,
+        data: {
+          user: log.userName,
+          role: log.role,
+          department: log.department,
+          formId: log.formId || undefined,
+          action: log.action,
+          status: log.status
+        }
+      }));
 
       res.json({
-        logs: pagedLogs,
+        logs: formattedLogs,
         pagination: {
           total,
           page: safePage,
@@ -414,6 +467,7 @@ app.get('/api/admin/logs',
         }
       });
     } catch (err) {
+      console.error('Failed to fetch logs:', err.message);
       res.status(500).json({ error: 'Failed to fetch logs' });
     }
   }
@@ -433,11 +487,29 @@ app.use((err, req, res, next) => {
     });
   }
 
+  // Persist error to MongoDB for production debugging
+  logger.logActivity({
+    action: 'error',
+    message: `Server error: ${err.message}`,
+    level: 'ERROR',
+    status: 'failure',
+    details: {
+      path: req.path,
+      method: req.method,
+      statusCode: err.status || 500,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    },
+    ipAddress: req.ip || null,
+    userAgent: req.get('user-agent') || null,
+    method: req.method,
+    endpoint: req.path
+  });
+
   // Remove potentially sensitive headers
   res.removeHeader('X-Powered-By');
 
-  // Handle CSRF errors
-  if (err.code === 'EBADCSRFTOKEN') {
+  // Handle CSRF errors (from custom middleware)
+  if (err.code === 'EBADCSRFTOKEN' || (err.status === 403 && err.message?.includes('CSRF'))) {
     return res.status(403).json({
       error: 'Invalid CSRF token',
       message: 'Form submission failed security validation. Please refresh the page and try again.'
@@ -469,11 +541,10 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Default error response (more info in development)
+  // Default error response — NEVER leak stack traces in production
   res.status(500).json({
     error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
 });
 
@@ -505,7 +576,34 @@ async function startServer() {
       console.warn('Could not attach socket to logger', e.message || e);
     }
 
+<<<<<<< HEAD
     server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+=======
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+    // ── Graceful shutdown ──
+    const gracefulShutdown = async (signal) => {
+      console.log(`\n${signal} received. Shutting down gracefully...`);
+      server.close(() => {
+        console.log('HTTP server closed.');
+      });
+
+      // Close email queue/worker if they exist
+      try {
+        const { emailQueue } = require('./queues/emailQueue');
+        if (emailQueue) await emailQueue.close();
+      } catch (e) { /* queue may not be initialized */ }
+
+      // Allow in-flight requests to complete (max 10s)
+      setTimeout(() => {
+        console.log('Forcing shutdown after timeout.');
+        process.exit(0);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+>>>>>>> origin/main
   } catch (err) {
     console.error('❌ Failed to start server', err);
   }

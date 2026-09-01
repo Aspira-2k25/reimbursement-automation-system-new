@@ -159,18 +159,8 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
     // Parse pagination parameters
     const pagination = parsePaginationParams(req.query, { defaultLimit: 20, maxLimit: 100 });
 
-    // Try multiple query patterns to handle different userId formats
-    // Convert userId to string for comparison since MongoDB might store it as string
-    const userIdStr = String(userId);
-
-    // Try multiple query patterns to handle different userId formats
-    const query = {
-      $or: [
-        { userId: userIdStr },
-        { userId: userId },
-        { userId: Number(userId) }
-      ]
-    };
+    // Use direct string match (after normalizeUserIds migration)
+    const query = { userId: String(userId) };
 
     // Execute paginated query
     const result = await paginateQuery(
@@ -221,7 +211,7 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -259,7 +249,7 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
     }
     // Principal: sees all (no additional filter)
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -303,7 +293,7 @@ router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
 
     return res.json({ forms });
   } catch (err) {
@@ -331,7 +321,7 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).sort({ updatedAt: -1 });
+    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching principal forms:", err);
@@ -359,7 +349,7 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
         { status: "Reimbursed" },
         { status: "Rejected", rejectedBy: "Accounts" }
       ]
-    }).sort({ updatedAt: -1 });
+    }).select('-documents').sort({ updatedAt: -1 });
     return res.json({ forms });
   } catch (err) {
     console.error("Error fetching accounts forms:", err);
