@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
 
 const isProd = process.env.NODE_ENV === 'production';
 const isBcryptHash = (value) => typeof value === 'string' && /^\$2[aby]\$/.test(value);
@@ -61,11 +62,13 @@ const validationMiddleware = {
       };
 
       if (!user) {
+        logFailedLogin(req, 'User not found', username);
         return res.status(401).json(invalidCredentialsError);
       }
 
       // Check if user is active
       if (!user.is_active) {
+        logFailedLogin(req, 'Account deactivated', user.username);
         return res.status(401).json({ error: 'Account is deactivated' });
       }
 

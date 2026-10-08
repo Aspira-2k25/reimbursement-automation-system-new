@@ -131,10 +131,16 @@ const passwordController = {
         data: { password: hashedPassword }
       });
 
-      logger.info('User reset password successfully', {
-        user: staffToUpdate.name || staffToUpdate.username || staffToUpdate.email,
+      logger.logActivity({
+        action: 'password_change',
+        message: 'User reset password successfully',
+        userId: String(staffToUpdate.id),
+        userName: staffToUpdate.name || staffToUpdate.username || staffToUpdate.email || 'Unknown',
         role: staffToUpdate.role || 'Unknown',
-        department: staffToUpdate.department || ''
+        department: staffToUpdate.department || '',
+        status: 'success',
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
       });
 
       // Delete the used token (single-use)
@@ -263,10 +269,16 @@ const passwordController = {
         data: { password: hashedPassword }
       });
 
-      logger.info('User changed password successfully', {
-        user: staff.name || req.user?.username || staff.email || 'Unknown',
+      logger.logActivity({
+        action: 'password_change',
+        message: 'User changed password successfully',
+        userId: String(req.user?.userId || staff.id),
+        userName: staff.name || req.user?.username || staff.email || 'Unknown',
         role: req.user?.role || 'Unknown',
-        department: req.user?.department || ''
+        department: req.user?.department || '',
+        status: 'success',
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
       });
 
       // Delete used OTP (single-use)

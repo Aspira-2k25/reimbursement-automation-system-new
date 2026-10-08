@@ -87,11 +87,17 @@ const authController = {
       // Set both cookies
       setAuthCookies(res, token, refreshToken, refreshExpiresAt);
 
-      // Log the login activity
-      logger.info('User logged in', {
-        user: user.name || user.username || user.email || 'Unknown',
+      // Log the login activity (persisted to MongoDB)
+      logger.logActivity({
+        action: 'login',
+        message: 'User logged in',
+        userId: String(user.id),
+        userName: user.name || user.username || user.email || 'Unknown',
         role: user.role,
-        department: user.department || ''
+        department: user.department || '',
+        status: 'success',
+        ipAddress: req.ip || req.connection?.remoteAddress || null,
+        userAgent: req.get('user-agent') || null
       });
 
       // Return user data (without sensitive information or token)
@@ -175,11 +181,17 @@ const authController = {
       // Set both cookies
       setAuthCookies(res, token, refreshToken, refreshExpiresAt);
 
-      // Log the Google login activity
-      logger.info('User logged in via Google', {
-        user: staff?.name || name || email,
+      // Log the Google login activity (persisted to MongoDB)
+      logger.logActivity({
+        action: 'login',
+        message: 'User logged in via Google',
+        userId: String(userId),
+        userName: staff?.name || name || email,
         role: role,
-        department: staff?.department || ''
+        department: staff?.department || '',
+        status: 'success',
+        ipAddress: req.ip || req.connection?.remoteAddress || null,
+        userAgent: req.get('user-agent') || null
       });
 
       return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
@@ -471,10 +483,16 @@ const authController = {
         try {
           const decoded = jwt.decode(token);
           if (decoded && decoded.userId) {
-            logger.info('User logged out', {
-              user: decoded.name || decoded.username || decoded.email || 'Unknown',
+            logger.logActivity({
+              action: 'logout',
+              message: 'User logged out',
+              userId: String(decoded.userId),
+              userName: decoded.name || decoded.username || decoded.email || 'Unknown',
               role: decoded.role || 'Unknown',
-              department: decoded.department || ''
+              department: decoded.department || '',
+              status: 'success',
+              ipAddress: req.ip || req.connection?.remoteAddress || null,
+              userAgent: req.get('user-agent') || null
             });
           }
         } catch (e) {
@@ -740,11 +758,15 @@ authController.updateStaffById = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ error: 'No fields to update or staff not found' });
     }
-    logger.info(`Staff record updated by Admin`, { 
-      id, 
-      updates: { ...updates, password: updates.password ? '[HIDDEN]' : undefined },
-      user: req.user?.username || 'Admin',
-      role: 'Admin'
+    logger.logActivity({
+      action: 'update',
+      message: 'Staff record updated by Admin',
+      userId: String(req.user?.userId || 'admin'),
+      userName: req.user?.name || req.user?.username || 'Admin',
+      role: 'Admin',
+      department: req.user?.department || '',
+      status: 'success',
+      details: { targetId: id, fields: Object.keys(updates).filter(k => k !== 'password') }
     });
     res.json({ message: 'Staff updated successfully', staff: updated });
   } catch (error) {
@@ -845,11 +867,15 @@ authController.createFaculty = async (req, res) => {
         }
       });
 
-      logger.info('Inactive staff reactivated by Admin', {
-        id: reactivatedStaff.id,
-        username: reactivatedStaff.username,
-        user: req.user?.username || 'Admin',
-        role: 'Admin'
+      logger.logActivity({
+        action: 'update',
+        message: 'Inactive staff reactivated by Admin',
+        userId: String(req.user?.userId || 'admin'),
+        userName: req.user?.name || req.user?.username || 'Admin',
+        role: 'Admin',
+        department: req.user?.department || '',
+        status: 'success',
+        details: { reactivatedId: reactivatedStaff.id, username: reactivatedStaff.username }
       });
 
       return res.status(201).json({
@@ -883,11 +909,15 @@ authController.createFaculty = async (req, res) => {
       }
     });
 
-    logger.info(`New staff created by Admin`, { 
-      id: newFaculty.id, 
-      username: newFaculty.username,
-      user: req.user?.username || 'Admin',
-      role: 'Admin' 
+    logger.logActivity({
+      action: 'update',
+      message: 'New staff created by Admin',
+      userId: String(req.user?.userId || 'admin'),
+      userName: req.user?.name || req.user?.username || 'Admin',
+      role: 'Admin',
+      department: req.user?.department || '',
+      status: 'success',
+      details: { newStaffId: newFaculty.id, username: newFaculty.username }
     });
     res.status(201).json({
       message: 'Faculty member created successfully',
@@ -925,10 +955,15 @@ authController.deleteFaculty = async (req, res) => {
       return res.status(404).json({ error: 'Staff member not found' });
     }
 
-    logger.info(`Staff deleted by Admin`, { 
-      id,
-      user: req.user?.username || 'Admin',
-      role: 'Admin' 
+    logger.logActivity({
+      action: 'delete',
+      message: 'Staff member deactivated by Admin',
+      userId: String(req.user?.userId || 'admin'),
+      userName: req.user?.name || req.user?.username || 'Admin',
+      role: 'Admin',
+      department: req.user?.department || '',
+      status: 'success',
+      details: { deactivatedId: id }
     });
 
     res.json({ message: 'Staff member deleted successfully' });
