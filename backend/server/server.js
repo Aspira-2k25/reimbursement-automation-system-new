@@ -124,7 +124,7 @@ const corsOptions = {
     // Allow requests with no origin (mobile apps, curl, health checks)
     if (!origin) return callback(null, true);
 
-    const allowedOrigins = [];
+    const allowedOrigins = ['https://reimburse.apsit.edu.in'];
 
     // Canonical production frontend (Render <-> Vercel)
     if (process.env.FRONTEND_URL) {
