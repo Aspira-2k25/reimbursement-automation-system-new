@@ -40,6 +40,16 @@ function loadClient(adapter, options = {}) {
   return { ...context.client, calls, events, delays, scheduled, storage };
 }
 const success = (config, data = {}, status = 200) => ({ config, data, status, statusText: 'OK', headers: {} });
+test('login can reuse a warm browser CSRF token while invalidating prior session requests', async () => {
+  const client = loadClient(config => success(config, config.url === '/csrf-token' ? { csrfToken: 'warm-token' } : { user: { id: 1 } }));
+  await client.fetchCsrfToken();
+  client.invalidateAuthSession({ preserveCsrf: true });
+  await client.api.post('/auth/google', { credential: 'synthetic' });
+  assert.equal(client.calls.filter(call => call.url === '/csrf-token').length, 1);
+  assert.equal(client.calls.at(-1).headers['X-CSRF-Token'], 'warm-token');
+  client.invalidateAuthSession();
+  assert.equal(client.getCsrfToken(), null, 'logout still clears cached CSRF');
+});
 test('username OTP and confirmation use purpose-specific endpoints and preserve saved user', async () => {
   const client = loadClient(async config => success(config, config.url.endsWith('csrf-token') ? { csrfToken: 'token' } : config.url.endsWith('send-otp') ? { message: 'Sent', cooldownSeconds: 60 } : { user: { id: 1, username: 'new.user' } }));
   await client.fetchCsrfToken();

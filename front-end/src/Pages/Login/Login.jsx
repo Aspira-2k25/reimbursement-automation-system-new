@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { dashboardPath } from '../../utils/dashboardPath'
 import apshahLogo from '../../assets/images/Apshah_logo.png'
 // import websiteLogo from '../../assets/images/Website_logo.png'
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
+  const signInPending = useRef(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,23 +33,17 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (signInPending.current) return;
+    signInPending.current = true;
     setIsLoading(true);
     setError('');
     try {
       const { user } = await login(formData.name, formData.email, formData.password);
-      const role = (user?.role || '').toLowerCase();
-      if (role === 'admin') {
-        navigate('/dashboard/admin', { replace: true });
-      } else if (role === 'coordinator') {
-        navigate('/dashboard/coordinator', { replace: true });
-      } else if (role === 'faculty') {
-        navigate('/dashboard/faculty', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      navigate(dashboardPath(user?.role), { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
+      signInPending.current = false;
       setIsLoading(false);
     }
   };
@@ -64,6 +59,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
+      {isLoading && <div role="status" aria-live="polite" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-white/95 text-slate-900">
+        <Loader2 aria-hidden="true" className="h-10 w-10 animate-spin text-teal-700" />
+        <p className="text-lg font-semibold">Signing you in…</p>
+        <p className="text-sm text-slate-600">Verifying your account securely.</p>
+      </div>}
       {/* Left Side - Welcome Section */}
       <motion.div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
 
@@ -222,20 +222,22 @@ export default function LoginPage() {
               <div className="flex justify-center mb-6">
                 <GoogleLogin
                   onSuccess={async (credentialResponse) => {
+                    if (signInPending.current) return;
+                    signInPending.current = true;
+                    setIsLoading(true);
+                    setError('');
                     try {
                       const credential = credentialResponse?.credential;
                       if (!credential) {
                         throw new Error('No Google credential received');
                       }
-                      await loginWithGoogle(credential);
-                      navigate('/dashboard', { replace: true });
-                      setTimeout(() => {
-                        if (location.pathname !== '/dashboard') {
-                          window.location.assign('/dashboard');
-                        }
-                      }, 50);
+                      const { user } = await loginWithGoogle(credential);
+                      navigate(dashboardPath(user?.role), { replace: true });
                     } catch (err) {
                       setError(err.message || 'Google login failed. Please try again.');
+                    } finally {
+                      signInPending.current = false;
+                      setIsLoading(false);
                     }
                   }}
                   onError={() => {
