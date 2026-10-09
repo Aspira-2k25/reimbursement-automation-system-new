@@ -36,11 +36,12 @@ let authEpoch = 0;
 const sessionChangedError = () => Object.assign(new Error('Session changed. Please retry.'), {
   error: 'Session changed. Please retry.', code: 'ERR_SESSION_CHANGED', isApiError: true,
 });
-export const invalidateAuthSession = () => {
+export const invalidateAuthSession = ({ preserveCsrf = false } = {}) => {
   authEpoch += 1;
   refreshPromise = null;
   csrfPromise = null;
-  csrfToken = null;
+  // CSRF cookie/token pairs are browser-scoped, independent of the authenticated identity.
+  if (!preserveCsrf) csrfToken = null;
 };
 export const normalizeApiError = (failure) => {
   if (failure?.isApiError) return failure;

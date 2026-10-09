@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import api, { fetchCsrfToken, invalidateAuthSession } from '../services/api';
+import api, { fetchCsrfToken, getCsrfToken, invalidateAuthSession } from '../services/api';
 
 const AuthContext = createContext();
 // The public hook and provider intentionally share the existing context module.
@@ -69,14 +69,14 @@ export const AuthProvider = ({ children }) => {
     };
   }, [refreshUserProfile, saveUser]);
   const completeLogin = async (path, credentials) => {
-    invalidateAuthSession();
+    invalidateAuthSession({ preserveCsrf: true });
     const version = ++sessionVersion.current;
-    await fetchCsrfToken();
+    if (!getCsrfToken()) await fetchCsrfToken();
     const { data } = await api.post(path, credentials);
     if (version !== sessionVersion.current) throw new Error('Session changed. Please retry.');
     if (!data?.user) throw new Error('Server did not return a user profile.');
     saveUser(data.user);
-    fetchCsrfToken().catch(() => {});
+    setLoading(false);
     return data;
   };
   const login = (username, email, password) => completeLogin('/auth/login', { username, email, password });
