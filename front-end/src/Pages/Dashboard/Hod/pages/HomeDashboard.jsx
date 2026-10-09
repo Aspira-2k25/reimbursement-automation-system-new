@@ -256,8 +256,12 @@ const HomeDashboard = () => {
   const saveAnnouncement = useCallback(async () => {
     setAnnouncementSaving(true)
     try {
-      await announcementAPI.update({ message: announcementMsg.trim(), isActive: announcementActive, targetRoles: announcementTargetRoles })
-      toast.success('Reminder updated successfully')
+      const result = await announcementAPI.update({ message: announcementMsg.trim(), isActive: announcementActive, targetRoles: announcementTargetRoles })
+      if (result.email?.failed) toast.error(`Reminder saved; ${result.email.failed} emails failed.`)
+      else toast.success(result.email?.status === 'sending'
+        ? `Reminder saved. Sending email to ${result.email.recipients} users.`
+        : result.email?.status === 'completed'
+          ? `Reminder saved. ${result.email.sent} emails sent.` : 'Reminder updated successfully')
       refreshAnnouncement(true) // bust cache so next render picks up new data
     } catch (err) {
       toast.error(err?.error || 'Failed to save reminder')
@@ -455,7 +459,7 @@ const HomeDashboard = () => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Reminder Banner</h3>
-            <p className="text-sm text-gray-500">Message shown to students and faculty on their dashboards</p>
+            <p className="text-sm text-gray-500">Active reminders appear on dashboards and are emailed to selected students, faculty and coordinators.</p>
           </div>
         </div>
 

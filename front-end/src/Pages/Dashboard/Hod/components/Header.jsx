@@ -64,7 +64,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     await logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
-    navigate('/')
+    navigate('/login', { replace: true })
   }, [logout, navigate])
 
   const getCurrentTime = () => {

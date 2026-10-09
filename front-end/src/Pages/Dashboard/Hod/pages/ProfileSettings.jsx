@@ -362,7 +362,7 @@ const ProfileSettings = () => {
             </div>
           </div>
 
-          {/* Notification Preferences removed as requested */}
+          <ChangeUsername />
         </div>
 
         {/* Sidebar */}
@@ -398,7 +398,7 @@ const ProfileSettings = () => {
 
         </div>
       </div>
-    </div></div><div className="mx-auto max-w-5xl p-4 sm:p-6"><ChangeUsername /></div></>
+    </div></div></>
   )
 }
 

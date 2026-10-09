@@ -42,7 +42,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, notificat
     await logout()
     toast.success("Logged out successfully")
     setIsProfileDropdownOpen(false)
-    navigate("/", { replace: true })
+    navigate('/login', { replace: true })
   }, [logout, navigate])
 
   const toggleProfileDropdown = useCallback(() => {
