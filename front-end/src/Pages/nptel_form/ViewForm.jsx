@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
@@ -32,7 +32,7 @@ export default function ViewForm() {
           api = studentFormsAPI;
         }
 
-        // Note: facultyFormsAPI might return the form directly or wrapped. 
+        // Note: facultyFormsAPI might return the form directly or wrapped.
         // Student API returns { form: ... }, let's handle both.
         const response = await api.getById(id);
         const form = response.form || response; // Handle both structures if they differ
@@ -233,7 +233,10 @@ export default function ViewForm() {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors duration-150"
               >
                 <span className="text-sm">
-                  {index === 0 ? 'NPTEL Result' : ((formData?.applicantType && formData.applicantType !== 'Student') ? 'Faculty ID Card' : 'Student ID Card')}
+                  {doc.kind === 'nptelResult' ? 'NPTEL Result' :
+                    doc.kind === 'idCard' ? (formData.applicantType && formData.applicantType !== 'Student' ? 'Faculty ID Card' : 'Student ID Card') :
+                      formData.documents.length === 2 && formData.documents.every(document => !document.kind) ?
+                        (index === 0 ? 'NPTEL Result' : (formData.applicantType && formData.applicantType !== 'Student' ? 'Faculty ID Card' : 'Student ID Card')) : 'Supporting document'}
                 </span>
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -241,11 +244,21 @@ export default function ViewForm() {
           </div>
         </div>
 
-        {formData.status === 'Rejected' && formData.rejectionReason && (
+        {formData.status === 'Rejected' && (formData.rejectionRemarks || formData.accountsRemarks || formData.rejectionReason) && (
           <div className="mt-6 p-4 bg-red-50 rounded-lg">
             <h3 className="text-lg font-medium text-red-800">Rejection Reason</h3>
-            <div className="mt-2 text-red-700">{formData.rejectionReason}</div>
+            {formData.rejectedBy && <p className="mt-1 text-sm text-red-800">Rejected by {formData.rejectedBy}</p>}
+            <div className="mt-2 text-red-700 whitespace-pre-wrap">{formData.rejectionRemarks || formData.accountsRemarks || formData.rejectionReason}</div>
           </div>
+        )}
+        {(formData.reviewedBy || formData.remark || formData.accountsComments || (formData.status !== 'Rejected' && formData.accountsRemarks)) && (
+          <section className="mt-6 p-4 bg-gray-50 rounded-lg space-y-2" aria-label="Review details">
+            <h3 className="text-lg font-medium text-gray-900">Review Details</h3>
+            {formData.reviewedBy && <p className="text-sm text-gray-700">Reviewed by {formData.reviewedBy}{formData.reviewedAt ? ` on ${new Date(formData.reviewedAt).toLocaleDateString()}` : ''}</p>}
+            {formData.remark && <p className="text-sm text-gray-700 whitespace-pre-wrap">Reviewer remark: {formData.remark}</p>}
+            {formData.accountsComments && <p className="text-sm text-gray-700 whitespace-pre-wrap">Accounts comment: {formData.accountsComments}</p>}
+            {formData.status !== 'Rejected' && formData.accountsRemarks && <p className="text-sm text-gray-700 whitespace-pre-wrap">Accounts remark: {formData.accountsRemarks}</p>}
+          </section>
         )}
       </div>
     </div>

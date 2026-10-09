@@ -10,14 +10,9 @@ export default function ReminderBanner() {
   const [dismissed, setDismissed] = React.useState(false)
 
   // Get context data for dynamic message
-  let contextData = null
-  try {
-    contextData = useHODContext()
-  } catch (e) {
-    // Context not available, use default message
-  }
+  const contextData = useHODContext()
 
-  const allRequests = contextData?.allRequests || []
+  const allRequests = useMemo(() => contextData?.allRequests || [], [contextData?.allRequests])
 
   // Calculate dynamic message based on pending requests
   const { message, alertType, showBanner } = useMemo(() => {

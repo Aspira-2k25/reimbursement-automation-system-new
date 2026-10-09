@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback, useState } from 'react'
+import { serializeCsv } from '../../../../utils/csv'
+import { useMemo, useCallback, useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
@@ -80,7 +81,7 @@ const HomeDashboard = () => {
         setSearchQuery('')
         break
       case 'Approved Requests':
-        setStatusFilter('Approved')
+        setStatusFilter('approved-history')
         setDepartmentFilter('All')
         setTypeFilter('All')
         setSearchQuery('')
@@ -104,8 +105,8 @@ const HomeDashboard = () => {
 
   const handleExportToCSV = useCallback(() => {
     const headers = ['ID', 'Applicant', 'Department', 'Type', 'Category', 'Amount', 'Status', 'Submitted Date']
-    const csvContent = [
-      headers.join(','),
+    const csvContent = serializeCsv([
+      headers,
       ...filteredRequests.map(request => [
         request.id,
         request.applicantName,
@@ -115,8 +116,8 @@ const HomeDashboard = () => {
         request.amountFormatted || `₹${request.amount?.toLocaleString() || 0}`,
         request.status,
         request.submittedDate
-      ].join(','))
-    ].join('\n')
+      ])
+    ])
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -130,7 +131,6 @@ const HomeDashboard = () => {
 
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
-    const rejectedRequests = allRequests.filter(r => r.status === 'Rejected')
 
     return [
       {
@@ -159,14 +159,14 @@ const HomeDashboard = () => {
       },
       {
         title: "Rejected Requests",
-        value: rejectedRequests.length.toString(),
+        value: collegeStats.rejected.toString(),
         subtitle: "Declined requests",
         icon: XCircle,
         color: 'green',
         onClick: () => handleStatCardClick('Rejected Requests')
       }
     ]
-  }, [collegeStats, departments.length, allRequests, handleStatCardClick])
+  }, [collegeStats, departments.length, handleStatCardClick])
 
   const recentRequests = useMemo(() => {
     return filteredRequests
@@ -207,13 +207,13 @@ const HomeDashboard = () => {
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">
+            <h1 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2">
               Welcome back, {userProfile?.fullName || 'Principal'} 👋
             </h1>
-            <p className="text-green-100 mb-4 text-sm sm:text-base">
+            <p className="text-green-100 mb-2 sm:mb-4 text-sm sm:text-base">
               Principal • {userProfile?.college || 'Engineering College'}
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-6 text-xs sm:text-sm text-green-100">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 <span>{departments.length} Departments</span>
@@ -242,7 +242,7 @@ const HomeDashboard = () => {
 
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {dashboardStats.map((stat, index) => (
           <motion.div
             key={index}
@@ -257,7 +257,7 @@ const HomeDashboard = () => {
 
       {/* College Overview */}
       <motion.div
-        className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
+        className="hidden sm:block bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
@@ -285,8 +285,8 @@ const HomeDashboard = () => {
               color: 'purple'
             },
             {
-              value: `${collegeStats.budgetUtilization}%`,
-              label: 'Budget Utilization',
+              value: 'Not configured',
+              label: 'Annual budget',
               color: 'orange'
             }
           ].map((item, index) => (
@@ -331,7 +331,7 @@ const HomeDashboard = () => {
             {/* Search */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
+              <input aria-label="search Query"
                 type="text"
                 placeholder="Search requests..."
                 value={searchQuery}
@@ -351,18 +351,19 @@ const HomeDashboard = () => {
 
             {/* Filters */}
             <div className="flex gap-2">
-              <select
+              <select aria-label="status Filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Status</option>
+                <option value="approved-history">Approved or reimbursed</option>
                 <option value="Under Principal">Under Principal</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
               </select>
 
-              <select
+              <select aria-label="department Filter"
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -373,7 +374,7 @@ const HomeDashboard = () => {
                 ))}
               </select>
 
-              <select
+              <select aria-label="type Filter"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -388,7 +389,20 @@ const HomeDashboard = () => {
         </div>
 
         {/* Request Table */}
-        <div className="overflow-x-auto">
+<div className="sm:hidden space-y-3 p-3" aria-label="Request cards">
+
+{recentRequests.length === 0 && <p className="p-3 text-sm text-slate-600">No requests found matching your criteria.</p>}
+{recentRequests.map(request => <article key={request.id} className="rounded-lg border border-slate-200 p-3 space-y-2 break-words">
+
+<p className="font-mono text-xs text-slate-600 break-all">{request.applicationId || request.id}</p>
+<h3 className="font-semibold text-slate-900">{request.applicantName}</h3>
+<p className="text-sm text-slate-600">{request.applicantType} · {request.department}</p>
+<p className="text-sm text-slate-800">{request.courseName || 'Course not specified'}</p>
+<div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-slate-900">{request.amountFormatted || (String(request.amount).includes('₹') ? request.amount : `₹${request.amount?.toLocaleString() || 0}`)}</span><span className="text-sm font-medium text-slate-700">{request.status}</span></div>
+<div className="flex flex-wrap gap-2 text-sm"><button onClick={() => handleViewRequest(request)}  className="px-3 py-2 rounded-lg border text-slate-700 disabled:opacity-50">View</button>{request.status === 'Under Principal' && <><button onClick={() => handleApproveRequest(request)} disabled={isLoading} className="px-3 py-2 rounded-lg bg-green-700 text-white disabled:opacity-50">Approve</button><button onClick={() => handleRejectRequest(request)} disabled={isLoading} className="px-3 py-2 rounded-lg border border-red-700 text-red-700 disabled:opacity-50">Reject</button></>}</div>
+</article>)}
+</div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
@@ -492,7 +506,7 @@ const HomeDashboard = () => {
       {/* Reject Modal */}
       <AnimatePresence>
         {rejectModal.show && (
-          <motion.div
+          <motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             onClick={closeRejectModal}
             initial={{ opacity: 0 }}
@@ -514,7 +528,7 @@ const HomeDashboard = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Please provide a reason for rejecting {rejectModal.request?.applicantName}'s request:
               </p>
-              <textarea
+              <textarea aria-label="reject Reason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"

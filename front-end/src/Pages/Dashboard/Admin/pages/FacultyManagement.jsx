@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import Pagination from '../../../../components/Pagination'
+import { serializeCsv } from '../../../../utils/csv'
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAdminContext } from './AdminLayout'
 import { Plus, Search, Filter, Download, Edit2, Trash2 } from 'lucide-react'
@@ -17,8 +19,7 @@ const FacultyManagement = () => {
     handleAddStaff,
     handleEditStaff,
     handleDeleteStaff,
-    showModal,
-    editingStaff
+    showModal
   } = useAdminContext()
 
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' })
@@ -42,6 +43,8 @@ const FacultyManagement = () => {
 
   // Pagination
   const totalPages = Math.ceil(sortedStaff.length / itemsPerPage)
+  useEffect(() => setCurrentPage(1), [searchQuery, departmentFilter])
+  useEffect(() => setCurrentPage(page => Math.min(page, Math.max(1, totalPages))), [totalPages])
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedStaff = sortedStaff.slice(startIndex, startIndex + itemsPerPage)
 
@@ -54,8 +57,8 @@ const FacultyManagement = () => {
 
   const handleExport = () => {
     const headers = ['ID', 'Name', 'Username', 'Email', 'Department', 'Role', 'Active']
-    const csvContent = [
-      headers.join(','),
+    const csvContent = serializeCsv([
+      headers,
       ...sortedStaff.map(f => [
         f.id,
         f.name,
@@ -64,8 +67,8 @@ const FacultyManagement = () => {
         f.department || 'N/A',
         f.role || 'N/A',
         f.is_active ? 'Yes' : 'No'
-      ].join(','))
-    ].join('\n')
+      ])
+    ])
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -112,7 +115,7 @@ const FacultyManagement = () => {
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
+            <input aria-label="search Query"
               type="text"
               placeholder="Search by name, username, or email..."
               value={searchQuery}
@@ -127,7 +130,7 @@ const FacultyManagement = () => {
           {/* Department Filter */}
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
-            <select
+            <select aria-label="department Filter"
               value={departmentFilter}
               onChange={(e) => {
                 setDepartmentFilter(e.target.value)
@@ -257,30 +260,7 @@ const FacultyManagement = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages} ({sortedStaff.length} total)
-            </div>
-            <div className="flex gap-2">
-              <motion.button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Previous
-              </motion.button>
-              <motion.button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Next
-              </motion.button>
-            </div>
+          <div className="px-3 sm:px-6 py-4"><Pagination page={currentPage} totalPages={totalPages} total={sortedStaff.length} pageSize={itemsPerPage} noun="staff accounts" busy={false} onPageChange={setCurrentPage} />
           </div>
         )}
       </motion.div>

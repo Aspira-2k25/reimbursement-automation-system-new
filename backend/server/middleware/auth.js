@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { isBlacklisted } = require('../utils/tokenBlacklist');
+const prisma = require('../config/prisma');
 
 // Extract token from Authorization header or httpOnly cookie
 const extractToken = (req) => {
@@ -30,14 +31,37 @@ const authMiddleware = {
         return res.status(401).json({ error: 'Access token required' });
       }
 
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
       // Check if the token has been blacklisted (logged out)
       const blacklisted = await isBlacklisted(token);
       if (blacklisted) {
         return res.status(401).json({ error: 'Token has been revoked' });
       }
+      if (decoded.familyId) {
+        const family = await prisma.refreshToken.findFirst({ where: { familyId: decoded.familyId,
+          userId: String(decoded.userId), revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } });
+        if (!family) return res.status(401).json({ error: 'Session family has been revoked' });
+      }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
+      const numericId = typeof decoded.userId === 'number' || /^\d+$/.test(String(decoded.userId));
+      if (numericId) {
+        const staff = await prisma.staff.findUnique({ where: { id: Number(decoded.userId) },
+          select: { id: true, name: true, username: true, email: true, role: true, department: true,
+            is_active: true, sessions_revoked_at: true } });
+        const issued = decoded.sessionIssuedAt || (decoded.iat || 0) * 1000;
+        if (!staff?.is_active || (staff.sessions_revoked_at && issued <= new Date(staff.sessions_revoked_at).getTime())) {
+          return res.status(401).json({ error: 'Session revoked. Please log in again.' });
+        }
+        req.user = { ...decoded, ...staff, userId: staff.id };
+      } else {
+        if (decoded.role !== 'Student' || typeof decoded.userId !== 'string' || decoded.userId !== decoded.email ||
+            !decoded.email.toLowerCase().endsWith(`@${process.env.INSTITUTIONAL_EMAIL_DOMAIN || 'apsit.edu.in'}`)) {
+          return res.status(401).json({ error: 'Invalid user identity' });
+        }
+        const staff = await prisma.staff.findUnique({ where: { email: decoded.email }, select: { id: true } });
+        if (staff) return res.status(401).json({ error: 'Account changed. Please log in again.' });
+        req.user = decoded;
+      }
       next();
     } catch (error) {
       console.error('Token verification error:', error);
@@ -47,7 +71,7 @@ const authMiddleware = {
       if (error.name === 'JsonWebTokenError') {
         return res.status(401).json({ error: 'Invalid token' });
       }
-      return res.status(401).json({ error: 'Authentication failed' });
+      return res.status(503).json({ error: 'Authentication service unavailable. Please retry.' });
     }
   },
 
@@ -93,48 +117,6 @@ const authMiddleware = {
 
       next();
     };
-  },
-
-  // Optional authentication (doesn't fail if no token)
-  optionalAuth: async (req, res, next) => {
-    try {
-      const token = extractToken(req);
-
-      if (!token) {
-        return next(); // Continue without authentication
-      }
-
-      // Skip blacklisted tokens silently in optional auth
-      const blacklisted = await isBlacklisted(token);
-      if (blacklisted) {
-        return next();
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-      next();
-    } catch (error) {
-      // Token is invalid, but we don't fail the request
-      console.error('Optional auth error:', error);
-      next();
-    }
-  },
-
-  // Verify token and extract user without failing (for middleware chains)
-  extractUser: async (req, res, next) => {
-    try {
-      const token = extractToken(req);
-      if (!token) return next();
-
-      const blacklisted = await isBlacklisted(token);
-      if (blacklisted) return next();
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-      next();
-    } catch (error) {
-      next();
-    }
   }
 };
 

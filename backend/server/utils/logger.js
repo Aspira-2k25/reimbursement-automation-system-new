@@ -23,7 +23,6 @@ const colors = {
 class Logger {
   constructor() {
     this.isProduction = process.env.NODE_ENV === 'production';
-    this._io = null;
     this._ActivityLog = null; // Lazy-loaded model reference
   }
 
@@ -35,9 +34,6 @@ class Logger {
     return this._ActivityLog;
   }
 
-  attachSocket(io) {
-    this._io = io;
-  }
 
   // ───────────────────────────────────────────
   // Console helpers (dev-only output)
@@ -135,25 +131,7 @@ class Logger {
         }));
       }
 
-      // Emit to socket if available (real-time dashboard updates)
-      try {
-        if (this._io) {
-          this._io.emit('log', {
-            timestamp: doc.timestamp,
-            level: doc.level,
-            message: doc.message,
-            data: {
-              user: doc.userName,
-              role: doc.role,
-              department: doc.department,
-              action: doc.action,
-              formId: doc.formId
-            }
-          });
-        }
-      } catch (_) {
-        // Never let socket errors affect the application
-      }
+
     } catch (err) {
       // Log to console but NEVER throw — logging must never break the app
       console.error('Failed to persist activity log:', err.message);

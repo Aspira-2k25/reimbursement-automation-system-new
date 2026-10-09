@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { Lock, Eye, EyeOff, KeyRound, Mail, CheckCircle } from 'lucide-react';
 import { passwordAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function ChangePassword() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     oldPassword: '',
     newPassword: '',
@@ -15,6 +19,7 @@ export default function ChangePassword() {
   const [otpSending, setOtpSending] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCountdown, setOtpCountdown] = useState(0);
+  const [otpExpiry, setOtpExpiry] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const timerRef = useRef(null);
@@ -27,6 +32,17 @@ export default function ChangePassword() {
     return () => clearTimeout(timerRef.current);
   }, [otpCountdown]);
 
+  useEffect(() => {
+    if (!otpExpiry) return;
+    const timer = setTimeout(() => setOtpExpiry(previous => Math.max(0, previous - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [otpExpiry]);
+
+  const handleSignIn = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (error) setError('');
@@ -36,9 +52,13 @@ export default function ChangePassword() {
     setOtpSending(true);
     setError('');
     try {
-      await passwordAPI.sendOtp();
+      const response = await passwordAPI.sendOtp();
+      if (!response || response.success === false || response.error) {
+        throw new Error(response?.error || 'OTP delivery could not be confirmed. Please try again.');
+      }
       setOtpSent(true);
-      setOtpCountdown(300); // 5 minutes = 300 seconds
+      setOtpCountdown(Math.max(0, Number(response.cooldownSeconds ?? response.retryAfter) || 60));
+      setOtpExpiry(Math.max(1, Number(response.expirySeconds) || 300));
       toast.success('OTP sent to your registered email');
     } catch (err) {
       setError(err.error || err.message || 'Failed to send OTP');
@@ -88,6 +108,7 @@ export default function ChangePassword() {
       setFormData({ oldPassword: '', newPassword: '', confirmPassword: '', otp: '' });
       setOtpSent(false);
       setOtpCountdown(0);
+      setOtpExpiry(0);
     } catch (err) {
       const message = err.error || err.message || 'Failed to change password';
       setError(message);
@@ -111,12 +132,12 @@ export default function ChangePassword() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold mb-3 text-gray-800">Password Changed!</h2>
-          <p className="text-gray-600 mb-6">Your password has been updated successfully. Use your new password the next time you log in.</p>
+          <p className="text-gray-600 mb-6">Your password has been updated successfully. All previous sessions have ended. Sign in with your new password to continue.</p>
           <button
-            onClick={() => setSuccess(false)}
+            onClick={handleSignIn}
             className="text-sm text-[#3B945E] hover:underline"
           >
-            Change password again
+            Sign in
           </button>
         </div>
       </div>
@@ -149,7 +170,7 @@ export default function ChangePassword() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <input aria-label="Current Password"
                 type={showPassword.old ? "text" : "password"}
                 placeholder="Enter current password"
                 value={formData.oldPassword}
@@ -157,7 +178,7 @@ export default function ChangePassword() {
                 className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:border-[#3B945E] transition-all text-sm"
                 required
               />
-              <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, old: !prev.old }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
+              <button aria-label="Toggle password visibility" type="button" onClick={() => setShowPassword(prev => ({ ...prev, old: !prev.old }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
                 {showPassword.old ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -168,7 +189,7 @@ export default function ChangePassword() {
             <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <input aria-label="New Password"
                 type={showPassword.new ? "text" : "password"}
                 placeholder="Enter new password (min 8 characters)"
                 value={formData.newPassword}
@@ -177,7 +198,7 @@ export default function ChangePassword() {
                 required
                 minLength={8}
               />
-              <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
+              <button aria-label="Toggle password visibility" type="button" onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
                 {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -188,7 +209,7 @@ export default function ChangePassword() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <input aria-label="Confirm Password"
                 type={showPassword.confirm ? "text" : "password"}
                 placeholder="Re-enter new password"
                 value={formData.confirmPassword}
@@ -197,7 +218,7 @@ export default function ChangePassword() {
                 required
                 minLength={8}
               />
-              <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
+              <button aria-label="Toggle password visibility" type="button" onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors">
                 {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -209,7 +230,7 @@ export default function ChangePassword() {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+                <input aria-label="Verification code"
                   type="text"
                   placeholder="Enter 6-digit OTP"
                   value={formData.otp}
@@ -247,15 +268,15 @@ export default function ChangePassword() {
                 )}
               </button>
             </div>
-            {otpSent && otpCountdown > 0 && (
-              <p className="text-xs text-green-600 mt-1">OTP sent to your registered email. Valid for {formatCountdown(otpCountdown)}.</p>
+            {otpSent && (
+              <p className="text-xs text-green-600 mt-1">OTP sent to your registered email. {otpExpiry > 0 ? `Expires in ${formatCountdown(otpExpiry)}.` : 'Code expired. Request another OTP.'}</p>
             )}
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading || !otpSent}
+            disabled={isLoading || !otpSent || otpExpiry === 0}
             className="w-full text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none text-sm mt-2"
             style={{
               background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)',

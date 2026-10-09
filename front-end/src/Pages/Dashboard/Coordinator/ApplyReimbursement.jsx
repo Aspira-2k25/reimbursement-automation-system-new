@@ -3,9 +3,9 @@
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import { useNavigate } from "react-router-dom"
-import { useAuth } from "../../../context/AuthContext"
+
 import { facultyFormsAPI } from "../../../services/api"
-import { Atom, GraduationCap, Users, PlaneTakeoff, Clock, CheckCircle, XCircle, FileText, Loader2, Eye, Pencil, Trash2, Download, X, AlertCircle } from "lucide-react"
+import { Atom, GraduationCap, Users, PlaneTakeoff, Clock, CheckCircle, XCircle, FileText, Loader2, Eye, Pencil, Trash2, Download, AlertCircle } from "lucide-react";
 import ReminderBanner from "./components/ReminderBanner"
 
 // Reimbursement categories for coordinators (same as faculty)
@@ -66,7 +66,7 @@ function StatCard({ option, onApply }) {
   const description = option?.description || "Apply for this reimbursement option"
 
   const handleApply = () => {
-    if (onApply) {
+    if (option.id === 'nptel' && onApply) {
       onApply(option)
     }
   }
@@ -86,11 +86,12 @@ function StatCard({ option, onApply }) {
         <p className="text-xs sm:text-sm lg:text-base flex-1 leading-relaxed" style={{ color: 'var(--color-dark-gray)' }}>{description}</p>
 
         <button
+          disabled={option.id !== 'nptel'}
           onClick={handleApply}
-          className="mt-4 sm:mt-6 w-full rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white font-medium text-sm sm:text-base shadow-sm transition-all duration-200 hover:shadow-md active:scale-95"
-          style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))' }}
+          className="mt-4 sm:mt-6 w-full rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white font-medium text-sm sm:text-base shadow-sm transition-all duration-200 enabled:hover:shadow-md enabled:active:scale-95 disabled:cursor-not-allowed disabled:text-slate-600"
+          style={{ background: option.id === 'nptel' ? 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))' : '#e2e8f0' }}
         >
-          Apply Now
+          {option.id === 'nptel' ? 'Apply Now' : 'Coming soon'}
         </button>
       </div>
     </div>
@@ -174,7 +175,6 @@ function StatusBadge({ status }) {
 
 export default function ApplyReimbursement() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState([])
   const [search, setSearch] = useState("")
@@ -226,12 +226,8 @@ export default function ApplyReimbursement() {
 
   // Handle applying for a reimbursement option
   const handleApply = useCallback((option) => {
-    if (option.id === "nptel") {
-      navigate("/faculty-nptel-form")
-    } else {
-      toast.success(`Application started for ${option.title}`)
-      // TODO: Implement actual application logic for other categories
-    }
+    if (option?.id !== 'nptel') return
+    navigate("/faculty-nptel-form")
   }, [navigate])
 
   // Handle delete request
@@ -369,7 +365,7 @@ export default function ApplyReimbursement() {
 
           {/* Search input */}
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 mb-4" style={{ border: '1px solid var(--color-light-teal)' }}>
-            <input
+            <input aria-label="search"
               className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#65CCB8] focus:border-transparent transition-all"
               placeholder="Search by ID, category, or status..."
               value={search}
@@ -485,7 +481,7 @@ export default function ApplyReimbursement() {
 
       {/* Delete Confirmation Modal */}
       {deleteItem && (
-        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 p-4">
+        <div role="dialog" aria-modal="true" aria-label="Reimbursement dialog" className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 p-4">
           <div
             className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-xl"
             onClick={(e) => e.stopPropagation()}

@@ -5,12 +5,12 @@ import { useAuth } from "../../../../context/AuthContext.jsx"
 import { useNavigate } from "react-router-dom"
 import { Home, FileText, CheckCircle, XCircle, Menu, X, ChevronDown, Settings, LogOut, KeyRound } from "lucide-react"
 import NotificationMenu from "./NotificationMenu"
-import { Check, CheckCheck } from "lucide-react"
+
 import { toast } from "react-hot-toast"
 import apshahLogo from "../../../../assets/images/Apshah_logo.png"
-import websiteLogo from "../../../../assets/images/Website_logo.png"
 
-export default function Navbar({ activeTab, setActiveTab, userProfile, setUserProfile, notifications = [], markNotificationAsRead, markAllNotificationsAsRead }) {
+
+export default function Navbar({ activeTab, setActiveTab, userProfile, notifications = [], markNotificationAsRead, markAllNotificationsAsRead }) {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -25,6 +25,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
     { id: "approved", label: "Approved Applications", icon: CheckCircle },
     { id: "rejected", label: "Rejected Applications", icon: XCircle },
   ]
+
+  const activeNavIndex = navItems.findIndex(item => item.id === activeTab)
 
   const handleProfileSettings = useCallback(() => {
     setActiveTab("profile")
@@ -101,32 +103,32 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
               alt="A.P. Shah Logo"
               className="h-10 w-10 sm:h-12 sm:w-12 rounded-sm object-contain drop-shadow-sm"
             />
-            <span className="font-bold text-white text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block">
+            <span className="font-bold text-white text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden 2xl:block">
               PCT's A. P. Shah Institute of Technology
             </span>
           </div>
 
           {/* Center Section: Navigation - Centered and spacious */}
           {/* Enhanced with sliding toggle animation */}
-          <div className="hidden lg:grid grid-cols-4 absolute left-1/2 -translate-x-1/2 p-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10" style={{ width: 'max-content', minWidth: '680px' }}>
+          <div className="hidden xl:grid grid-cols-4 relative mx-3 min-w-0 p-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10" style={{ flex: '1 1 680px', maxWidth: '760px' }}>
             {/* Sliding animation block */}
-            <div
+            {activeNavIndex >= 0 && <div
               className="absolute top-1.5 bottom-1.5 rounded-xl shadow-sm border border-white/20 backdrop-blur-sm transition-all duration-300 ease-out z-0"
               style={{
                 background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 100%)',
                 width: 'calc(25% - 6px)',
-                left: `calc(${navItems.findIndex(item => item.id === activeTab) * 25}% + 3px)`
+                left: `calc(${activeNavIndex * 25}% + 3px)`
               }}
-            />
+            />}
 
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
               return (
-                <button
+                <button aria-label={item.label}
                   key={item.id}
                   onClick={() => handleNavItemClick(item.id)}
-                  className={`relative z-10 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-0 ${isActive
+                  className={`relative z-10 flex min-w-0 items-center justify-center gap-2 px-2 py-2 rounded-xl text-sm leading-tight font-medium whitespace-normal transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-0 ${isActive
                     ? "text-white"
                     : "text-white/70 hover:text-white"
                     }`}
@@ -141,7 +143,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
           </div>
 
           {/* Right Section: Profile & Notifications */}
-          <div className="flex items-center justify-end gap-2 sm:gap-4">
+          <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-4">
 
             <NotificationMenu
               notifications={notifications}
@@ -151,6 +153,8 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
             <div className="relative" ref={profileDropdownRef}>
               <button
+                aria-label="Account menu"
+                aria-expanded={isProfileDropdownOpen}
                 onClick={toggleProfileDropdown}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-0 ${isProfileDropdownOpen
                   ? "bg-white/20 border-white/20 shadow-lg text-white"
@@ -168,7 +172,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
                       : "CC"}
                   </span>
                 </div>
-                <div className="hidden xl:block text-left">
+                <div className="hidden 2xl:block text-left">
                   <div className="text-sm font-medium text-gray-900">
                     {userProfile?.fullName || "Class Cordinator"}
                   </div>
@@ -230,7 +234,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
             {/* Mobile menu button - Enhanced */}
             <button
               onClick={toggleMobileMenu}
-              className={`lg:hidden p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60 focus:ring-offset-2 ${isMobileMenuOpen
+              className={`xl:hidden p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60 focus:ring-offset-2 ${isMobileMenuOpen
                 ? "text-white bg-white/20"
                 : "text-white/80 hover:text-white hover:bg-white/20 active:bg-white/30"
                 }`}
@@ -242,12 +246,12 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, setUserPr
 
         {/* Mobile Navigation - Enhanced with smooth transitions */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200 py-3 sm:py-4 animate-in slide-in-from-top-2 duration-200" ref={mobileMenuRef}>
+          <div className="xl:hidden border-t border-gray-200 py-3 sm:py-4 animate-in slide-in-from-top-2 duration-200" ref={mobileMenuRef}>
             <div className="space-y-1 sm:space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon
                 return (
-                  <button
+                  <button aria-label={item.label}
                     key={item.id}
                     onClick={() => handleNavItemClick(item.id)}
                     className={`flex items-center gap-2 w-full px-3 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8] focus:ring-offset-2 ${activeTab === item.id

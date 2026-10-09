@@ -9,21 +9,49 @@ const cloudinary = require("../utils/cloudinary");
 const { uploadFile } = require("../utils/cloudinary");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
+const { DEPARTMENT_LIST } = require('../constants/statusEnums');
 const dbUtils = require('../utils/database');
 const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, DEPARTMENT_ALIASES, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
+const { sanitizeApplicationId, isValidObjectId, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
+
+const { applicantBody, validateSubmission, validateEdit, ownerSummary, paginatedForms } = require('../utils/formPolicy');
+
+const documentKinds = ['nptelResult', 'idCard'];
+function replacementDocuments(existing, uploads) {
+  const documents = (existing || []).map((document, index) => ({
+    ...(document.toObject ? document.toObject() : document),
+    kind: document.kind || (existing.length === 2 ? documentKinds[index] : undefined)
+  }));
+  const obsolete = [];
+  for (const [index, result] of uploads.entries()) {
+    if (!result) continue;
+    const kind = documentKinds[index];
+    const slot = documents.findIndex(document => document.kind === kind);
+    const replacement = cloudinary.toDocument(result, kind);
+    if (slot < 0) documents.push(replacement);
+    else { obsolete.push(documents[slot]); documents[slot] = replacement; }
+  }
+  return { documents, obsolete };
+}
+function ambiguousDocuments(form, req) {
+  return req.files && Object.values(req.files).flat().length && form.documents?.length === 1 && !form.documents[0].kind;
+}
 
 // POST /api/forms/submit
 router.post(
   "/submit",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(['Faculty', 'Coordinator', 'HOD']),
   upload.fields([
     { name: "nptelResult", maxCount: 1 },
     { name: "idCard", maxCount: 1 }
   ]), //<<- multer handles file upload
   validateUploadedFiles, //<<- validate file content using magic numbers
+  validateSubmission(false),
 
   async (req, res) => {
+    const stagedUploads = [];
+    let committed = false;
     try {
       let userId = req.user.userId; // <-- get the logged-in user's ID from JWT
 
@@ -37,38 +65,10 @@ router.post(
         return res.status(400).json({ error: 'User ID not found in token' });
       }
 
-      // Upload received files to Cloudinary in parallel (if present)
-      const uploadPromises = [];
-      if (req.files?.nptelResult?.[0]) {
-        uploadPromises.push(
-          uploadFile(req.files.nptelResult[0], {
-            folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false
-          })
-        );
-      } else {
-        uploadPromises.push(Promise.resolve(null));
-      }
-      if (req.files?.idCard?.[0]) {
-        uploadPromises.push(
-          uploadFile(req.files.idCard[0], {
-            folder: "reimbursement-Forms/Faculty_Form",
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false
-          })
-        );
-      } else {
-        uploadPromises.push(Promise.resolve(null));
-      }
-      const [nptelResultUpload, idCardUpload] = await Promise.all(uploadPromises);
-
       // Determine initial status based on applicant type
       // HOD applications go directly to Principal (skip HOD review)
       let initialStatus = "Under HOD"; // Default for Faculty/Coordinator
-      const rawApplicantType = req.body.applicantType || 'Faculty';
+      const rawApplicantType = req.applicantType;
       // Normalize applicantType to match enum: Faculty, Coordinator, HOD
       const applicantTypeMap = { 'faculty': 'Faculty', 'coordinator': 'Coordinator', 'hod': 'HOD' };
       const applicantType = applicantTypeMap[rawApplicantType.toLowerCase()] || 'Faculty';
@@ -78,13 +78,13 @@ router.post(
       }
 
       // Parse numeric fields — preserving EXACT user input without rounding
-      const amount = req.body.amount ? Number(req.body.amount) : undefined;
-      const marks = req.body.marks ? Number(req.body.marks) : undefined;
+      const amount = req.body.amount !== undefined ? Number(req.body.amount) : undefined;
+      const marks = req.body.marks !== undefined ? Number(req.body.marks) : undefined;
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: F-COMP-NPT-2026-001 (Faculty, Comp Dept, NPTEL, 2026, Global Sequence 1)
       const normalizedDepartment = getNormalizedDepartment(req.user?.department);
-      if (!normalizedDepartment) {
+      if (!normalizedDepartment || !DEPARTMENT_LIST.includes(normalizedDepartment)) {
         return res.status(400).json({
           error: 'Department is not configured for your account. Please contact administrator.'
         });
@@ -96,8 +96,40 @@ router.post(
         department: normalizedDepartment
       });
 
+      // Upload received files to Cloudinary in parallel (if present)
+      const uploadPromises = [];
+      if (req.files?.nptelResult?.[0]) {
+        uploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
+            ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
+            folder: "reimbursement-Forms/Faculty_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: true
+          })
+        );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
+      }
+      if (req.files?.idCard?.[0]) {
+        uploadPromises.push(
+          uploadFile(req.files.idCard[0], {
+            ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
+            folder: "reimbursement-Forms/Faculty_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: true
+          })
+        );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
+      }
+      const [nptelResultUpload, idCardUpload] = await cloudinary.uploadBatch(uploadPromises);
+
       const newForm = new Form({
-        ...req.body,
+        ...applicantBody(req.body),
         department: normalizedDepartment,
         amount,
         marks,
@@ -107,15 +139,16 @@ router.post(
         status: initialStatus,
         documents: [
           nptelResultUpload
-            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+            ? cloudinary.toDocument(nptelResultUpload, 'nptelResult')
             : null,
           idCardUpload
-            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+            ? cloudinary.toDocument(idCardUpload, 'idCard')
             : null
         ].filter(Boolean),
       });
 
       await newForm.save();
+      committed = true;
 
       // Send email notification for submission
       try {
@@ -139,7 +172,9 @@ router.post(
       res.status(201).json({ message: "Form saved successfully!", form: newForm });
     } catch (err) {
       console.error("Error saving form:", err);
-      res.status(500).json({ error: "Failed to save form", details: err.message });
+      res.status(500).json({ error: "Failed to save form" });
+    } finally {
+      if (!committed) await cloudinary.rollbackUploads(stagedUploads);
     }
   });
 
@@ -172,7 +207,8 @@ router.get("/mine", authMiddleware.verifyToken, async (req, res) => {
 
     res.json({
       forms: result.data,
-      pagination: result.pagination
+      pagination: result.pagination,
+      summary: await ownerSummary(Form, query)
     });
   } catch (err) {
     console.error("Error fetching user forms:", err);
@@ -211,12 +247,12 @@ router.get("/for-hod", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
+    const result = await paginatedForms(Form, query, req, { sort: { updatedAt: -1 } });
 
-    return res.json({ forms });
+    return res.json(result);
   } catch (err) {
     console.error("Error fetching HOD faculty forms:", err);
-    res.status(500).json({ error: "Failed to fetch HOD faculty forms", details: err.message });
+    res.status(500).json({ error: "Failed to fetch HOD faculty forms" });
   }
 });
 
@@ -249,9 +285,9 @@ router.get("/approved", authMiddleware.verifyToken, async (req, res) => {
     }
     // Principal: sees all (no additional filter)
 
-    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
+    const result = await paginatedForms(Form, query, req, { sort: { updatedAt: -1 } });
 
-    return res.json({ forms });
+    return res.json(result);
   } catch (err) {
     console.error("Error fetching approved forms:", err);
     res.status(500).json({ error: "Failed to fetch approved forms" });
@@ -289,13 +325,13 @@ router.get("/rejected", authMiddleware.verifyToken, async (req, res) => {
     const query = {
       $and: [
         { status: "Rejected", rejectedBy: { $in: rejectedByFilter } },
-        deptFilter
+        ['faculty', 'coordinator'].includes(userRole) ? { userId: String(req.user.userId || req.user.email) } : deptFilter
       ]
     };
 
-    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
+    const result = await paginatedForms(Form, query, req, { sort: { updatedAt: -1 } });
 
-    return res.json({ forms });
+    return res.json(result);
   } catch (err) {
     console.error("Error fetching rejected forms:", err);
     res.status(500).json({ error: "Failed to fetch rejected forms" });
@@ -321,8 +357,8 @@ router.get("/for-principal", authMiddleware.verifyToken, async (req, res) => {
       ]
     };
 
-    const forms = await Form.find(query).select('-documents').sort({ updatedAt: -1 });
-    return res.json({ forms });
+    const result = await paginatedForms(Form, query, req, { sort: { updatedAt: -1 } });
+    return res.json(result);
   } catch (err) {
     console.error("Error fetching principal forms:", err);
     res.status(500).json({ error: "Failed to fetch principal forms" });
@@ -343,18 +379,29 @@ router.get("/for-accounts", authMiddleware.verifyToken, async (req, res) => {
     // - "Approved" (awaiting reimbursement)
     // - "Reimbursed" (successfully processed by Accounts)
     // - "Rejected" by Accounts only (not rejections from other levels)
-    const forms = await Form.find({
+    const result = await paginatedForms(Form, {
       $or: [
         { status: "Approved" },
         { status: "Reimbursed" },
         { status: "Rejected", rejectedBy: "Accounts" }
       ]
-    }).select('-documents').sort({ updatedAt: -1 });
-    return res.json({ forms });
+    }, req, { sort: { updatedAt: -1 } });
+    return res.json(result);
   } catch (err) {
     console.error("Error fetching accounts forms:", err);
     res.status(500).json({ error: "Failed to fetch accounts forms" });
   }
+});
+
+
+router.get('/history', authMiddleware.verifyToken, async (req, res) => {
+  try {
+    const role = req.user.role?.toLowerCase();
+    const allowed = ['faculty', 'coordinator', 'hod', 'principal', 'accounts'];
+    if (!allowed.includes(role)) return res.status(403).json({ error: 'Forbidden' });
+    const query = { userId: String(req.user.userId || req.user.email) };
+    return res.json(await paginatedForms(Form, query, req));
+  } catch (_) { res.status(503).json({ error: 'Applications unavailable. Please retry.' }); }
 });
 
 // GET /api/forms/:id - Get a specific form by ID
@@ -394,7 +441,7 @@ router.get("/:id", authMiddleware.verifyToken, async (req, res) => {
 
     // Allow access if: owner OR Coordinator/HOD/Principal/Accounts (they can view all forms)
     const isOwner = String(formUserId) === String(tokenUserId);
-    const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+    const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
 
     if (!isOwner && !isAuthorizedRole) {
       return res.status(403).json({ error: "Not authorized to view this form" });
@@ -420,7 +467,10 @@ router.put(
     { name: "idCard", maxCount: 1 }
   ]),
   validateUploadedFiles, //<<- validate file content using magic numbers
+  validateEdit,
   async (req, res) => {
+    const stagedUploads = [];
+    let committed = false;
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
@@ -451,7 +501,7 @@ router.put(
 
       // Allow update if: owner OR HOD/Principal/Accounts (they can update status)
       const isOwner = String(formUserId) === String(tokenUserId);
-      const isAuthorizedRole = ['coordinator', 'hod', 'principal', 'accounts'].includes(userRole);
+      const isAuthorizedRole = ['hod', 'principal', 'accounts'].includes(userRole);
 
       if (!isOwner && !isAuthorizedRole) {
         return res.status(403).json({ error: "Not authorized to edit this form" });
@@ -460,44 +510,6 @@ router.put(
       if (!hasDepartmentAccess(userRole, req.user.department, form.department)) {
         return res.status(403).json({ error: 'Not authorized for this department' });
       }
-
-      // Upload new files if provided (parallel with old file cleanup)
-      const updateUploadPromises = [];
-      if (req.files?.nptelResult?.[0]) {
-        updateUploadPromises.push(
-          (async () => {
-            if (form.documents?.[0]?.publicId) {
-              await cloudinary.uploader.destroy(form.documents[0].publicId);
-            }
-            return uploadFile(req.files.nptelResult[0], {
-              folder: "reimbursement-Forms/Faculty_Form",
-              resource_type: "image",
-              use_filename: true,
-              unique_filename: false
-            });
-          })()
-        );
-      } else {
-        updateUploadPromises.push(Promise.resolve(null));
-      }
-      if (req.files?.idCard?.[0]) {
-        updateUploadPromises.push(
-          (async () => {
-            if (form.documents?.[1]?.publicId) {
-              await cloudinary.uploader.destroy(form.documents[1].publicId);
-            }
-            return uploadFile(req.files.idCard[0], {
-              folder: "reimbursement-Forms/Faculty_Form",
-              resource_type: "image",
-              use_filename: true,
-              unique_filename: false
-            });
-          })()
-        );
-      } else {
-        updateUploadPromises.push(Promise.resolve(null));
-      }
-      const [nptelResultUpload, idCardUpload] = await Promise.all(updateUploadPromises);
 
       // Determine allowed updates based on user role and form status
       // Faculty/Coordinator/HOD (owners) can only edit their own pending/under-review forms
@@ -521,14 +533,7 @@ router.put(
         return res.status(403).json({ error: 'Cannot change the status of your own form' });
       } else if (!isOwner) {
         // Non-owner authorized roles can only change status (approve/reject/reimburse)
-        if (userRole === 'coordinator') {
-          if (form.status === 'Under HOD') {
-            allowedUpdates = ['status', 'remark'];
-            statusValidation = ['Under Principal', 'Rejected'];
-          } else {
-            return res.status(403).json({ error: 'Coordinator can only approve/reject forms with status "Under HOD"' });
-          }
-        } else if (userRole === 'hod') {
+        if (userRole === 'hod') {
           if (form.status === 'Under HOD') {
             allowedUpdates = ['status', 'remark'];
             statusValidation = ['Under Principal', 'Rejected'];
@@ -563,6 +568,47 @@ router.put(
         }
       }
 
+      if (req.files && Object.values(req.files).flat().length && !isOwner) {
+        return res.status(403).json({ error: 'Only the owner can replace documents' });
+      }
+      if (ambiguousDocuments(form, req)) return res.status(409).json({ error: 'Legacy attachment type is unknown. Contact administrator before replacing documents.' });
+
+      // Upload new files if provided (parallel with old file cleanup)
+      const updateUploadPromises = [];
+      if (req.files?.nptelResult?.[0]) {
+        updateUploadPromises.push(
+          (async () => {
+            return uploadFile(req.files.nptelResult[0], {
+              ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
+            folder: "reimbursement-Forms/Faculty_Form",
+              resource_type: "image",
+              use_filename: true,
+              unique_filename: true
+            });
+          })()
+        );
+      } else {
+        updateUploadPromises.push(Promise.resolve(null));
+      }
+      if (req.files?.idCard?.[0]) {
+        updateUploadPromises.push(
+          (async () => {
+            return uploadFile(req.files.idCard[0], {
+              ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
+            folder: "reimbursement-Forms/Faculty_Form",
+              resource_type: "image",
+              use_filename: true,
+              unique_filename: true
+            });
+          })()
+        );
+      } else {
+        updateUploadPromises.push(Promise.resolve(null));
+      }
+      const [nptelResultUpload, idCardUpload] = await cloudinary.uploadBatch(updateUploadPromises);
+
       // Build update object with only allowed fields
       const updates = {};
       allowedUpdates.forEach(field => {
@@ -570,19 +616,13 @@ router.put(
           updates[field] = req.body[field];
         }
       });
-
-      // Handle document updates for owners (only at initial status)
-      const editableInitialStatus = form.applicantType === 'HOD' ? 'Under Principal' : 'Under HOD';
-      if (isOwner && form.status === editableInitialStatus) {
-        if (nptelResultUpload) {
-          updates.documents = updates.documents || [...(form.documents || [])];
-          updates.documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
-        }
-        if (idCardUpload) {
-          updates.documents = updates.documents || [...(form.documents || [])];
-          updates.documents[1] = { url: idCardUpload.secure_url, publicId: idCardUpload.public_id };
-        }
+      if (userRole === 'principal' && req.body.status) {
+        updates.reviewedBy = String(req.user.userId || req.user.email);
+        updates.reviewedAt = new Date();
       }
+
+      const { documents, obsolete } = replacementDocuments(form.documents, [nptelResultUpload, idCardUpload]);
+      if (nptelResultUpload || idCardUpload) updates.documents = documents;
 
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: 'No valid fields to update or insufficient permissions' });
@@ -608,12 +648,17 @@ router.put(
       }
 
       // Update form fields
-      const updatedForm = await Form.findByIdAndUpdate(
-        form._id,
+      const updatedForm = await Form.findOneAndUpdate(
+        { _id: form._id, status: form.status, updatedAt: form.updatedAt },
         { $set: updates },
         { new: true, runValidators: true }
       );
 
+      if (!updatedForm) return res.status(409).json({ error: 'Application changed. Refresh and retry.' });
+      committed = true;
+      for (const document of obsolete) {
+        await cloudinary.deleteDocument(document, form.userId).catch(error => console.error('Deferred cleanup:', error.message));
+      }
       // Send email notification for status changes
       if (updates.status && updates.status !== form.status) {
         try {
@@ -691,6 +736,8 @@ router.put(
     } catch (err) {
       console.error("Error updating form:", err);
       res.status(500).json({ error: "Failed to update form" });
+    } finally {
+      if (!committed) await cloudinary.rollbackUploads(stagedUploads);
     }
   }
 );
@@ -742,16 +789,18 @@ router.delete("/:id", authMiddleware.verifyToken, async (req, res) => {
       });
     }
 
+    const deleted = await Form.findOneAndDelete({ _id: form._id, userId: form.userId, status: form.status, updatedAt: form.updatedAt });
+    if (!deleted) return res.status(409).json({ error: 'Application changed. Refresh and retry.' });
     // Delete files from Cloudinary if they exist
     if (form.documents) {
       for (const doc of form.documents) {
         if (doc.publicId) {
-          await cloudinary.uploader.destroy(doc.publicId);
+          await require('../utils/cloudinary').deleteDocument(doc, form.userId).catch(error => console.error('Deferred document cleanup:', error.message));
         }
       }
     }
 
-    await Form.findByIdAndDelete(form._id);
+
     res.json({ message: "Form deleted successfully" });
   } catch (err) {
     console.error("Error deleting form:", err);

@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import Pagination from '../../../../components/Pagination'
+import { useEffect, useState, useCallback } from "react";
 import { adminAPI } from '../../../../services/api'
 import { RefreshCw } from 'lucide-react'
 
-const POLL_INTERVAL = 8000
+const POLL_INTERVAL = 30000
 
 const ACTION_OPTIONS = [
   'All',
@@ -26,7 +27,7 @@ const AdminLogs = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 100, totalPages: 1 })
-  
+
   // Filtering state
   const [filterRole, setFilterRole] = useState('All')
   const [filterDepartment, setFilterDepartment] = useState('All')
@@ -62,9 +63,11 @@ const AdminLogs = () => {
   // Initial fetch + polling
   useEffect(() => {
     fetchLogs()
-    const interval = setInterval(() => fetchLogs(), POLL_INTERVAL)
-    return () => clearInterval(interval)
   }, [fetchLogs])
+  useEffect(() => {
+    const interval = setInterval(() => { if (!document.hidden) fetchLogs(pagination.page) }, POLL_INTERVAL)
+    return () => clearInterval(interval)
+  }, [fetchLogs, pagination.page])
 
   // Format timestamp to readable form
   const formatTime = (ts) => {
@@ -154,24 +157,24 @@ const AdminLogs = () => {
         <div className="text-sm text-gray-500 flex-1">
           Real-time activity monitoring (auto-refreshes every {POLL_INTERVAL / 1000}s). Logs are persisted in the database.
         </div>
-        
+
         <div className="flex flex-wrap gap-2">
-          <input 
+          <input aria-label="start Date"
             type="date"
             value={startDate}
             onChange={e => setStartDate(e.target.value)}
             className="border rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
           />
           <span className="text-gray-400 self-center">-</span>
-          <input 
+          <input aria-label="end Date"
             type="date"
             value={endDate}
             onChange={e => setEndDate(e.target.value)}
             className="border rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
           />
 
-          <select 
-            value={filterRole} 
+          <select aria-label="filter Role"
+            value={filterRole}
             onChange={e => setFilterRole(e.target.value)}
             className="border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
           >
@@ -179,9 +182,9 @@ const AdminLogs = () => {
               <option key={r} value={r}>{r === 'All' ? 'All Roles' : r}</option>
             ))}
           </select>
-          
-          <select 
-            value={filterDepartment} 
+
+          <select aria-label="filter Department"
+            value={filterDepartment}
             onChange={e => setFilterDepartment(e.target.value)}
             className="border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
           >
@@ -190,8 +193,8 @@ const AdminLogs = () => {
             ))}
           </select>
 
-          <select 
-            value={filterAction} 
+          <select aria-label="filter Action"
+            value={filterAction}
             onChange={e => setFilterAction(e.target.value)}
             className="border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
           >
@@ -254,26 +257,7 @@ const AdminLogs = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
-              <span>
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  disabled={pagination.page <= 1}
-                  onClick={() => fetchLogs(pagination.page - 1)}
-                  className="px-3 py-1 border rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
-                >
-                  Previous
-                </button>
-                <button
-                  disabled={pagination.page >= pagination.totalPages}
-                  onClick={() => fetchLogs(pagination.page + 1)}
-                  className="px-3 py-1 border rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+            <div className="px-3 sm:px-6 py-4"><Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={undefined} noun="log entries" busy={loading} onPageChange={value => fetchLogs(value)} />
             </div>
           )}
         </>

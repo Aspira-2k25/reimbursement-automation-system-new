@@ -2,7 +2,6 @@ import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { jsPDF } from "jspdf"
 import { studentFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -108,7 +107,11 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                   <div className="flex items-center gap-2">
                     <button
                       className="icon-btn hover:bg-blue-50"
-                      onClick={() => {
+                      onClick={async () => {
+                        try {
+                          const { jsPDF } = await import("jspdf");
+                          const { form } = await studentFormsAPI.getById(r._id || r.applicationId || r.id);
+                          const record = { ...r, ...form };
                         // Generate PDF
                         const doc = new jsPDF();
                         const pageWidth = doc.internal.pageSize.getWidth();
@@ -123,9 +126,9 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         // Application ID and Status
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'normal');
-                        doc.text(`Application ID: ${r.applicationId || r._id || r.id || 'N/A'}`, 20, y);
+                        doc.text(`Application ID: ${record.applicationId || record._id || record.id || 'N/A'}`, 20, y);
                         y += 7;
-                        doc.text(`Status: ${r.status || 'Pending'}`, 20, y);
+                        doc.text(`Status: ${record.status || 'Pending'}`, 20, y);
                         y += 12;
 
                         // Applicant Details Section
@@ -135,11 +138,11 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         y += 8;
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'normal');
-                        doc.text(`Name: ${r.name || 'N/A'}`, 20, y); y += 7;
-                        doc.text(`Student ID: ${r.studentId || 'N/A'}`, 20, y); y += 7;
-                        doc.text(`Email: ${r.email || 'N/A'}`, 20, y); y += 7;
-                        doc.text(`Department: ${r.department || 'N/A'}`, 20, y); y += 7;
-                        doc.text(`Division: ${r.division || 'N/A'}`, 20, y); y += 12;
+                        doc.text(`Name: ${record.name || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Student ID: ${record.studentId || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Email: ${record.email || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Department: ${record.department || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Division: ${record.division || 'N/A'}`, 20, y); y += 12;
 
                         // Reimbursement Details Section
                         doc.setFontSize(13);
@@ -148,9 +151,9 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         y += 8;
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'normal');
-                        doc.text(`Type: ${r.reimbursementType || r.category || 'NPTEL'}`, 20, y); y += 7;
-                        doc.text(`Amount: Rs. ${(r.amount || 0).toLocaleString('en-IN')}`, 20, y); y += 7;
-                        doc.text(`Academic Year: ${r.academicYear || 'N/A'}`, 20, y); y += 12;
+                        doc.text(`Type: ${record.reimbursementType || record.category || 'NPTEL'}`, 20, y); y += 7;
+                        doc.text(`Amount: Rs. ${(record.amount || 0).toLocaleString('en-IN')}`, 20, y); y += 7;
+                        doc.text(`Academic Year: ${record.academicYear || 'N/A'}`, 20, y); y += 12;
 
                         // Bank Details Section
                         doc.setFontSize(13);
@@ -159,9 +162,9 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         y += 8;
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'normal');
-                        doc.text(`Account Name: ${r.accountName || 'N/A'}`, 20, y); y += 7;
-                        doc.text(`Account Number: ${r.accountNumber || 'N/A'}`, 20, y); y += 7;
-                        doc.text(`IFSC Code: ${r.ifscCode || 'N/A'}`, 20, y); y += 12;
+                        doc.text(`Account Name: ${record.accountName || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Account Number: ${record.accountNumber || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`IFSC Code: ${record.ifscCode || 'N/A'}`, 20, y); y += 12;
 
                         // Dates Section
                         doc.setFontSize(13);
@@ -170,8 +173,8 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         y += 8;
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'normal');
-                        const submittedDate = r.submittedDate || r.createdAt ? new Date(r.submittedDate || r.createdAt).toLocaleDateString() : 'N/A';
-                        const updatedDate = r.updatedDate || r.updatedAt ? new Date(r.updatedDate || r.updatedAt).toLocaleDateString() : 'N/A';
+                        const submittedDate = record.submittedDate || record.createdAt ? new Date(record.submittedDate || record.createdAt).toLocaleDateString() : 'N/A';
+                        const updatedDate = record.updatedDate || record.updatedAt ? new Date(record.updatedDate || record.updatedAt).toLocaleDateString() : 'N/A';
                         doc.text(`Submitted: ${submittedDate}`, 20, y); y += 7;
                         doc.text(`Last Updated: ${updatedDate}`, 20, y); y += 12;
 
@@ -182,7 +185,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         y += 8;
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'normal');
-                        doc.text(r.remarks || r.rejectionRemarks || 'No remarks', 20, y); y += 15;
+                        doc.text(record.remarks || record.rejectionRemarks || 'No remarks', 20, y); y += 15;
 
                         // Footer
                         doc.setFontSize(9);
@@ -190,7 +193,9 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                         doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, 280, { align: 'center' });
 
                         // Save PDF
-                        doc.save(`Application_${r.applicationId || r._id || 'form'}.pdf`);
+                        doc.save(`Application_${record.applicationId || record._id || 'form'}.pdf`);
+
+                        } catch (error) { toast.error(error.error || "Unable to download application. Please retry."); }
                       }}
                       title="Download Application Form"
                       aria-label="Download"

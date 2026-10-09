@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
-import StatCard from '../components/StatCard'
+
 import ReminderBanner from '../components/ReminderBanner'
 import InfoTipBox from '../components/InfoTipBox'
 import { useHODContext } from './HODLayout'
@@ -53,13 +52,8 @@ const ApplyForReimbursement = () => {
    * @param {Object} option - The selected reimbursement option
    */
   const handleApply = (option) => {
-    if (option.id === "nptel") {
-      // Navigate to the NPTEL form (same as Faculty)
-      navigate("/faculty-nptel-form")
-    } else {
-      toast.success(`Application started for ${option.title}`)
-      // TODO: Implement forms for other reimbursement types
-    }
+    if (option?.id !== 'nptel') return
+    navigate("/faculty-nptel-form")
   }
 
   return (
@@ -138,12 +132,13 @@ const ApplyForReimbursement = () => {
                       <h3 className="text-slate-900 font-semibold text-base sm:text-lg lg:text-xl mb-2">{opt.title}</h3>
                       <p className="text-slate-600 text-xs sm:text-sm lg:text-base flex-1 leading-relaxed">{opt.description}</p>
                       <motion.button
+                        disabled={opt.id !== 'nptel'}
                         onClick={() => handleApply(opt)}
-                        className="mt-4 sm:mt-6 w-full rounded-lg sm:rounded-xl bg-gradient-to-r from-green-600 to-teal-600 px-3 sm:px-4 py-2.5 sm:py-3 text-white font-medium text-sm sm:text-base shadow-sm transition-all duration-200 hover:shadow-md hover:from-green-700 hover:to-teal-700"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        className={`mt-4 sm:mt-6 w-full rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 font-medium text-sm sm:text-base shadow-sm transition-all duration-200 ${opt.id === 'nptel' ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white hover:shadow-md hover:from-green-700 hover:to-teal-700' : 'bg-slate-200 text-slate-600 cursor-not-allowed'}`}
+                        whileHover={opt.id === 'nptel' ? { scale: 1.05 } : undefined}
+                        whileTap={opt.id === 'nptel' ? { scale: 0.95 } : undefined}
                       >
-                        Apply Now
+                        {opt.id === 'nptel' ? 'Apply Now' : 'Coming soon'}
                       </motion.button>
                     </div>
                   </motion.div>

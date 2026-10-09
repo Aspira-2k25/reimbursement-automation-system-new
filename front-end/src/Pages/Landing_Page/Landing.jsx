@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Users, Clock, BarChart3 } from 'lucide-react';
+import { ChevronRight } from "lucide-react";
 import { useAuth } from '../../context/AuthContext';
 
 import apshahLogo from '../../assets/images/Apshah_logo.png';
@@ -165,7 +165,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+      <section id="features" className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
         <motion.div {...fadeInUp}>
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight" style={{ color: theme.dark }}>
             Automate Your Reimbursement <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.mint})` }}>Workflow</span>
@@ -201,7 +201,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20">
+      <section id="how-it-works" className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20">
         <motion.div {...fadeInUp} className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4" style={{ color: theme.dark }}>How It Works</h2>
           <p className="text-lg" style={{ color: '#4b5563' }}>A simple, transparent process for everyone.</p>
@@ -280,17 +280,17 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
+                <li><a href="#features" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
+                <li><a href="#how-it-works" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
+                <li><a href="/login" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Help Center</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Documentation</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Contact Admin</a></li>
+                <li><a href="#how-it-works">Submission guidance</a></li>
+                <li>NPTEL reimbursement: maximum ₹1,500 per application.</li>
+                <li>For assistance, contact your departmental coordinator.</li>
               </ul>
             </div>
           </div>

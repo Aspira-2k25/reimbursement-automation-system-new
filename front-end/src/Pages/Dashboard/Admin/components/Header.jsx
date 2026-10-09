@@ -1,9 +1,9 @@
-import React from 'react'
+
 import { motion } from 'framer-motion'
-import { useAdminContext } from '../pages/AdminLayout'
+
 import { Menu, Bell } from 'lucide-react'
 import apshahLogo from '../../../../assets/images/Apshah_logo.png'
-import websiteLogo from '../../../../assets/images/Website_logo.png'
+
 
 const Header = ({ isCollapsed, setIsCollapsed }) => {
   // admin dashboard requires authenticated user with Admin role (checked at router level)
@@ -17,7 +17,7 @@ const Header = ({ isCollapsed, setIsCollapsed }) => {
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <button
+          <button aria-label="Open navigation"
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
           >

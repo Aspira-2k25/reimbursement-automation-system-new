@@ -1,5 +1,5 @@
 
-import React from "react"
+
 import { GraduationCap, Wrench, Users, PlaneTakeoff } from "lucide-react"
 
 // Icon mapping for consistent icon usage across the application
@@ -21,7 +21,7 @@ const iconMap = {
  * @param {Object} option - The reimbursement option data
  * @param {Function} onApply - Callback function when apply button is clicked
  */
-export default function StatCard({ option, onApply }) {
+export default function StatCard({ option, onApply, disabled = false }) {
   // Loading skeleton when no option is provided
   if (!option) {
     return (
@@ -73,11 +73,11 @@ export default function StatCard({ option, onApply }) {
 
         {/* Apply button */}
         <button
-          onClick={handleApply}
+          onClick={handleApply} disabled={disabled} aria-disabled={disabled}
           className="mt-4 sm:mt-6 w-full rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white font-medium text-sm sm:text-base shadow-sm transition-all duration-200 hover:shadow-md active:scale-95"
           style={{background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))'}}
         >
-          Apply Now
+          {disabled ? 'Coming soon' : 'Apply Now'}
         </button>
       </div>
     </div>

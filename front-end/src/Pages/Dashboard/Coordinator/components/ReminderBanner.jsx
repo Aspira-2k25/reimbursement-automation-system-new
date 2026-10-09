@@ -8,8 +8,7 @@ export default function ReminderBanner() {
         <div>
           <h4 className="text-xs sm:text-sm font-medium" style={{color: 'var(--color-dark-gray)'}}>Reminder:</h4>
           <p className="text-xs sm:text-sm mt-1 leading-relaxed" style={{color: 'var(--color-dark-gray)'}}>
-            Faculty reimbursement window for Q4 closes on 31st March 2025. Submit your professional development claims
-            before the deadline.
+            Review the student NPTEL result and ID document before approving a request. Each application is capped at ₹1,500.
           </p>
         </div>
       </div>

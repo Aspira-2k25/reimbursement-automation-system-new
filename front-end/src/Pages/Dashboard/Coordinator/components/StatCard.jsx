@@ -1,9 +1,9 @@
-import React from "react";
+
 
 export default function StatCard({ title, value, icon: Icon, color, subtitle }) {
   const colorClasses = {
     blue: "text-white",
-    orange: "text-white", 
+    orange: "text-white",
     green: "text-white",
     red: "text-white",
   };
@@ -11,7 +11,7 @@ export default function StatCard({ title, value, icon: Icon, color, subtitle }) 
   const iconColorClasses = {
     blue: "text-white",
     orange: "text-white",
-    green: "text-white", 
+    green: "text-white",
     red: "text-white",
   };
 

@@ -1,24 +1,26 @@
+import ChangeUsername from '../../../components/ChangeUsername'
 import React from "react"
 import { toast } from "react-hot-toast"
 import "../Dashboard.css"
 import { useProfile } from "./ProfileContext"
+import { authAPI } from "../../../services/api"
+import { useAuth } from "../../../context/AuthContext"
 
 /**
  * Faculty ProfileSettings Component
  * Allows faculty to update their profile information
  */
 export default function ProfileSettings() {
-  const { profile, updateProfile, resetProfile } = useProfile()
+  const { profile, updateProfile } = useProfile()
+  const { user } = useAuth()
 
   // State for form inputs
   const [name, setName] = React.useState(profile.name)
-  const [designation, setDesignation] = React.useState(profile.designation)
   const [isLoading, setIsLoading] = React.useState(false)
 
   // Sync form state with profile context when profile changes
   React.useEffect(() => {
     setName(profile.name)
-    setDesignation(profile.designation)
   }, [profile])
 
   /**
@@ -30,42 +32,35 @@ export default function ProfileSettings() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Update profile in context
-      updateProfile({
-        name: name,
-        designation: designation
-      })
-
-      // Show success message
-      toast.success("Faculty profile updated successfully!")
-    } catch {
-      toast.error("Failed to update profile. Please try again.")
+      const trimmedName = name.trim()
+      if (!trimmedName) throw new Error("Full name is required.")
+      const result = await authAPI.updateProfile({ name: trimmedName })
+      if (!result?.user) throw new Error("Server did not return the saved profile.")
+      updateProfile({ name: result.user.name })
+      window.dispatchEvent(new CustomEvent('auth:refreshed', { detail: { ...user, ...result.user } }))
+      toast.success("Faculty profile saved.")
+    } catch (error) {
+      toast.error(error.message || "Failed to update profile. Please try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
   /**
-   * Reset form to default values
+   * Discard unsaved changes
    */
   const handleReset = () => {
-    resetProfile()
     setName(profile.name)
-    setDesignation(profile.designation)
-    toast.success("Form reset to default values")
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-3 sm:px-4 lg:px-6 py-6 sm:py-8 lg:py-10 page-content">
+    <><div><main className="mx-auto max-w-2xl px-3 sm:px-4 lg:px-6 py-6 sm:py-8 lg:py-10 page-content">
       <div className="section">
         {/* Header section */}
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold">Faculty Profile Settings</h1>
           <p className="text-slate-600 mt-1 text-sm sm:text-base">
-            Update your faculty information. Department is synced from your authenticated profile.
+            Update your name. Department, designation and role are managed by an administrator.
           </p>
         </div>
 
@@ -82,6 +77,8 @@ export default function ProfileSettings() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              maxLength={100}
+              disabled={isLoading}
             />
           </label>
 
@@ -100,10 +97,8 @@ export default function ProfileSettings() {
             <span className="text-sm text-slate-600">Designation</span>
             <input
               className="input w-full"
-              value={designation}
-              onChange={(e) => setDesignation(e.target.value)}
-              required
-              placeholder="e.g., Associate Professor"
+              value={profile.designation || "Not assigned"}
+              readOnly
             />
           </label>
 
@@ -125,7 +120,7 @@ export default function ProfileSettings() {
               className="btn btn-outline w-full sm:w-auto"
               disabled={isLoading}
             >
-              Reset
+              Discard Changes
             </button>
             <button
               className="btn btn-primary w-full sm:w-auto"
@@ -138,6 +133,6 @@ export default function ProfileSettings() {
         </form>
 
       </div>
-    </main>
+    </main></div><div className="mx-auto max-w-5xl p-4 sm:p-6"><ChangeUsername /></div></>
   )
 }

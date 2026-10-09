@@ -7,7 +7,7 @@ let emailQueue = null;
 let redisConnection = null;
 let isRedisAvailable = false;
 
-try {
+if (process.env.EMAIL_QUEUE_ENABLED === 'true' && process.env.REDIS_URL) try {
   redisConnection = new Redis(REDIS_URL, {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,

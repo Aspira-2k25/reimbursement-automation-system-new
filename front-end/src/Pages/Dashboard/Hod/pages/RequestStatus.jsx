@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Clock, CheckCircle, XCircle, FileText, Search, Download, Loader2, Eye, Pencil, Trash2, X, AlertCircle } from 'lucide-react'
+import Pagination from '../../../../components/Pagination'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Clock, CheckCircle, XCircle, FileText, Search, Download, Loader2, Eye, Pencil, Trash2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { facultyFormsAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
+import { serializeCsv } from '../../../../utils/csv'
 
 /**
  * SummaryCard Component
  * Displays a summary statistic with icon, value and subtitle
  */
-function SummaryCard({ title, value, sub, icon: Icon, color = 'blue' }) {
+function SummaryCard({ title, value, sub, icon, color = 'blue' }) {
+  const Icon = icon
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
@@ -70,12 +73,18 @@ const RequestStatus = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [deleteItem, setDeleteItem] = useState(null)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
+  const [lifetimeSummary, setLifetimeSummary] = useState(null)
+  const requestGeneration = useRef(0)
 
   // Fetch HOD's own forms on mount
-  const fetchRequests = async (isRetry = false) => {
+  const fetchRequests = useCallback(async () => {
+    const generation = ++requestGeneration.current
     try {
       setLoading(true)
-      const data = await facultyFormsAPI.listMine()
+      const data = await facultyFormsAPI.listMine({ page, limit: 20 })
+      if (generation !== requestGeneration.current) return
 
       // Map backend data to frontend model
       const forms = data?.forms || data || []
@@ -95,40 +104,34 @@ const RequestStatus = () => {
       })) : []
 
       setRequests(mapped)
+      setPagination(data?.pagination || { total: mapped.length, totalPages: 1 })
+      setLifetimeSummary(data?.summary || null)
+      if (page > Math.max(1, data?.pagination?.totalPages || 1)) setPage(Math.max(1, data?.pagination?.totalPages || 1))
       setError(null)
     } catch (err) {
-      console.error('Failed to load requests:', err)
-      if (!isRetry) {
-        // One lightweight retry avoids transient failures during route transitions.
-        await new Promise(resolve => setTimeout(resolve, 400))
-        return fetchRequests(true)
-      }
-      setError(err?.error || 'Failed to load your requests. Please try again.')
+      if (generation === requestGeneration.current) setError(err?.error || 'Failed to load your requests. Please try again.')
     } finally {
-      setLoading(false)
+      if (generation === requestGeneration.current) setLoading(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
-    fetchRequests()
-  }, [])
+    void fetchRequests()
+    return () => { requestGeneration.current += 1 }
+  }, [fetchRequests])
 
-  // Calculate summary statistics from dynamic data
   const summary = useMemo(() => {
-    const total = requests.length
-    const approved = requests.filter(r =>
-      r.status === 'Approved' || r.status === 'Under Principal'
-    ).length
-    const pending = requests.filter(r =>
-      r.status === 'Pending' || r.status === 'Under HOD' || r.status === 'Under Coordinator'
-    ).length
-    const rejected = requests.filter(r => r.status === 'Rejected').length
-    const totalAmount = requests
-      .filter(r => r.status === 'Reimbursed')
-      .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
-
-    return { total, approved, pending, rejected, totalAmount }
-  }, [requests])
+    if (lifetimeSummary) return { ...lifetimeSummary, totalAmount: lifetimeSummary.reimbursedAmount }
+    const normalize = request => String(request.status).trim().toLowerCase()
+    return {
+      total: pagination.total,
+      approved: requests.filter(request => ['approved', 'reimbursed'].includes(normalize(request))).length,
+      pending: requests.filter(request => ['pending', 'under review', 'under coordinator', 'under hod', 'under principal'].includes(normalize(request))).length,
+      rejected: requests.filter(request => normalize(request) === 'rejected').length,
+      totalAmount: requests.filter(request => normalize(request) === 'reimbursed').reduce((sum, request) => sum + request.amount, 0)
+    }
+  }, [requests, pagination.total, lifetimeSummary])
+  const summaryScope = lifetimeSummary ? 'All time' : 'On this page'
 
   // Filter requests based on search
   const filteredRequests = useMemo(() => {
@@ -150,8 +153,8 @@ const RequestStatus = () => {
     }
 
     const headers = ['Application ID', 'Category', 'Amount', 'Status', 'Submitted Date', 'Last Updated']
-    const csvContent = [
-      headers.join(','),
+    const csvContent = serializeCsv([
+      headers,
       ...requests.map(r => [
         r.id,
         r.category,
@@ -159,8 +162,8 @@ const RequestStatus = () => {
         r.status,
         new Date(r.submittedDate).toLocaleDateString(),
         new Date(r.updatedDate).toLocaleDateString()
-      ].join(','))
-    ].join('\n')
+      ])
+    ])
 
     const BOM = '\uFEFF'
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' })
@@ -204,6 +207,7 @@ const RequestStatus = () => {
           <XCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <h3 className="text-lg font-medium text-red-800 mb-1">Error Loading Data</h3>
           <p className="text-red-600">{error}</p>
+          <button onClick={() => void fetchRequests()} className="mt-3 underline">Retry</button>
         </div>
       </main>
     )
@@ -222,7 +226,7 @@ const RequestStatus = () => {
           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
           <Download className="w-4 h-4" />
-          Export
+          Export Current Page
         </button>
       </div>
 
@@ -238,21 +242,21 @@ const RequestStatus = () => {
         <SummaryCard
           title="Approved"
           value={summary.approved}
-          sub={`₹${summary.totalAmount.toLocaleString()} approved`}
+          sub={`${summaryScope}: ₹${(summary.totalAmount ?? 0).toLocaleString()} reimbursed`}
           icon={CheckCircle}
           color="green"
         />
         <SummaryCard
           title="Pending Review"
           value={summary.pending}
-          sub="Under review"
+          sub={summaryScope}
           icon={Clock}
           color="orange"
         />
         <SummaryCard
           title="Rejected"
           value={summary.rejected}
-          sub="Not approved"
+          sub={summaryScope}
           icon={XCircle}
           color="red"
         />
@@ -262,9 +266,9 @@ const RequestStatus = () => {
       <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
+          <input aria-label="search"
             type="text"
-            placeholder="Search requests..."
+            placeholder="Search this page..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -372,12 +376,13 @@ const RequestStatus = () => {
               )}
             </tbody>
           </table>
+          <Pagination page={page} totalPages={pagination.totalPages} total={pagination.total} pageSize={20} noun="applications" busy={loading} onPageChange={setPage} />
         </div>
       </div>
 
       {/* Delete Confirmation Modal */}
       {deleteItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" aria-label="Reimbursement dialog" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="fixed inset-0 bg-black/30 transition-opacity duration-200"
             onClick={() => setDeleteItem(null)}

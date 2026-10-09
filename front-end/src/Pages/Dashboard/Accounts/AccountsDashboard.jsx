@@ -1,4 +1,4 @@
-import React from 'react'
+
 import AccountsLayout from './pages/AccountsLayout'
 
 /**

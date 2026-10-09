@@ -1,8 +1,10 @@
+require('dotenv').config({ quiet: true });
 const { Worker } = require('bullmq');
 const Redis = require('ioredis');
 const emailService = require('../utils/emailService');
 const logger = require('../utils/logger');
 const he = require('he');
+const connectMongoDB = require('../config/mongo');
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
@@ -84,6 +86,10 @@ try {
 
     if (!emailResult.success) {
       throw new Error(emailResult.error || 'Email sending failed');
+    }
+    if (notificationData.notificationId) {
+      await connectMongoDB();
+      await require('../models/Notification').updateOne({ _id: notificationData.notificationId }, { $set: { emailSent: true } });
     }
 
     return emailResult;

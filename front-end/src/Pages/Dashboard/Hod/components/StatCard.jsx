@@ -1,4 +1,4 @@
-import React from "react"
+
 import { motion } from "framer-motion"
 
 /**
@@ -21,16 +21,10 @@ export default function StatCard({ title, value, icon: Icon, color = 'blue', sub
     red: "text-white",
   }
 
-  const iconColorClasses = {
-    blue: "text-white",
-    orange: "text-white",
-    green: "text-white",
-    red: "text-white",
-  }
 
   const CardContent = () => (
     <motion.div
-      className="bg-white rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300"
+      className="bg-white rounded-lg p-3 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300"
       style={{ border: '1px solid var(--color-light-teal)' }}
       whileHover={{ y: -2, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
@@ -38,7 +32,7 @@ export default function StatCard({ title, value, icon: Icon, color = 'blue', sub
     >
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--color-dark-gray)' }}>{title}</p>
+          <p className="text-xs sm:text-sm font-medium break-words" style={{ color: 'var(--color-dark-gray)' }}>{title}</p>
           <div className="flex items-center gap-2 mt-1 sm:mt-2">
             <p className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--color-dark-gray)' }}>{value}</p>
             {trend && (
@@ -48,7 +42,7 @@ export default function StatCard({ title, value, icon: Icon, color = 'blue', sub
               </span>
             )}
           </div>
-          <p className="text-xs sm:text-sm mt-1 truncate" style={{ color: 'var(--color-dark-gray)' }}>{subtitle}</p>
+          <p className="text-xs sm:text-sm mt-1 break-words" style={{ color: 'var(--color-dark-gray)' }}>{subtitle}</p>
         </div>
         {Icon && (
           <motion.div

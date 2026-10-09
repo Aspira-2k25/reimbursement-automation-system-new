@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from "react";
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -121,7 +121,7 @@ export default function ForgotPassword() {
                   {/* Email Input */}
                   <div className="relative">
                     <Mail className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'}`} />
-                    <input
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Institutional email<input
                       type="email"
                       placeholder="Enter your email address"
                       name="email"
@@ -132,7 +132,7 @@ export default function ForgotPassword() {
                       onBlur={() => setFocusedField('')}
                       className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                       required
-                    />
+                    /></label>
                   </div>
 
                   {/* Submit Button */}

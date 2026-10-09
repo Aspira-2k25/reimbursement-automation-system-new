@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
+import RoleGuard from './components/RoleGuard'
+import useDialogFocus from './hooks/useDialogFocus'
 import { Toaster } from 'react-hot-toast'
 
 // Lazy load pages for code splitting and better performance
@@ -17,6 +19,7 @@ const ForgotPassword = lazy(() => import('./Pages/Login/ForgotPassword'))
 const ResetPassword = lazy(() => import('./Pages/Login/ResetPassword'))
 
 function App() {
+  useDialogFocus()
   const toastConfig = {
     position: "top-right",
     toastOptions: {
@@ -51,14 +54,14 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />
+          <Route path="/form" element={<ProtectedRoute><RoleGuard allowedRoles={['Faculty', 'Coordinator', 'HOD']}><ReimbursementForm /></RoleGuard></ProtectedRoute>} />
           <Route path="/nptel-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
           <Route path="/nptel-form/edit/:id" element={<ProtectedRoute><EditForm /></ProtectedRoute>} />
           <Route path="/faculty-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
           <Route path="/faculty-form/edit/:id" element={<ProtectedRoute><EditForm /></ProtectedRoute>} />
           <Route path="/student-form/view/:id" element={<ProtectedRoute><ViewForm /></ProtectedRoute>} />
-          <Route path="/student-nptel-form" element={<ProtectedRoute><StudentNptelForm /></ProtectedRoute>} />
-          <Route path="/faculty-nptel-form" element={<ProtectedRoute><ReimbursementForm /></ProtectedRoute>} />
+          <Route path="/student-nptel-form" element={<ProtectedRoute><RoleGuard allowedRoles={['Student']}><StudentNptelForm /></RoleGuard></ProtectedRoute>} />
+          <Route path="/faculty-nptel-form" element={<ProtectedRoute><RoleGuard allowedRoles={['Faculty', 'Coordinator', 'HOD']}><ReimbursementForm /></RoleGuard></ProtectedRoute>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* Catch-all route MUST be last */}
@@ -71,7 +74,6 @@ function App() {
 }
 
 export default App
-
 
 
 

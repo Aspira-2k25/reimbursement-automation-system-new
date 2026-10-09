@@ -106,7 +106,8 @@ const createNotification = async (notificationData, sendEmailNotification = true
               console.error('Failed to send email notification:', emailError);
             }
           };
-          sendEmailInBackground();
+          if (process.env.VERCEL || process.env.VERCEL_ENV) await sendEmailInBackground();
+          else sendEmailInBackground();
         }
       }
     }

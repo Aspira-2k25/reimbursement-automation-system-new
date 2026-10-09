@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 /**
  * Base animated skeleton loader element
@@ -39,7 +39,7 @@ export const CardSkeleton = ({ count = 4 }) => {
 /**
  * Table Skeleton Loader for dashboard request tables
  */
-export const TableSkeleton = ({ rows = 5, cols = 6 }) => {
+export const TableSkeleton = ({ rows = 5 }) => {
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
       {/* Table Header Placeholder */}

@@ -1,458 +1,127 @@
-import React, { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  BarChart3,
-  TrendingUp,
-  Download,
-  Calendar,
-  Filter,
-  Users,
-  IndianRupee
-} from 'lucide-react'
-import { toast } from 'react-hot-toast'
-import StatCard from '../components/StatCard'
-import ReportLineChart from '../components/ReportLineChart'
-import ReportPieChart from '../components/ReportPieChart'
-import FilterBar from '../components/FilterBar'
-import PrintableReport from '../components/PrintableReport'
-import { usePrincipalContext } from './PrincipalLayout'
-import { normalizeDepartment } from '../../../../utils/departmentNormalization'
-
-// Helper functions (replacing mockData imports)
-const calculateCollegeStats = (requests) => {
-  const total = requests.length
-  const pending = requests.filter(r => r.status === 'Under Principal').length
-  const approved = requests.filter(r => r.status === 'Approved' || r.status === 'Under Principal').length
-  const rejected = requests.filter(r => r.status === 'Rejected').length
-  const approvedAmount = requests
-    .filter(r => r.status === 'Reimbursed')
-    .reduce((sum, r) => sum + (parseFloat(String(r.amount).replace(/[₹,]/g, '')) || 0), 0)
-
-  return { total, pending, approved, rejected, approvedAmount }
-}
-
-const getRequestsByType = (requests, type) => {
-  if (type === 'Faculty') {
-    // Include HOD as Faculty since HODs are faculty members
-    return requests.filter(r => r.applicantType === 'Faculty' || r.applicantType === 'HOD')
-  }
-  return requests.filter(r => r.applicantType === type)
-}
-
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { BarChart3, TrendingUp, Download, Calendar, IndianRupee } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import StatCard from '../components/StatCard';
+import ReportLineChart from '../components/ReportLineChart';
+import ReportPieChart from '../components/ReportPieChart';
+import FilterBar from '../components/FilterBar';
+import { usePrincipalContext } from './PrincipalLayout';
+import { dashboardAPI } from '../../../../services/api';
+const money = amount => `\u20b9${(amount || 0).toLocaleString('en-IN')}`;
 const ReportsAndAnalytics = () => {
-  const { allRequests, departments, userProfile } = usePrincipalContext()
-  const [selectedDateRange, setSelectedDateRange] = useState({ startDate: '', endDate: '' })
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [selectedMemberType, setSelectedMemberType] = useState('All')
-  const [selectedStatus, setSelectedStatus] = useState('All')
-  const [selectedDepartment, setSelectedDepartment] = useState('All')
-
-  // Filter requests based on current filters
-  const filteredRequests = useMemo(() => {
-    return allRequests.filter(request => {
-      // Date filter
-      if (selectedDateRange.startDate && selectedDateRange.endDate) {
-        const requestDate = new Date(request.submittedDate)
-        const startDate = new Date(selectedDateRange.startDate)
-        const endDate = new Date(selectedDateRange.endDate)
-        if (requestDate < startDate || requestDate > endDate) {
-          return false
-        }
-      }
-
-      // Category filter
-      if (selectedCategory !== 'All' && request.category !== selectedCategory) {
-        return false
-      }
-
-      // Member type filter
-      if (selectedMemberType !== 'All' && request.applicantType !== selectedMemberType) {
-        return false
-      }
-
-      // Status filter
-      if (selectedStatus !== 'All' && request.status !== selectedStatus) {
-        return false
-      }
-
-      // Department filter — normalize both sides to handle "IT" vs "Information Technology"
-      if (selectedDepartment !== 'All' && normalizeDepartment(request.department) !== normalizeDepartment(selectedDepartment)) {
-        return false
-      }
-
-      return true
-    })
-  }, [allRequests, selectedDateRange, selectedCategory, selectedMemberType, selectedStatus, selectedDepartment])
-
-  // Calculate filtered statistics with accurate calculations
-  const filteredStats = useMemo(() => {
-    const stats = calculateCollegeStats(filteredRequests)
-
-    // Calculate accurate approval rate: (approved / (total - pending)) * 100
-    const processedRequests = stats.total - stats.pending
-    const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-
-    // Calculate trend percentages based on previous period (simplified for demo)
-    // In a real app, you'd compare with previous month/quarter data
-    const totalTrend = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0
-    const approvedTrend = stats.approved > 0 ? Math.round((stats.approvedAmount / stats.approved) / 1000) : 0
-
-    return [
-      {
-        title: "Total Requests",
-        value: stats.total.toString(),
-        subtitle: `${approvalRate}% approval rate`,
-        icon: BarChart3,
-        color: 'green',
-        trend: totalTrend > 0 ? { direction: 'up', value: `+${totalTrend}%`, percentage: totalTrend } : null
-      },
-      {
-        title: "Approved",
-        value: stats.approved.toString(),
-        subtitle: `₹${stats.approvedAmount.toLocaleString()} reimbursed`,
-        icon: TrendingUp,
-        color: 'green',
-        trend: approvedTrend > 0 ? { direction: 'up', value: `+${approvedTrend}%` } : null
-      },
-      {
-        title: "Pending",
-        value: stats.pending.toString(),
-        subtitle: "Awaiting approval",
-        icon: Calendar,
-        color: 'green'
-      },
-      {
-        title: "Total Amount",
-        value: `₹${stats.approvedAmount.toLocaleString()}`,
-        subtitle: "Approved amount",
-        icon: IndianRupee,
-        color: 'green',
-        trend: stats.approvedAmount > 0 ? { direction: 'up', value: `+${Math.round(stats.approvedAmount / 1000)}%` } : null
-      }
-    ]
-  }, [filteredRequests])
-
-  // Status distribution for pie chart
-  const statusDistribution = useMemo(() => {
-    const total = filteredRequests.length
-    if (total === 0) return []
-
-    const statusCounts = filteredRequests.reduce((acc, request) => {
-      acc[request.status] = (acc[request.status] || 0) + 1
-      return acc
-    }, {})
-
-    return Object.entries(statusCounts).map(([status, count]) => ({
-      name: status,
-      value: Math.round((count / total) * 100),
-      count
-    }))
-  }, [filteredRequests])
-
-  // Category breakdown
-  const categoryBreakdown = useMemo(() => {
-    const categories = filteredRequests.reduce((acc, request) => {
-      const category = request.category
-      if (!acc[category]) {
-        acc[category] = { count: 0, amount: 0 }
-      }
-      acc[category].count += 1
-      if (request.status === 'Reimbursed') {
-        const amount = parseFloat(String(request.amount).replace(/[₹,]/g, ''))
-        acc[category].amount += isNaN(amount) ? 0 : amount
-      }
-      return acc
-    }, {})
-
-    return Object.entries(categories).map(([category, data]) => ({
-      category,
-      count: data.count,
-      amount: data.amount
-    })).sort((a, b) => b.count - a.count)
-  }, [filteredRequests])
-
-  // Generate dynamic monthly trend data from filtered requests
-  const monthlyTrendData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const currentYear = new Date().getFullYear()
-
-    // Group filtered requests by month
-    const monthlyData = filteredRequests.reduce((acc, request) => {
-      const date = new Date(request.submittedDate)
-      const month = date.getMonth()
-      const monthName = months[month]
-
-      if (!acc[monthName]) {
-        acc[monthName] = { requests: 0, amount: 0 }
-      }
-
-      acc[monthName].requests += 1
-      if (request.status === 'Reimbursed') {
-        const amount = parseFloat(String(request.amount).replace(/[₹,]/g, ''))
-        acc[monthName].amount += isNaN(amount) ? 0 : amount
-      }
-
-      return acc
-    }, {})
-
-    // Convert to array format for the chart
-    return months.slice(0, 6).map(month => ({
-      month,
-      requests: monthlyData[month]?.requests || 0,
-      amount: monthlyData[month]?.amount || 0
-    }))
-  }, [filteredRequests])
-
-  // Get unique values for filters - use fixed valid Principal statuses
-  const uniqueCategories = [...new Set(allRequests.map(r => r.category))].filter(Boolean)
-  const uniqueStatuses = ['Under Principal', 'Approved', 'Rejected']
-
-  const handleExport = () => {
-    document.body.classList.add('principal-report-print')
-
-    const cleanup = () => {
-      document.body.classList.remove('principal-report-print')
-      window.removeEventListener('afterprint', cleanup)
-    }
-
-    window.addEventListener('afterprint', cleanup)
-    window.print()
-
-    toast.success('Print dialog opened for PDF export')
-  }
-
-  const handleRefresh = () => {
-    toast.success('Data refreshed!')
-  }
-
-  return (
-    <>
+  const { allRequests, analytics: dashboardAnalytics, refreshRequests, queuePage, departments } = usePrincipalContext();
+  const [selectedDateRange, setSelectedDateRange] = useState({ startDate: '', endDate: '' });
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedMemberType, setSelectedMemberType] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedDepartment, setSelectedDepartment] = useState('All');
+  const [analytics, setAnalytics] = useState(dashboardAnalytics);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [printRequested, setPrintRequested] = useState(false);
+  const generation = useRef(0);
+  const params = useMemo(() => ({ ...selectedDateRange, category: selectedCategory,
+    applicantType: selectedMemberType, status: selectedStatus, department: selectedDepartment,
+  }), [selectedDateRange, selectedCategory, selectedMemberType, selectedStatus , selectedDepartment]);
+  const fetchReport = useCallback(async () => {
+    const current = ++generation.current;
+    setLoading(true); setError(null);
+    try {
+      const result = await dashboardAPI.analytics(params);
+      if (current !== generation.current) return false;
+      setAnalytics(result); return true;
+    } catch (failure) {
+      if (current === generation.current) setError(failure.error || failure.message || 'Unable to load report. Please retry.');
+      return false;
+    } finally { if (current === generation.current) setLoading(false); }
+  }, [params]);
+  useEffect(() => { fetchReport(); return () => { generation.current += 1; }; }, [fetchReport]);
+  const stats = analytics?.summary || {};
+  const approved = (stats.approved || 0) + (stats.reimbursed || 0);
+  const processed = approved + (stats.rejected || 0);
+  const approvalRate = processed ? Math.round(approved / processed * 100) : 0;
+  const cards = [
+    { title: 'Total Requests', value: String(stats.total || 0), subtitle: `${approvalRate}% approval rate`, icon: BarChart3, color: 'blue' },
+    { title: 'Approved', value: String(approved), subtitle: 'Includes reimbursed requests', icon: TrendingUp, color: 'green' },
+    { title: 'Pending', value: String(stats.pending || 0), subtitle: 'Awaiting workflow review', icon: Calendar, color: 'orange' },
+    { title: 'Reimbursed Amount', value: money(stats.reimbursedAmount), subtitle: 'Completed reimbursements', icon: IndianRupee, color: 'purple' },
+  ];
+  const statuses = (analytics?.byStatus || []).map(item => ({ name: item._id, value: stats.total ? Number((item.count / stats.total * 100).toFixed(2)) : 0, count: item.count }));
+  const categories = analytics?.byCategory || [];
+  const monthly = useMemo(() => {
+    const candidate = selectedDateRange.endDate ? new Date(`${selectedDateRange.endDate}T00:00:00Z`) : new Date();
+    const anchor = Number.isFinite(candidate.getTime()) ? candidate : new Date();
+    const buckets = new Map((analytics?.monthly || []).map(item => [item._id, item]));
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 5 + index, 1));
+      const item = buckets.get(date.toISOString().slice(0, 7));
+      return { month: date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' }),
+        requests: item?.count || 0, amount: item?.reimbursedAmount || 0 };
+    });
+  }, [analytics, selectedDateRange.endDate]);
+  const uniqueCategories = [...new Set(['NPTEL', 'FDP', 'Conference', 'Workshop', 'Travel', 'Lab Materials', ...(dashboardAnalytics?.byCategory || []).map(item => item._id)])];
+  const uniqueStatuses = ['Under HOD', 'Under Principal', 'Approved', 'Reimbursed', 'Rejected'];
+  const details = useMemo(() => allRequests.filter(item => {
+    if (selectedCategory !== 'All' && item.category !== selectedCategory) return false;
+    if (selectedMemberType !== 'All' && item.applicantType !== selectedMemberType) return false;
+    if (selectedStatus !== 'All' && item.status !== selectedStatus) return false;
+    const date = item.submittedDate || item.createdAt?.slice(0, 10);
+    if (selectedDateRange.startDate && date < selectedDateRange.startDate) return false;
+    if (selectedDateRange.endDate && date > selectedDateRange.endDate) return false;
+    if (selectedDepartment !== 'All' && item.department !== selectedDepartment) return false;
+    return true;
+  }), [allRequests, selectedCategory, selectedMemberType, selectedStatus, selectedDateRange , selectedDepartment]);
+  useEffect(() => {
+    if (!printRequested) return;
+    document.body.classList.add('principal-report-print');
+    const cleanup = () => { document.body.classList.remove('principal-report-print'); setPrintRequested(false); };
+    window.addEventListener('afterprint', cleanup);
+    const fallback = window.setTimeout(cleanup, 120000);
+    const frame = window.requestAnimationFrame(() => window.print());
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(fallback);
+      window.removeEventListener('afterprint', cleanup); document.body.classList.remove('principal-report-print'); };
+  }, [printRequested]);
+  const handleExport = () => { if (!loading && !error && analytics) setPrintRequested(true); };
+  const handleRefresh = async () => {
+    const [updated] = await Promise.all([fetchReport(), refreshRequests()]);
+    if (updated) toast.success('Report refreshed.');
+  };
+  const statusTable = <table className="w-full"><thead><tr><th>Status</th><th>Requests</th></tr></thead><tbody>{statuses.map(item => <tr key={item.name}><td>{item.name}</td><td>{item.count}</td></tr>)}</tbody></table>;
+  const categoryTable = <table className="w-full"><thead><tr><th>Category</th><th>Requests</th><th>Reimbursed amount</th></tr></thead><tbody>{categories.map(item => <tr key={item._id}><td>{item._id}</td><td>{item.count}</td><td>{money(item.reimbursedAmount)}</td></tr>)}</tbody></table>;
+  const monthlyTable = <table className="w-full"><thead><tr><th>Month</th><th>Requests</th><th>Reimbursed amount</th></tr></thead><tbody>{monthly.map(item => <tr key={item.month}><td>{item.month}</td><td>{item.requests}</td><td>{money(item.amount)}</td></tr>)}</tbody></table>;
+  return <>
     <div className="reports-screen space-y-6">
-      {/* Page Header */}
-      <motion.div
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-600 mt-1">
-            Comprehensive reimbursement analytics and insights
-            {selectedDepartment !== 'All' && (
-              <span className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                Department: {selectedDepartment}
-              </span>
-            )}
-          </p>
-        </div>
-        <motion.button
-          onClick={handleExport}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Download className="w-4 h-4" />
-          Export Report
-        </motion.button>
-      </motion.div>
-
-      {/* Filter Bar */}
-      <FilterBar
-        onDateRangeChange={setSelectedDateRange}
-        onCategoryChange={setSelectedCategory}
-        onMemberTypeChange={setSelectedMemberType}
-        onStatusChange={setSelectedStatus}
-        onDepartmentChange={setSelectedDepartment}
-        onExport={handleExport}
-        onRefresh={handleRefresh}
-        categories={uniqueCategories}
-        statuses={uniqueStatuses}
-        departments={departments.map(dept => dept.name)}
-      />
-
-      {/* Summary Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredStats.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <StatCard {...stat} />
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Monthly Trend Chart */}
-        <ReportLineChart
-          data={monthlyTrendData}
-          title="Monthly Trend"
-          height={350}
-        />
-
-        {/* Status Distribution Chart */}
-        <ReportPieChart
-          data={statusDistribution}
-          title="Status Distribution"
-          height={350}
-        />
-      </div>
-
-      {/* Department Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Category Breakdown */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Category Breakdown</h3>
-            <Filter className="w-5 h-5 text-gray-400" />
-          </div>
-
-          <div className="space-y-4">
-            {categoryBreakdown.map((category, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium text-gray-900">{category.category}</div>
-                  <div className="text-sm text-gray-600">{category.count} requests</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold text-gray-900">₹{category.amount.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total approved</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Users className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Performance Metrics</h3>
-          </div>
-
-          <div className="space-y-4">
-            {(() => {
-              const stats = calculateCollegeStats(filteredRequests)
-              const processedRequests = stats.total - stats.pending
-              const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
-              const avgAmount = stats.approved > 0 ? Math.round(stats.approvedAmount / stats.approved) : 0
-
-              // Calculate average processing days based on actual data
-              const avgProcessingDays = (() => {
-                const processedRequests = filteredRequests.filter(req =>
-                  req.status === 'Approved' || req.status === 'Rejected'
-                )
-
-                if (processedRequests.length === 0) return 0
-
-                const totalDays = processedRequests.reduce((sum, req) => {
-                  const submittedDate = new Date(req.submittedDate)
-                  const lastUpdated = new Date(req.lastUpdated)
-                  const daysDiff = Math.ceil((lastUpdated - submittedDate) / (1000 * 60 * 60 * 24))
-                  return sum + Math.max(1, daysDiff) // Minimum 1 day
-                }, 0)
-
-                return Math.round((totalDays / processedRequests.length) * 10) / 10 // Round to 1 decimal
-              })()
-
-              return (
-                <>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{approvalRate}%</div>
-                    <div className="text-sm text-gray-600">Approval Rate</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {approvalRate >= 80 ? 'Excellent' : approvalRate >= 60 ? 'Good' : 'Needs improvement'}
-                    </div>
-                  </div>
-
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{avgProcessingDays}</div>
-                    <div className="text-sm text-gray-600">Avg. Processing Days</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {avgProcessingDays <= 3 ? 'Fast processing' : avgProcessingDays <= 7 ? 'Good' : 'Slow'}
-                    </div>
-                  </div>
-
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">
-                      ₹{avgAmount.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-600">Avg. Request Amount</div>
-                    <div className="text-xs text-gray-500 mt-1">Per approved request</div>
-                  </div>
-                </>
-              )
-            })()}
-          </div>
-        </div>
-      </div>
-
-      {/* Faculty vs Student Analysis */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Faculty vs Student Analysis</h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h4 className="font-medium text-gray-900">Faculty Requests</h4>
-            {(() => {
-              const facultyRequests = getRequestsByType(filteredRequests, 'Faculty')
-              const facultyStats = calculateCollegeStats(facultyRequests)
-              return (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-green-600">{facultyStats.total}</div>
-                    <div className="text-xs text-gray-600">Total</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-blue-600">{facultyStats.approved}</div>
-                    <div className="text-xs text-gray-600">Approved</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-green-600">₹{facultyStats.approvedAmount.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600">Amount</div>
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="font-medium text-gray-900">Student Requests</h4>
-            {(() => {
-              const studentRequests = getRequestsByType(filteredRequests, 'Student')
-              const studentStats = calculateCollegeStats(studentRequests)
-              return (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-green-600">{studentStats.total}</div>
-                    <div className="text-xs text-gray-600">Total</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-green-600">{studentStats.approved}</div>
-                    <div className="text-xs text-gray-600">Approved</div>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded">
-                    <div className="text-lg font-bold text-green-600">₹{studentStats.approvedAmount.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600">Amount</div>
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-        </div>
-      </div>
+      <header className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-2xl font-bold">Reports & Analytics</h1><p>All authorized requests matching the report filters.</p></div>
+        <button type="button" disabled={loading || !!error || !analytics} onClick={handleExport} className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-40"><Download size={16} />Export Report</button></header>
+      <FilterBar onDateRangeChange={setSelectedDateRange} onCategoryChange={setSelectedCategory} onMemberTypeChange={setSelectedMemberType} onStatusChange={setSelectedStatus}
+        onExport={handleExport} onRefresh={handleRefresh} categories={uniqueCategories} statuses={uniqueStatuses} onDepartmentChange={setSelectedDepartment} departments={departments.map(dept => dept.name)} />
+      {loading && <p role="status">Loading report aggregates...</p>}
+      {error && <div role="alert" className="rounded border border-red-300 bg-red-50 p-4 text-red-800"><p>{error}</p><button type="button" className="underline" onClick={fetchReport}>Retry report</button></div>}
+      {!loading && !error && analytics && <>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">{cards.map(card => <StatCard key={card.title} {...card} />)}</div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2"><ReportLineChart data={monthly} title="Monthly submissions and reimbursed amounts" height={350} /><ReportPieChart data={statuses} title="Status Distribution" height={350} /></div>
+        <section className="overflow-x-auto rounded border bg-white p-6"><h2 className="mb-4 text-lg font-semibold">Category Breakdown</h2>{categoryTable}</section>
+        <section className="rounded border bg-white p-6"><h2 className="mb-4 text-lg font-semibold">Department Breakdown</h2>{(analytics.byDepartment || []).map(item => <div key={item._id} className="flex justify-between border-b py-3"><span>{item._id}</span><span>{item.count} requests; {money(item.reimbursedAmount)} reimbursed</span></div>)}</section>
+        <section className="rounded border bg-white p-6"><h2 className="mb-4 text-lg font-semibold">Processing outcomes</h2><p>{stats.rejected || 0} rejected requests. {approvalRate}% approval rate among completed decisions.</p><p>Average completed reimbursement: {money(stats.reimbursed ? Math.round((stats.reimbursedAmount || 0) / stats.reimbursed) : 0)}.</p></section>
+      </>}
     </div>
-    <PrintableReport
-      requests={filteredRequests}
-      dateRange={selectedDateRange}
-      departmentName={selectedDepartment !== 'All' ? selectedDepartment : 'All Departments'}
-    />
-    </>
-  )
-}
-
-export default ReportsAndAnalytics
+    {printRequested && <div className="principal-print-root aggregate-report-print">
+      <style>{`@media screen {.aggregate-report-print {display:none}} @media print {
+        @page {size:A4;margin:12mm} body.principal-report-print * {visibility:hidden}
+        body.principal-report-print .aggregate-report-print,body.principal-report-print .aggregate-report-print * {visibility:visible}
+        .aggregate-report-print {position:absolute;left:0;top:0;width:100%;background:white;color:black;font-size:11pt}
+        .aggregate-report-print table {width:100%;border-collapse:collapse;margin:12px 0}
+        .aggregate-report-print td,.aggregate-report-print th {border:1px solid #ccc;padding:6px;text-align:left}
+        .aggregate-report-print tr {break-inside:avoid}
+      }`}</style>
+      <h1>Reimbursement aggregate report</h1><p>{selectedDepartment === 'All' ? 'All authorized departments' : selectedDepartment}</p>
+      <p>Dates: {selectedDateRange.startDate || 'All dates'} to {selectedDateRange.endDate || 'Present'}. Category: {selectedCategory}. Applicant type: {selectedMemberType}. Status: {selectedStatus}.</p>
+      <p>All {stats.total || 0} matching authorized requests. Pending: {stats.pending || 0}; Approved: {approved}; Rejected: {stats.rejected || 0}; Reimbursed: {stats.reimbursed || 0}.</p>
+      <p>Requested amount: {money(stats.totalAmount)}; Reimbursed amount: {money(stats.reimbursedAmount)}.</p>
+      <h2>Status totals</h2>{statusTable}<h2>Category totals</h2>{categoryTable}<h2>Monthly submissions and reimbursed amounts</h2>{monthlyTable}
+      <h2>Current queue page {queuePage || 1}: {details.length} matching detail rows</h2><p>This appendix contains only the current queue page. Aggregate totals above include every authorized matching request.</p>
+      <table><thead><tr><th>Application</th><th>Applicant</th><th>Status</th><th>Requested amount</th></tr></thead><tbody>{details.map(item => <tr key={item.id}><td>{item.applicationId || item.id}</td><td>{item.applicantName}</td><td>{item.status}</td><td>{item.amount}</td></tr>)}</tbody></table>
+    </div>}
+  </>;
+};
+export default ReportsAndAnalytics;

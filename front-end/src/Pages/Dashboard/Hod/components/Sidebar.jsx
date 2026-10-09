@@ -1,18 +1,6 @@
-import React, { useState, useCallback } from 'react'
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Home,
-  BarChart3,
-  Users,
-  FileText,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Building,
-  User,
-  Eye,
-  KeyRound
-} from 'lucide-react'
+import { Home, BarChart3, FileText, Settings, ChevronLeft, ChevronRight, Building, User, Eye } from "lucide-react";
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
   const [hoveredItem, setHoveredItem] = useState(null)
@@ -57,7 +45,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
             {!isCollapsed && (
               <motion.div
                 className="flex items-center gap-3"
-                initial={{ opacity: 0, x: -20 }}
+                initial={false}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
@@ -74,6 +62,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
           </AnimatePresence>
 
           <button
+            aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"} aria-expanded={!isCollapsed}
             onClick={toggleSidebar}
             className="p-1.5 rounded-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#65CCB8]"
           >
@@ -106,7 +95,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
             <motion.div
               key="expanded"
               className="flex items-center gap-3"
-              initial={{ opacity: 0, x: -20 }}
+              initial={false}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
@@ -141,6 +130,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
             return (
               <li key={item.id}>
                 <button
+                  aria-label={item.label} aria-current={isActive ? "page" : undefined}
                   onClick={() => handleTabClick(item.id)}
                   onMouseEnter={() => handleMouseEnter(item.id)}
                   onMouseLeave={handleMouseLeave}
@@ -164,8 +154,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
                   <AnimatePresence>
                     {!isCollapsed && (
                       <motion.span
-                        className="text-sm font-medium leading-tight"
-                        initial={{ opacity: 0, x: -10 }}
+                        className="text-sm font-medium leading-tight text-slate-700"
+                        initial={false}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.2 }}

@@ -18,7 +18,7 @@ const DEPARTMENTS = [
  * Allows students to update their profile information
  */
 export default function ProfileSettings() {
-  const { profile, updateProfile, resetProfile } = useProfile()
+  const { profile, updateProfile } = useProfile()
 
   // State for form inputs
   const [name, setName] = React.useState(profile.name)
@@ -54,7 +54,7 @@ export default function ProfileSettings() {
       })
 
       // Show success message
-      toast.success("Profile updated successfully!")
+      toast.success("Display preferences saved on this device")
     } catch {
       toast.error("Failed to update profile. Please try again.")
     } finally {
@@ -66,10 +66,9 @@ export default function ProfileSettings() {
    * Reset form to default values
    */
   const handleReset = () => {
-    resetProfile()
     setName(profile.name)
     setDept(profile.department)
-    toast.success("Form reset to default values")
+    toast.success("Unsaved changes discarded")
   }
 
   return (
@@ -79,7 +78,7 @@ export default function ProfileSettings() {
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color: '#182628' }}>Profile Settings</h1>
           <p className="mt-1 text-sm sm:text-base" style={{ color: '#3B945E' }}>
-            Update your name and department. Changes reflect across the portal instantly.
+            Name and department are display preferences saved on this device. Your Google account identity stays unchanged.
           </p>
         </div>
 

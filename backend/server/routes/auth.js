@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const usernameController = require('../controllers/usernameController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { csrfProtection } = require('../middleware/csrf');
 const { validateLogin, validateRegister } = require('../middleware/validation');
@@ -9,13 +10,16 @@ const { validateLogin, validateRegister } = require('../middleware/validation');
 router.post('/login', validateLogin, authController.login);
 // /register removed — user creation is restricted to Principal via /create-user
 router.post('/google', authController.googleLogin);
-router.post('/refresh', authController.refreshToken);
-router.post('/logout', verifyToken, csrfProtection, authController.logout);
+router.post('/refresh', csrfProtection, authController.refreshToken);
+// A revoked/expired access cookie may still need clearing. CSRF and the opaque refresh token scope logout to this browser.
+router.post('/logout', csrfProtection, authController.logout);
 
 
 // Protected routes (authentication required)
 router.get('/profile', verifyToken, authController.getProfile);
 router.put('/profile', verifyToken, csrfProtection, authController.updateProfile);
+router.post('/username/send-otp', verifyToken, csrfProtection, requireRole(['Faculty', 'HOD', 'Coordinator', 'Accounts', 'Principal']), usernameController.sendOtp);
+router.put('/username', verifyToken, csrfProtection, requireRole(['Faculty', 'HOD', 'Coordinator', 'Accounts', 'Principal']), usernameController.change);
 router.get('/staff', verifyToken, authController.getAllStaff);
 router.get('/staff/department/:department', verifyToken, authController.getStaffByDepartment);
 

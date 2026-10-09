@@ -1,17 +1,7 @@
-import React, { useState, useMemo } from 'react'
+import Pagination from '../../../../components/Pagination'
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Eye,
-  Check,
-  X,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-  User,
-  GraduationCap,
-  FileText
-} from 'lucide-react'
+import { Download, Calendar, User, GraduationCap, FileText } from "lucide-react";
 import StatusPill from './StatusPill'
 import ActionButtons from './ActionButtons'
 
@@ -192,7 +182,18 @@ const RequestTable = ({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="space-y-3 p-3 sm:hidden">
+        {!isLoading && paginatedRequests.map(request => <article key={request.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
+          <p className="font-semibold break-words">{request.applicantName || request.name}</p>
+          <p className="text-xs text-slate-600 break-all">{request.applicationId || request.id}</p>
+          <p className="text-sm">{request.courseName || 'NPTEL'} · {request.amount}</p>
+          <StatusPill status={request.status} />
+          {showActions && <ActionButtons request={request} onView={onView} onApprove={onApprove} onReject={onReject} isLoading={isLoading} />}
+        </article>)}
+        {isLoading && <p role="status">Loading requests…</p>}
+        {!isLoading && !paginatedRequests.length && <p>No matching requests.</p>}
+      </div>
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -339,47 +340,7 @@ const RequestTable = ({
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedRequests.length)} of {sortedRequests.length} results
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {[...Array(totalPages)].map((_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => handlePageChange(i + 1)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === i + 1
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-200 hover:bg-gray-50'
-                    }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {totalPages > 1 && <div className="p-4"><Pagination page={currentPage} totalPages={totalPages} total={sortedRequests.length} pageSize={itemsPerPage} onPageChange={handlePageChange} noun="requests" /></div>}
 
       {/* Empty State */}
       <AnimatePresence>
