@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Calendar, Filter, Download, RefreshCw } from 'lucide-react'
+import { useId, useState } from "react";
+import { Filter, Download, RefreshCw } from 'lucide-react'
 
 /**
  * FilterBar Component
@@ -24,9 +24,10 @@ const FilterBar = ({
   onRefresh,
   categories = [],
   statuses = [],
-  memberTypes = ['All', 'Faculty', 'Student', 'HOD'],
+  memberTypes = ['All', 'Faculty', 'Student'],
   departments = []
 }) => {
+  const filterId = useId()
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: ''
@@ -105,7 +106,7 @@ const FilterBar = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
         <Filter className="w-5 h-5 text-gray-600" />
         <h3 className="text-lg font-semibold text-gray-900">Filter & Search</h3>
@@ -117,46 +118,35 @@ const FilterBar = ({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 [&>div]:min-w-0 [&>fieldset]:min-w-0">
         {/* Date Range */}
-        <div className="lg:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Date Range
-          </label>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => handleDateChange('startDate', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                  placeholder="Start Date"
-                />
-              </div>
+        <fieldset className="sm:col-span-2">
+          <legend className="block text-sm font-medium text-gray-700 mb-2">Date Range</legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="min-w-0">
+              <label htmlFor={filterId + '-start'} className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+              <input aria-label="start Date" id={filterId + '-start'} type="date" value={dateRange.startDate}
+                onChange={(e) => handleDateChange('startDate', e.target.value)}
+                className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
             </div>
-            <div className="flex-1">
-              <input
-                type="date"
-                value={dateRange.endDate}
+            <div className="min-w-0">
+              <label htmlFor={filterId + '-end'} className="block text-xs font-medium text-gray-600 mb-1">End date</label>
+              <input aria-label="end Date" id={filterId + '-end'} type="date" value={dateRange.endDate}
                 onChange={(e) => handleDateChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                placeholder="End Date"
-              />
+                className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
             </div>
           </div>
-        </div>
+        </fieldset>
 
         {/* Category Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor={filterId + '-category'} className="block text-sm font-medium text-gray-700 mb-2">
             Category
           </label>
-          <select
+          <select aria-label="Category" id={filterId + '-category'}
             value={selectedCategory}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           >
             <option value="All">All Categories</option>
             {categories.map(category => (
@@ -167,13 +157,13 @@ const FilterBar = ({
 
         {/* Member Type Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor={filterId + '-member-type'} className="block text-sm font-medium text-gray-700 mb-2">
             Member Type
           </label>
-          <select
+          <select aria-label="Member Type" id={filterId + '-member-type'}
             value={selectedMemberType}
             onChange={(e) => handleMemberTypeChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           >
             {memberTypes.map(type => (
               <option key={type} value={type}>{type}</option>
@@ -183,13 +173,13 @@ const FilterBar = ({
 
         {/* Status Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor={filterId + '-status'} className="block text-sm font-medium text-gray-700 mb-2">
             Status
           </label>
-          <select
+          <select aria-label="Status" id={filterId + '-status'}
             value={selectedStatus}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           >
             <option value="All">All Status</option>
             {statuses.map(status => (
@@ -201,13 +191,13 @@ const FilterBar = ({
         {/* Department Filter — only shown when departments list is provided */}
         {departments.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor={filterId + '-department'} className="block text-sm font-medium text-gray-700 mb-2">
               Department
             </label>
-            <select
+            <select aria-label="Department" id={filterId + '-department'}
               value={selectedDepartment}
               onChange={(e) => handleDepartmentChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="All">All Departments</option>
               {departments.map(dept => (
@@ -219,13 +209,12 @@ const FilterBar = ({
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Actions
-          </label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">Actions</span>
           <div className="flex gap-2">
             <button
               onClick={onRefresh}
               className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+              aria-label="Refresh data"
               title="Refresh Data"
             >
               <RefreshCw className="w-4 h-4" />
@@ -233,6 +222,7 @@ const FilterBar = ({
             <button
               onClick={onExport}
               className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+              aria-label="Export data"
               title="Export Data"
             >
               <Download className="w-4 h-4" />

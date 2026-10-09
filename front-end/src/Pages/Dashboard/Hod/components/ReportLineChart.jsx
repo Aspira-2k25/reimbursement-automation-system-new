@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 
 /**
@@ -20,7 +20,7 @@ const ReportLineChart = ({ data, title = "Monthly Trend", height = 300 }) => {
           {payload.map((entry, index) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
               {entry.dataKey === 'amount'
-                ? `Amount: ₹${entry.value.toLocaleString()}`
+                ? `Amount: ₹${Number(entry.value).toLocaleString('en-IN')}`
                 : `${entry.name}: ${entry.value}`
               }
             </p>
@@ -32,10 +32,10 @@ const ReportLineChart = ({ data, title = "Monthly Trend", height = 300 }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        <div className="flex items-center gap-4 text-sm text-gray-500">
+        <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
             <span>Requests</span>
@@ -48,33 +48,25 @@ const ReportLineChart = ({ data, title = "Monthly Trend", height = 300 }) => {
       </div>
 
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 20, right: 0, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
           <XAxis
             dataKey="month"
             stroke="#64748b"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={false}
           />
-          <YAxis
-            stroke="#64748b"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(value) => {
-              if (value >= 1000) {
-                return `${(value / 1000)}k`
-              }
-              return value
-            }}
-          />
+          <YAxis yAxisId="requests" width={38} allowDecimals={false} domain={[0, 'auto']} stroke="#2563eb" fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Requests', position: 'top', offset: 8, fontSize: 11, fill: '#2563eb' }} />
+          <YAxis yAxisId="amount" orientation="right" width={48} domain={[0, 'auto']} stroke="#059669" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => Number(value) >= 1000 ? '₹' + Number((Number(value) / 1000).toFixed(1)) + 'k' : '₹' + value} label={{ value: 'Amount (₹)', position: 'top', offset: 8, fontSize: 11, fill: '#059669' }} />
           <Tooltip content={<CustomTooltip />} />
 
           {/* Requests line */}
           <Line
             type="monotone"
+            yAxisId="requests"
             dataKey="requests"
+            name="Requests"
             stroke="#3b82f6"
             strokeWidth={3}
             dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
@@ -84,7 +76,9 @@ const ReportLineChart = ({ data, title = "Monthly Trend", height = 300 }) => {
           {/* Amount line */}
           <Line
             type="monotone"
+            yAxisId="amount"
             dataKey="amount"
+            name="Amount (₹)"
             stroke="#10b981"
             strokeWidth={3}
             dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
@@ -115,7 +109,7 @@ export const ReportAreaChart = ({ data, title = "Monthly Trend", height = 300 })
           {payload.map((entry, index) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
               {entry.dataKey === 'amount'
-                ? `Amount: ₹${entry.value.toLocaleString()}`
+                ? `Amount: ₹${Number(entry.value).toLocaleString('en-IN')}`
                 : `${entry.name}: ${entry.value}`
               }
             </p>
@@ -127,10 +121,10 @@ export const ReportAreaChart = ({ data, title = "Monthly Trend", height = 300 })
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        <div className="flex items-center gap-4 text-sm text-gray-500">
+        <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
             <span>Requests</span>
@@ -143,7 +137,7 @@ export const ReportAreaChart = ({ data, title = "Monthly Trend", height = 300 })
       </div>
 
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <AreaChart data={data} margin={{ top: 20, right: 0, left: 0, bottom: 5 }}>
           <defs>
             <linearGradient id="requestsGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -158,27 +152,19 @@ export const ReportAreaChart = ({ data, title = "Monthly Trend", height = 300 })
           <XAxis
             dataKey="month"
             stroke="#64748b"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={false}
           />
-          <YAxis
-            stroke="#64748b"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(value) => {
-              if (value >= 1000) {
-                return `${(value / 1000)}k`
-              }
-              return value
-            }}
-          />
+          <YAxis yAxisId="requests" width={38} allowDecimals={false} domain={[0, 'auto']} stroke="#2563eb" fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Requests', position: 'top', offset: 8, fontSize: 11, fill: '#2563eb' }} />
+          <YAxis yAxisId="amount" orientation="right" width={48} domain={[0, 'auto']} stroke="#059669" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => Number(value) >= 1000 ? '₹' + Number((Number(value) / 1000).toFixed(1)) + 'k' : '₹' + value} label={{ value: 'Amount (₹)', position: 'top', offset: 8, fontSize: 11, fill: '#059669' }} />
           <Tooltip content={<CustomTooltip />} />
 
           <Area
             type="monotone"
+            yAxisId="requests"
             dataKey="requests"
+            name="Requests"
             stroke="#3b82f6"
             strokeWidth={2}
             fill="url(#requestsGradient)"
@@ -186,7 +172,9 @@ export const ReportAreaChart = ({ data, title = "Monthly Trend", height = 300 })
 
           <Area
             type="monotone"
+            yAxisId="amount"
             dataKey="amount"
+            name="Amount (₹)"
             stroke="#10b981"
             strokeWidth={2}
             fill="url(#amountGradient)"

@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
   Clock,
@@ -17,14 +17,15 @@ import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import RequestTable from '../components/RequestTable'
 import { useHODContext } from './HODLayout'
-import { calculateStats } from '../data/mockData'
 import { useAnnouncement } from '../../../../hooks/useAnnouncement'
 import { announcementAPI } from '../../../../services/api'
 
 const HomeDashboard = () => {
   const {
     userProfile,
-    allRequests,
+    dashboardStats: serverStats,
+    summary: serverSummary,
+    queuePagination,
     updateRequestStatus,
     getFilteredRequests,
     searchQuery,
@@ -147,7 +148,7 @@ const HomeDashboard = () => {
         setSearchQuery('')
         break
       case 'Approved Requests':
-        setStatusFilter('Under Accounts')
+        setStatusFilter('approved-history')
         setTypeFilter('All')
         setSearchQuery('')
         break
@@ -164,11 +165,11 @@ const HomeDashboard = () => {
 
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
-    const stats = calculateStats(allRequests)
+    const stats = serverSummary ? serverStats : { total: 'Unavailable', pending: 'Unavailable', approved: 'Unavailable', rejected: 'Unavailable', approvedAmount: 'Unavailable' }
 
     // Calculate dynamic trends based on actual data
-    const processedRequests = stats.total - stats.pending
-    const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
+    const processedRequests = Number(stats.approved) + Number(stats.rejected)
+    const approvalRate = !serverSummary ? 'Unavailable' : processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
 
     return [
       {
@@ -204,7 +205,7 @@ const HomeDashboard = () => {
         onClick: () => handleStatCardClick('Rejected Requests')
       }
     ]
-  }, [allRequests, handleStatCardClick])
+  }, [serverStats, serverSummary, handleStatCardClick])
 
   // Get filtered and recent requests for the table
   const filteredRequests = useMemo(() => {
@@ -268,7 +269,7 @@ const HomeDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <motion.div
+      <Motion.div
         className="bg-gradient-to-r from-[#3B945E] to-[#57BA98] rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -279,49 +280,49 @@ const HomeDashboard = () => {
             <h1 className="text-xl sm:text-2xl font-bold mb-2">
               Welcome back, {userProfile?.fullName || 'HOD'} 👋
             </h1>
-            <p className="text-green-100 mb-4 text-sm sm:text-base">
+            <p className="text-green-100 mb-2 sm:mb-4 text-sm sm:text-base">
               Head of Department • {userProfile?.department || 'Department not set'}
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-green-100">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-6 text-sm text-green-100">
               <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
                 <span>Engineering College</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                <span>{allRequests.length} Total Requests</span>
+                <span>{serverSummary ? serverStats.total : 'Unavailable'} Total Requests</span>
               </div>
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div
+            <Motion.div
               className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
             >
               <Building className="w-10 h-10 sm:w-12 sm:h-12 text-white/80" />
-            </motion.div>
+            </Motion.div>
           </div>
         </div>
-      </motion.div>
+      </Motion.div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {dashboardStats.map((stat, index) => (
-          <motion.div
+          <Motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
             <StatCard {...stat} />
-          </motion.div>
+          </Motion.div>
         ))}
       </div>
 
       {/* Department Overview */}
-      <motion.div
-        className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
+      <Motion.div
+        className="hidden sm:block bg-white rounded-xl border border-slate-200/60 shadow-sm p-4 sm:p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
@@ -333,18 +334,18 @@ const HomeDashboard = () => {
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
-            const stats = calculateStats(allRequests)
-            const processedRequests = stats.total - stats.pending
-            const approvalRate = processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
+            const stats = serverSummary ? serverStats : { total: 'Unavailable', pending: 'Unavailable', approved: 'Unavailable', rejected: 'Unavailable', approvedAmount: 'Unavailable' }
+            const processedRequests = Number(stats.approved) + Number(stats.rejected)
+            const approvalRate = !serverSummary ? 'Unavailable' : processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
 
             return [
               {
-                value: allRequests.filter(r => r.applicantType === 'Faculty').length,
+                value: serverStats.facultyCount ?? 'Unavailable',
                 label: 'Faculty Requests',
                 color: 'teal'
               },
               {
-                value: allRequests.filter(r => r.applicantType === 'Student').length,
+                value: serverStats.studentCount ?? 'Unavailable',
                 label: 'Student Requests',
                 color: 'green'
               },
@@ -360,7 +361,7 @@ const HomeDashboard = () => {
               }
             ]
           })().map((item, index) => (
-            <motion.div
+            <Motion.div
               key={index}
               className={`text-center p-3 sm:p-4 bg-${item.color}-50 rounded-lg`}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -372,10 +373,10 @@ const HomeDashboard = () => {
                 {item.value}
               </div>
               <div className="text-xs sm:text-sm text-gray-600">{item.label}</div>
-            </motion.div>
+            </Motion.div>
           ))}
         </div>
-      </motion.div>
+      </Motion.div>
 
       {/* Search and Filter Controls */}
       <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6">
@@ -383,7 +384,7 @@ const HomeDashboard = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Recent Reimbursement Requests</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {filteredRequests.length} of {allRequests.length} requests
+              {filteredRequests.length} on this page; {queuePagination?.total ?? 'Unavailable'} matching requests
             </p>
           </div>
 
@@ -391,7 +392,7 @@ const HomeDashboard = () => {
             {/* Search */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
+              <input aria-label="search Query"
                 type="text"
                 placeholder="Search requests..."
                 value={searchQuery}
@@ -402,12 +403,13 @@ const HomeDashboard = () => {
 
             {/* Filters */}
             <div className="flex gap-2">
-              <select
+              <select aria-label="status Filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
               >
                 <option value="All">All Status</option>
+                <option value="approved-history">Forwarded or completed</option>
                 <option value="Pending">Pending / Under HOD</option>
                 <option value="Under Principal">Under Principal</option>
                 <option value="Under Accounts">Under Accounts</option>
@@ -415,7 +417,7 @@ const HomeDashboard = () => {
                 <option value="Rejected">Rejected</option>
               </select>
 
-              <select
+              <select aria-label="type Filter"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
@@ -441,7 +443,7 @@ const HomeDashboard = () => {
       </div>
 
       {/* Announcement Manager */}
-      <motion.div
+      <Motion.div
         className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -457,7 +459,7 @@ const HomeDashboard = () => {
           </div>
         </div>
 
-        <textarea
+        <textarea aria-label="announcement Msg"
           value={announcementMsg}
           onChange={(e) => setAnnouncementMsg(e.target.value)}
           maxLength={500}
@@ -507,12 +509,12 @@ const HomeDashboard = () => {
             {announcementSaving ? 'Saving…' : 'Save Reminder'}
           </button>
         </div>
-      </motion.div>
+      </Motion.div>
 
       {/* View Modal */}
       <AnimatePresence>
         {viewModal.show && (
-          <motion.div
+          <Motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
             className="fixed inset-0 flex items-center justify-center z-[100] p-4"
             onClick={closeViewModal}
             initial={{ opacity: 0 }}
@@ -523,7 +525,7 @@ const HomeDashboard = () => {
               backgroundColor: 'rgba(0, 0, 0, 0.5)'
             }}
           >
-            <motion.div
+            <Motion.div
               className="bg-white rounded-lg p-6 w-full max-w-3xl mx-auto shadow-2xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -535,7 +537,7 @@ const HomeDashboard = () => {
                 <h3 className="text-xl font-semibold text-gray-900">
                   Request Details
                 </h3>
-                <button
+                <button aria-label="Close"
                   onClick={closeViewModal}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
@@ -686,15 +688,15 @@ const HomeDashboard = () => {
                   </div>
                 </div>
               )}
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
 
       {/* Reject Modal */}
       <AnimatePresence>
         {rejectModal.show && (
-          <motion.div
+          <Motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
             onClick={closeRejectModal}
             initial={{ opacity: 0 }}
@@ -703,7 +705,7 @@ const HomeDashboard = () => {
             transition={{ duration: 0.2 }}
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           >
-            <motion.div
+            <Motion.div
               className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-2xl relative z-[101]"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -717,7 +719,7 @@ const HomeDashboard = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Please provide a reason for rejecting {rejectModal.request?.applicantName}'s request:
               </p>
-              <textarea
+              <textarea aria-label="reject Reason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
@@ -741,8 +743,8 @@ const HomeDashboard = () => {
                   {isLoading ? 'Rejecting...' : 'Reject Request'}
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

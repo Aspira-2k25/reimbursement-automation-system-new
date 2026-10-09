@@ -1,5 +1,6 @@
+import Pagination from '../../../components/Pagination'
 import React from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import { studentFormsAPI } from "../../../services/api"
 import { FileText, CheckCircle, Clock, XCircle, PlusCircle, RefreshCw, AlertTriangle } from "lucide-react"
@@ -10,19 +11,24 @@ import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton.jsx"
 
 // Fetched data state
 const useStudentRequests = (addNotification) => {
-  const location = useLocation()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(null)
   const [requests, setRequests] = React.useState([])
-  const [previousRequests, setPreviousRequests] = React.useState([])
+  const previousRequests = React.useRef(new Map())
+  const [page, setPage] = React.useState(1)
+  const [pagination, setPagination] = React.useState({ total: 0, totalPages: 1 })
+  const [summary, setSummary] = React.useState(null)
+  const requestGeneration = React.useRef(0)
   const mountedRef = React.useRef(true)
 
   const fetchRequests = React.useCallback(async () => {
+    const generation = ++requestGeneration.current
     try {
       setLoading(true)
       setError(null)
 
-      const data = await studentFormsAPI.listMine()
+      const data = await studentFormsAPI.listMine({ page, limit: 20 })
+      if (!mountedRef.current || generation !== requestGeneration.current) return
 
       // Handle different response structures
       let forms = []
@@ -36,19 +42,9 @@ const useStudentRequests = (addNotification) => {
 
       // Map backend forms to table row shape
       const mapped = forms.map((f) => ({
-        ...f,
         id: f.applicationId || f._id || f.id || `form-${f._id}`,
         _id: f._id, // Store MongoDB _id for navigation
         applicationId: f.applicationId, // Store applicationId as well
-        name: f.name || f.studentName || f.fullName || '',
-        studentId: f.studentId || f.rollNumber || '',
-        email: f.email || '',
-        department: f.department || '',
-        division: f.division || '',
-        academicYear: f.academicYear || '',
-        accountName: f.accountName || f.name || '',
-        accountNumber: f.accountNumber || '',
-        ifscCode: f.ifscCode || '',
         category: f.reimbursementType || f.category || "NPTEL",
         status: f.status || "Pending",
         amount: Number(f.amount || 0),
@@ -59,13 +55,12 @@ const useStudentRequests = (addNotification) => {
         marks: f.marks ?? null,
         documents: f.documents || [],
         accountsRemarks: f.accountsRemarks || '',
-        remarks: f.remarks || f.rejectionRemarks || '',
       }))
 
       // Check for status changes and generate notifications
-      if (mountedRef.current && previousRequests.length > 0) {
+      if (mountedRef.current && previousRequests.current.size > 0) {
         mapped.forEach(newRequest => {
-          const oldRequest = previousRequests.find(r => r.id === newRequest.id)
+          const oldRequest = previousRequests.current.get(newRequest.id)
           if (oldRequest && oldRequest.status !== newRequest.status) {
             const statusMessages = {
               'Approved': 'Your request has been approved and sent to Accounts for reimbursement',
@@ -85,30 +80,34 @@ const useStudentRequests = (addNotification) => {
         })
       }
 
-      if (mountedRef.current) {
-        setPreviousRequests(mapped)
+      if (mountedRef.current && generation === requestGeneration.current) {
+        mapped.forEach(request => previousRequests.current.set(request.id, request))
+        setPagination(data?.pagination || { total: forms.length, totalPages: 1 })
+        setSummary(data?.summary || null)
+        if (page > Math.max(1, data?.pagination?.totalPages || 1)) setPage(Math.max(1, data?.pagination?.totalPages || 1))
         setRequests(mapped)
       }
     } catch (e) {
-      if (mountedRef.current) {
+      if (mountedRef.current && generation === requestGeneration.current) {
         setError(e.error || e.message || "Failed to load requests")
       }
     } finally {
-      if (mountedRef.current) {
+      if (mountedRef.current && generation === requestGeneration.current) {
         setLoading(false)
       }
     }
-  }, [addNotification, previousRequests])
+  }, [addNotification, page])
 
   React.useEffect(() => {
     mountedRef.current = true
     fetchRequests()
     return () => {
       mountedRef.current = false
+      requestGeneration.current += 1
     }
-  }, [])
+  }, [fetchRequests])
 
-  return { loading, error, requests, refetch: fetchRequests }
+  return { loading, error, requests, pagination, summary, page, setPage, refetch: fetchRequests }
 }
 
 const SummaryCard = ({ title, value, sub, icon: Icon, color = "#3B945E" }) => (
@@ -130,15 +129,15 @@ export default function RequestStatus() {
   const navigate = useNavigate()
   const [search, setSearch] = React.useState("")
   const { addNotification } = useNotificationContext()
-  const { loading, error, requests, refetch } = useStudentRequests(addNotification)
+  const { loading, error, requests, pagination, summary: lifetimeSummary, page, setPage, refetch } = useStudentRequests(addNotification)
 
   // Calculate summary statistics from fetched data
-  const summary = React.useMemo(() => ({
+  const summary = React.useMemo(() => error ? { total: "Unavailable", approved: "Unavailable", pending: "Unavailable", rejected: "Unavailable" } : lifetimeSummary || ({
     total: requests.length,
     approved: requests.filter(r => String(r.status).toLowerCase() === "approved" || String(r.status).toLowerCase() === "reimbursed").length,
     pending: requests.filter(r => ["pending", "under review", "under coordinator", "under hod", "under principal"].includes(String(r.status).toLowerCase())).length,
     rejected: requests.filter(r => String(r.status).toLowerCase() === "rejected").length,
-  }), [requests])
+  }), [requests, lifetimeSummary, error])
 
   return (
     <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content">
@@ -149,7 +148,7 @@ export default function RequestStatus() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <SummaryCard
             title="Total Applications"
-            value={summary.total}
+            value={error ? "Unavailable" : pagination.total}
             sub="All time claims"
             icon={FileText}
             color="#3B945E"
@@ -157,21 +156,21 @@ export default function RequestStatus() {
           <SummaryCard
             title="Total Approved"
             value={summary.approved}
-            sub="Sanctioned / Reimbursed"
+            sub={lifetimeSummary ? "All time sanctioned / reimbursed" : "Sanctioned / reimbursed on this page"}
             icon={CheckCircle}
             color="#10b981"
           />
           <SummaryCard
             title="Pending Review"
             value={summary.pending}
-            sub="Under administrative review"
+            sub={lifetimeSummary ? "All time under review" : "Under review on this page"}
             icon={Clock}
             color="#f59e0b"
           />
           <SummaryCard
             title="Rejected"
             value={summary.rejected}
-            sub="Requires attention"
+            sub={lifetimeSummary ? "All time rejected" : "Rejected on this page"}
             icon={XCircle}
             color="#ef4444"
           />
@@ -180,9 +179,9 @@ export default function RequestStatus() {
 
       {/* Search and Action Bar */}
       <div className="card mt-4 sm:mt-6 p-3 sm:p-4 rounded-2xl border border-slate-100 bg-white shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <input
+        <input aria-label="search"
           className="input w-full sm:max-w-md rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-[#3B945E] focus:outline-none"
-          placeholder="Search by course, application ID, or status..."
+          placeholder="Search this page by course, application ID, or status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -258,6 +257,7 @@ export default function RequestStatus() {
             }}
           />
         )}
+        {!error && <Pagination page={page} totalPages={pagination.totalPages} total={pagination.total} pageSize={20} noun="applications" busy={loading} onPageChange={setPage} />}
       </div>
     </main>
   )

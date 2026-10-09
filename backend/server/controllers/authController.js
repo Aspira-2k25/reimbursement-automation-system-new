@@ -32,13 +32,13 @@ const buildAuthCookieOptions = (maxAgeMs) => ({
  * Generate an opaque refresh token, hash it, and store in DB.
  * Returns the plaintext token (to be set as a cookie).
  */
-async function issueRefreshToken(userId, familyId = null) {
+async function issueRefreshToken(userId, familyId = null, database = prisma) {
   const rawToken = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
   const family = familyId || crypto.randomUUID();
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
-  await prisma.refreshToken.create({
+  await database.refreshToken.create({
     data: {
       tokenHash,
       userId: String(userId),
@@ -54,9 +54,50 @@ async function issueRefreshToken(userId, familyId = null) {
  * Set both auth_token and refresh_token cookies on the response.
  */
 function setAuthCookies(res, accessToken, refreshToken, refreshExpiresAt) {
-  res.cookie('auth_token', accessToken, buildAuthCookieOptions(15 * 60 * 1000)); // 15 minutes
+  res.cookie('auth_token', accessToken, buildAuthCookieOptions(Math.max(0, jwt.decode(accessToken).exp * 1000 - Date.now())));
   const refreshMaxAge = refreshExpiresAt.getTime() - Date.now();
   res.cookie('refresh_token', refreshToken, buildAuthCookieOptions(refreshMaxAge));
+}
+
+async function serializableTransaction(operation) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try { return await prisma.$transaction(operation, { isolationLevel: 'Serializable' }); }
+    catch (error) { if (error.code !== 'P2034' || attempt === 2) throw error; }
+  }
+}
+
+// Privilege changes revoke sessions atomically. Serializable isolation protects the final active administrator.
+async function updateManagedStaff(staffId, updates, actorId) {
+  const data = Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined));
+  if (!Object.keys(data).length) return null;
+  if (data.password) {
+    if (typeof data.password !== 'string' || data.password.length < 8) {
+      const error = new Error('Password must be at least 8 characters long'); error.status = 400; throw error;
+    }
+    data.password = await bcrypt.hash(data.password, 10);
+  }
+  return prisma.$transaction(async (transaction) => {
+    const current = await transaction.staff.findUnique({ where: { id: staffId } });
+    if (!current) return null;
+    const removesAdmin = current.role === 'Admin' && current.is_active &&
+      ((data.role !== undefined && data.role !== 'Admin') || data.is_active === false);
+    if (removesAdmin && (String(staffId) === String(actorId) ||
+      await transaction.staff.count({ where: { role: 'Admin', is_active: true } }) <= 1)) {
+      const error = new Error('Cannot remove your own or the final active administrator account'); error.status = 409; throw error;
+    }
+    const revokesSessions = ['password', 'role', 'department', 'email', 'is_active'].some(key => data[key] !== undefined);
+    if (revokesSessions) data.sessions_revoked_at = new Date();
+    const updated = await transaction.staff.update({ where: { id: staffId }, data,
+      select: { id: true, username: true, name: true, department: true, role: true, email: true,
+        employee_id: true, is_active: true, created_at: true, last_login: true } });
+    if (revokesSessions) {
+      await transaction.refreshToken.updateMany({
+        where: { userId: { in: [String(staffId), current.email].filter(Boolean) }, revokedAt: null },
+        data: { revokedAt: new Date() }
+      });
+    }
+    return updated;
+  }, { isolationLevel: 'Serializable' });
 }
 
 const authController = {
@@ -74,15 +115,14 @@ const authController = {
       // Update last login time (fire-and-forget — don't block the response)
       dbUtils.updateLastLogin(user.id).catch(err => console.error('updateLastLogin failed:', err));
 
+      const { rawToken: refreshToken, familyId, expiresAt: refreshExpiresAt } = await issueRefreshToken(user.id);
+
       // Generate JWT token with short expiry
       const token = jwt.sign(
-        { userId: user.id, username: user.username, name: user.name, role: user.role, email: user.email, department: user.department },
+        { sessionIssuedAt: Date.now(), familyId, userId: user.id, username: user.username, name: user.name, role: user.role, email: user.email, department: user.department },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
-
-      // Issue refresh token (new family)
-      const { rawToken: refreshToken, familyId, expiresAt: refreshExpiresAt } = await issueRefreshToken(user.id);
 
       // Set both cookies
       setAuthCookies(res, token, refreshToken, refreshExpiresAt);
@@ -143,7 +183,7 @@ const authController = {
       }
 
       const payload = ticket.getPayload();
-      const email = payload?.email;
+      const email = payload?.email?.trim().toLowerCase();
       const name = payload?.name || 'Google User';
       const emailVerified = payload?.email_verified;
 
@@ -165,18 +205,18 @@ const authController = {
 
       // Look up staff by email to determine role; default to Student
       const staff = await dbUtils.getStaffByEmail(email);
+      if (staff && !staff.is_active) return res.status(403).json({ error: 'Account is inactive' });
       const role = staff?.role || 'Student';
       // Use staff ID if found, otherwise use email as userId for Google users
       const userId = staff?.id || email;
 
+      const { rawToken: refreshToken, familyId, expiresAt: refreshExpiresAt } = await issueRefreshToken(userId);
+
       const token = jwt.sign(
-        { userId, email, role, name, department: staff?.department || null },
+        { sessionIssuedAt: Date.now(), familyId, userId, email, role, name, department: staff?.department || null },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
       );
-
-      // Issue refresh token (new family)
-      const { rawToken: refreshToken, familyId, expiresAt: refreshExpiresAt } = await issueRefreshToken(userId);
 
       // Set both cookies
       setAuthCookies(res, token, refreshToken, refreshExpiresAt);
@@ -241,145 +281,59 @@ const authController = {
         return res.status(401).json({ error: 'Refresh token expired' });
       }
 
-      // ── Revoke the old token ──
-      await prisma.refreshToken.update({
-        where: { id: storedToken.id },
-        data: { revokedAt: new Date() }
-      });
-
-      // Look up user to build a fresh JWT
-      const staff = await prisma.staff.findUnique({
-        where: { id: parseInt(storedToken.userId) || undefined },
-        select: { id: true, username: true, name: true, role: true, email: true, department: true, is_active: true }
-      });
-
-      // If userId was an email (Google user), staff may be null
+      // Resolve principal before consuming the token. Email principals are Google students.
+      const numericId = /^[1-9]\d*$/.test(storedToken.userId) ? Number(storedToken.userId) : null;
+      const isStudentEmail = typeof storedToken.userId === 'string' &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(storedToken.userId) &&
+        storedToken.userId.toLowerCase().endsWith(`@${INSTITUTIONAL_EMAIL_DOMAIN}`);
+      if ((!Number.isSafeInteger(numericId) || numericId <= 0) && !isStudentEmail) {
+        return res.status(401).json({ error: 'Invalid session identity' });
+      }
+      const staff = numericId
+        ? await prisma.staff.findUnique({ where: { id: numericId } })
+        : await prisma.staff.findUnique({ where: { email: storedToken.userId } });
+      if ((numericId && !staff) || (staff && !staff.is_active)) {
+        await prisma.refreshToken.updateMany({ where: { familyId: storedToken.familyId }, data: { revokedAt: new Date() } });
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+        return res.status(401).json({ error: 'Account is unavailable' });
+      }
       let jwtPayload;
-      if (staff && staff.is_active) {
+      if (staff) {
         jwtPayload = { userId: staff.id, username: staff.username, name: staff.name, role: staff.role, email: staff.email, department: staff.department };
       } else {
-        // Fallback for Google-only users stored with email as userId
-        jwtPayload = { userId: storedToken.userId, email: storedToken.userId, role: 'Student', name: 'User' };
+        // Preserve display fields only from a signed cookie belonging to the same student.
+        let previous;
+        try { previous = jwt.verify(req.cookies?.auth_token || '', process.env.JWT_SECRET, { ignoreExpiration: true }); } catch { /* Access cookie can expire before refresh. */ }
+        const sameStudent = previous?.userId === storedToken.userId && previous?.role === 'Student';
+        jwtPayload = { userId: storedToken.userId, email: storedToken.userId, role: 'Student',
+          name: sameStudent ? previous.name : storedToken.userId.split('@')[0],
+          department: sameStudent ? previous.department || null : null };
       }
-
-      // Issue new access token
-      const newAccessToken = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
+      const newAccessToken = jwt.sign({ ...jwtPayload, familyId: storedToken.familyId, sessionIssuedAt: Date.now() }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '15m' });
+      // Consumption and replacement commit together; conditional update prevents double rotation.
+      const rotation = await serializableTransaction(async (transaction) => {
+        const consumed = await transaction.refreshToken.updateMany({
+          where: { id: storedToken.id, revokedAt: null, expiresAt: { gt: new Date() } }, data: { revokedAt: new Date() }
+        });
+        if (consumed.count !== 1) return null;
+        return issueRefreshToken(jwtPayload.userId, storedToken.familyId, transaction);
       });
-
-      // Issue new refresh token in the SAME family
-      const { rawToken: newRefreshToken, expiresAt: newRefreshExpiresAt } = await issueRefreshToken(storedToken.userId, storedToken.familyId);
+      if (!rotation) {
+        await prisma.refreshToken.updateMany({ where: { familyId: storedToken.familyId }, data: { revokedAt: new Date() } });
+        res.clearCookie('auth_token', buildAuthCookieOptions(0));
+        res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+        return res.status(401).json({ error: 'Refresh token already used or expired' });
+      }
+      const { rawToken: newRefreshToken, expiresAt: newRefreshExpiresAt } = rotation;
 
       // Set new cookies
       setAuthCookies(res, newAccessToken, newRefreshToken, newRefreshExpiresAt);
 
-      return res.json({ message: 'Token refreshed successfully' });
+      return res.json({ message: 'Token refreshed successfully', user: { id: jwtPayload.userId, ...jwtPayload } });
     } catch (error) {
       console.error('Refresh token error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-
-  // Register function - Create new user via API (Postman)
-  register: async (req, res) => {
-    try {
-      const { username, name, department, role, email, password, employee_id } = req.body;
-
-      // Basic validation
-      if (!username || !name || !password) {
-        return res.status(400).json({
-          error: 'Username, name, and password are required'
-        });
-      }
-
-      // Validate email format if provided
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return res.status(400).json({
-          error: 'Invalid email format'
-        });
-      }
-
-      // Check if user already exists by username
-      const existingUserByUsername = await prisma.staff.findUnique({
-        where: { username: username }
-      });
-      if (existingUserByUsername) {
-        return res.status(409).json({
-          error: 'User with this username already exists'
-        });
-      }
-
-      // Check if email already exists (if provided)
-      if (email) {
-        const existingUserByEmail = await prisma.staff.findUnique({
-          where: { email: email }
-        });
-        if (existingUserByEmail) {
-          return res.status(409).json({
-            error: 'User with this email already exists'
-          });
-        }
-      }
-
-      // Hash password before storing
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Create new user using Prisma
-      const newUser = await prisma.staff.create({
-        data: {
-          username: username.trim(),
-          name: name.trim(),
-          password: hashedPassword, // Store hashed password, not plain text
-          email: email ? email.trim() : null,
-          department: department ? getNormalizedDepartment(department) : null,
-          role: role || 'Faculty',
-          employee_id: employee_id || null,
-          is_active: true,
-        },
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          department: true,
-          role: true,
-          email: true,
-          employee_id: true,
-          is_active: true,
-          created_at: true,
-        }
-      });
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: newUser.id, username: newUser.username, role: newUser.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-      );
-
-      // Set httpOnly cookie (consistent with login)
-      res.cookie('auth_token', token, buildAuthCookieOptions(24 * 60 * 60 * 1000)); // 24 hours
-
-      res.status(201).json({
-        message: 'User created successfully',
-        // Token NOT in response body - only in httpOnly cookie
-        user: newUser
-      });
-
-    } catch (error) {
-      console.error('Register error:', error);
-
-      // Handle Prisma unique constraint errors
-      if (error.code === 'P2002') {
-        const field = error.meta?.target?.[0] || 'field';
-        return res.status(409).json({
-          error: `User with this ${field} already exists`
-        });
-      }
-
-      res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      res.status(503).json({ error: 'Session refresh unavailable. Please retry.' });
     }
   },
 
@@ -392,6 +346,10 @@ const authController = {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
+      if (typeof userId === 'string' && userId.includes('@') && req.user.role === 'Student') {
+        return res.json({ user: { id: userId, email: req.user.email, name: req.user.name,
+          role: 'Student', department: req.user.department || null } });
+      }
       const user = await dbUtils.getStaffProfile(userId);
 
       if (!user) {
@@ -416,6 +374,13 @@ const authController = {
 
       const { name, department, email } = req.body || {};
 
+      if (department !== undefined) return res.status(403).json({ error: 'Only an administrator can change department' });
+      if (email !== undefined && (typeof email !== 'string' || email.trim().toLowerCase() !== req.user.email?.toLowerCase())) {
+        return res.status(403).json({ error: 'Only an administrator can change the registered verification email.' });
+      }
+      if (typeof userId === 'string' && userId.includes('@')) {
+        return res.status(400).json({ error: 'Google student profiles are managed by Google' });
+      }
       // Basic validation
       if (email !== undefined && email !== null) {
         const emailStr = String(email).trim();
@@ -425,9 +390,7 @@ const authController = {
       }
 
       const updated = await dbUtils.updateStaffProfile(userId, {
-        name,
-        department: department ? getNormalizedDepartment(department) : undefined,
-        email
+        name
       });
 
       if (!updated) {
@@ -459,18 +422,19 @@ const authController = {
         }
       }
 
-      // Revoke the refresh token if present
+      // Revoke the whole family, including replacements issued before this logout.
       const refreshRaw = req.cookies?.refresh_token;
       if (refreshRaw) {
         const refreshHash = crypto.createHash('sha256').update(refreshRaw).digest('hex');
-        try {
-          await prisma.refreshToken.updateMany({
-            where: { tokenHash: refreshHash, revokedAt: null },
-            data: { revokedAt: new Date() }
-          });
-        } catch (e) {
-          console.error('Error revoking refresh token on logout:', e);
-        }
+        await serializableTransaction(async (transaction) => {
+          const stored = await transaction.refreshToken.findUnique({ where: { tokenHash: refreshHash } });
+          if (stored) {
+            await transaction.refreshToken.updateMany({
+              where: { familyId: stored.familyId },
+              data: { revokedAt: new Date() }
+            });
+          }
+        });
       }
 
       // Clear both cookies
@@ -504,7 +468,9 @@ const authController = {
       res.json({ message: 'Logout successful' });
     } catch (error) {
       console.error('Logout error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.clearCookie('auth_token', buildAuthCookieOptions(0));
+      res.clearCookie('refresh_token', buildAuthCookieOptions(0));
+      res.status(503).json({ error: 'Session revocation unavailable. Please retry logout.' });
     }
   }
 };
@@ -713,7 +679,8 @@ authController.updateStaffById = async (req, res) => {
 
     const normalizedUsername = typeof username === 'string' ? username.toLowerCase().trim() : undefined;
     const normalizedEmail = typeof email === 'string' ? email.toLowerCase().trim() : undefined;
-    const staffId = parseInt(id);
+    const staffId = Number(id);
+    if (!Number.isSafeInteger(staffId) || staffId <= 0) return res.status(400).json({ error: 'Invalid staff ID' });
 
     // Check if username/email conflict with another record
     if (normalizedUsername) {
@@ -754,7 +721,7 @@ authController.updateStaffById = async (req, res) => {
       updates.password = password;
     }
 
-    const updated = await dbUtils.updateStaffById(id, updates);
+    const updated = await updateManagedStaff(staffId, updates, req.user?.userId);
     if (!updated) {
       return res.status(400).json({ error: 'No fields to update or staff not found' });
     }
@@ -771,7 +738,9 @@ authController.updateStaffById = async (req, res) => {
     res.json({ message: 'Staff updated successfully', staff: updated });
   } catch (error) {
     console.error('updateStaffById error:', error);
-    if (error.code === '23505') {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    if (error.code === 'P2034') return res.status(409).json({ error: 'Concurrent staff change. Please retry.' });
+    if (error.code === '23505' || error.code === 'P2002') {
       return res.status(409).json({ error: 'Username or email already exists' });
     }
     res.status(500).json({ error: 'Internal server error' });
@@ -842,7 +811,12 @@ authController.createFaculty = async (req, res) => {
     const reactivationTarget = inactiveByUsername || inactiveByEmail;
 
     if (reactivationTarget) {
-      const reactivatedStaff = await prisma.staff.update({
+      const reactivatedStaff = await prisma.$transaction(async (transaction) => {
+        const current = await transaction.staff.findUnique({ where: { id: reactivationTarget.id } });
+        if (!current || current.is_active) {
+          const error = new Error('Account changed. Refresh and retry.'); error.status = 409; throw error;
+        }
+        const reactivated = await transaction.staff.update({
         where: { id: reactivationTarget.id },
         data: {
           username: normalizedUsername,
@@ -853,6 +827,7 @@ authController.createFaculty = async (req, res) => {
           role: role || 'Faculty',
           employee_id: employee_id || null,
           is_active: true,
+          sessions_revoked_at: new Date(),
         },
         select: {
           id: true,
@@ -865,7 +840,13 @@ authController.createFaculty = async (req, res) => {
           is_active: true,
           created_at: true,
         }
-      });
+        });
+        await transaction.refreshToken.updateMany({
+          where: { userId: { in: [String(reactivationTarget.id), current.email].filter(Boolean) }, revokedAt: null },
+          data: { revokedAt: new Date() }
+        });
+        return reactivated;
+      }, { isolationLevel: 'Serializable' });
 
       logger.logActivity({
         action: 'update',
@@ -926,6 +907,8 @@ authController.createFaculty = async (req, res) => {
 
   } catch (error) {
     console.error('createFaculty error:', error);
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    if (error.code === 'P2034') return res.status(409).json({ error: 'Concurrent staff change. Please retry.' });
 
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0] || 'field';
@@ -950,7 +933,9 @@ authController.deleteFaculty = async (req, res) => {
     }
 
     // Soft delete - mark as inactive so history is preserved.
-    const updated = await dbUtils.updateStaffById(id, { is_active: false });
+    const staffId = Number(id);
+    if (!Number.isSafeInteger(staffId) || staffId <= 0) return res.status(400).json({ error: 'Invalid staff ID' });
+    const updated = await updateManagedStaff(staffId, { is_active: false }, req.user?.userId);
     if (!updated) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
@@ -969,6 +954,8 @@ authController.deleteFaculty = async (req, res) => {
     res.json({ message: 'Staff member deleted successfully' });
   } catch (error) {
     console.error('deleteFaculty error:', error);
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    if (error.code === 'P2034') return res.status(409).json({ error: 'Concurrent staff change. Please retry.' });
     res.status(500).json({ error: 'Internal server error' });
   }
 };

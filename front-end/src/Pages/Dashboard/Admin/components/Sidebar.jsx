@@ -1,15 +1,6 @@
-import React from 'react'
+
 import { useAdminContext } from '../pages/AdminLayout'
-import {
-  LayoutGrid,
-  Users,
-  Settings,
-  Terminal,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  KeyRound
-} from 'lucide-react'
+import { LayoutGrid, Terminal, ChevronLeft, ChevronRight, LogOut, KeyRound } from "lucide-react";
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../../context/AuthContext'
 
@@ -55,9 +46,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              aria-label={item.label} aria-current={activeTab === item.id ? "page" : undefined}
+                  onClick={() => setActiveTab(item.id)}
               className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all 
+                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
                 ${activeTab === item.id
                   ? 'bg-[#65CCB8]/20 text-[#3B945E] border border-[#65CCB8] shadow-sm font-semibold'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'

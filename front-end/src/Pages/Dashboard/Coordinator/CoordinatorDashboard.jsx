@@ -1,3 +1,5 @@
+import Pagination from '../../../components/Pagination'
+import useDashboardTab from '../../../hooks/useDashboardTab'
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import "../Dashboard.css"
 import Navbar from "./components/Navbar"
@@ -13,7 +15,7 @@ import ChangePassword from "../../../components/ChangePassword"
 import PageContainer from "./components/PageContainer"
 import { Users, Clock, CheckCircle, XCircle, X, Loader2, FileText } from "lucide-react"
 import { toast } from "react-hot-toast"
-import { studentFormsAPI } from "../../../services/api"
+import { studentFormsAPI, dashboardAPI } from "../../../services/api"
 import { resolveDepartment } from "../../../utils/departmentResolver"
 
 // SECURITY: Input sanitization helper to prevent XSS
@@ -45,7 +47,7 @@ const initialUserProfile = {
 
 export default function CoordinatorDashboard() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState("home")
+  const [activeTab, setActiveTab] = useDashboardTab('/dashboard/coordinator', ["home","apply","approved","rejected","profile","change-password"])
   const [userProfile, setUserProfile] = useState(initialUserProfile)
 
   // Sync userProfile with authenticated user data
@@ -69,9 +71,16 @@ export default function CoordinatorDashboard() {
   const [viewLoading, setViewLoading] = useState(false)
   const [requestDetails, setRequestDetails] = useState(null)
   const [notifications, setNotifications] = useState([])
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
+  const [summary, setSummary] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [requestError, setRequestError] = useState('')
+  const requestGeneration = useRef(0)
+  const changeTab = useCallback(tab => { setPage(1); setActiveTab(tab) }, [setActiveTab])
 
   // Helper function to map backend data to table format
-  const mapFormToRequest = (f) => ({
+  const mapFormToRequest = useCallback((f) => ({
     id: f.applicationId || f._id || `form-${f._id}`,
     _id: f._id,
     applicationId: f.applicationId,
@@ -87,150 +96,49 @@ export default function CoordinatorDashboard() {
     remarks: f.remarks,
     courseName: f.courseName || 'N/A',
     marks: f.marks ?? null,
-  })
+  }), [])
 
-  // Function to fetch requests (extracted for reuse)
   const fetchRequests = useCallback(async () => {
+    if (!['home', 'approved', 'rejected'].includes(activeTab)) return
+    const generation = ++requestGeneration.current
+    setLoading(true)
     try {
-      setLoading(true)
-
-      // Fetch pending, approved, and rejected requests in parallel, but handle errors separately
-      const [pendingResult, approvedResult, rejectedResult] = await Promise.allSettled([
-        studentFormsAPI.listPending(),
-        studentFormsAPI.listApproved(),
-        studentFormsAPI.listRejected()
+      const status = activeTab === 'approved' ? 'approved-history' : activeTab === 'rejected' ? 'Rejected' : 'pending'
+      const [data, aggregates] = await Promise.all([
+        dashboardAPI.list({ page, limit: 20, status }), dashboardAPI.analytics()
       ])
-
-      // Handle pending requests
-      let pendingForms = []
-      if (pendingResult.status === 'fulfilled') {
-        const pendingData = pendingResult.value
-        pendingForms = pendingData?.forms || pendingData || []
-      } else {
-        toast.error('Failed to fetch pending requests')
-      }
-
-      // Handle approved requests
-      let approvedForms = []
-      if (approvedResult.status === 'fulfilled') {
-        const approvedData = approvedResult.value
-        approvedForms = approvedData?.forms || approvedData || []
-      } else {
-        // Don't show error toast for approved requests if it's just empty or 403
-        const status = approvedResult.reason?.response?.status
-        if (status && status !== 404 && status !== 403) {
-          toast.error('Failed to fetch approved requests')
-        }
-      }
-
-      // Handle rejected requests
-      let rejectedForms = []
-      if (rejectedResult.status === 'fulfilled') {
-        const rejectedData = rejectedResult.value
-        rejectedForms = rejectedData?.forms || rejectedData || []
-      } else {
-        // Don't show error toast for rejected requests if it's just empty or 403
-        const status = rejectedResult.reason?.response?.status
-        if (status && status !== 404 && status !== 403) {
-          toast.error('Failed to fetch rejected requests')
-        }
-      }
-
-      // Map backend data to table format
-      const mappedPending = pendingForms.map(mapFormToRequest)
-      const mappedApproved = approvedForms.map(mapFormToRequest)
-      const mappedRejected = rejectedForms.map(mapFormToRequest)
-
-      // Check for new requests and generate notifications
-      const previousTotal = studentRequests.length + approvedRequests.length + rejectedRequests.length
-      const currentTotal = mappedPending.length + mappedApproved.length + mappedRejected.length
-
-      if (previousTotal > 0 && currentTotal > previousTotal) {
-        // New request detected
-        const newRequests = [...mappedPending, ...mappedApproved, ...mappedRejected]
-        const previousRequestIds = new Set([...studentRequests, ...approvedRequests, ...rejectedRequests].map(r => r.id))
-        const newRequest = newRequests.find(r => !previousRequestIds.has(r.id))
-
-        if (newRequest) {
-          const newNotification = {
-            id: Date.now(),
-            type: 'request',
-            title: 'New Reimbursement Request',
-            message: `${newRequest.studentName} submitted a new ${newRequest.category} request`,
-            time: 'Just now',
-            unread: true,
-            timestamp: new Date().toISOString()
-          }
-          setNotifications(prev => [newNotification, ...prev])
-        }
-      }
-
-      setStudentRequests(mappedPending)
-      setApprovedRequests(mappedApproved)
-      setRejectedRequests(mappedRejected)
+      if (generation !== requestGeneration.current) return
+      const mapped = (data.forms || []).map(mapFormToRequest)
+      setStudentRequests(activeTab === 'home' ? mapped : [])
+      setApprovedRequests(activeTab === 'approved' ? mapped : [])
+      setRejectedRequests(activeTab === 'rejected' ? mapped : [])
+      setPagination(data.pagination)
+      setSummary(aggregates.summary)
+      setAnalytics(aggregates)
+      setRequestError('')
+      if (page > Math.max(1, data.pagination.totalPages)) setPage(Math.max(1, data.pagination.totalPages))
     } catch (error) {
-      toast.error(error?.error || 'Failed to fetch requests')
-      setStudentRequests([])
-      setApprovedRequests([])
-      setRejectedRequests([])
+      if (generation === requestGeneration.current) setRequestError(error?.error || 'Failed to fetch requests. Please retry.')
     } finally {
-      setLoading(false)
+      if (generation === requestGeneration.current) setLoading(false)
     }
-  }, [])
+  }, [page, activeTab, mapFormToRequest])
 
-  // Fetch requests on component mount
   useEffect(() => {
-    fetchRequests()
+    void fetchRequests()
+    return () => { requestGeneration.current += 1 }
   }, [fetchRequests])
 
-  // Combine all requests for stats calculation
-  const allRequests = useMemo(() => {
-    return [...studentRequests, ...approvedRequests, ...rejectedRequests]
-  }, [studentRequests, approvedRequests, rejectedRequests])
-
-  // Memoize dashboard stats to prevent unnecessary recalculations
   const dashboardStats = useMemo(() => {
-    // Coordinators only see "Pending" requests in the main table (not "Under HOD" or "Under Principal")
-    const pendingRequests = studentRequests.filter((req) => req.status === "Pending")
-
-    // Calculate total disbursed amount for approved requests
-    const disbursedRequests = approvedRequests.filter(req => req.status === 'Reimbursed')
-    const totalDisbursed = disbursedRequests.reduce((sum, req) => {
-      const amount = parseFloat(String(req.amount || '0').replace(/[₹,]/g, ''))
-      return sum + (isNaN(amount) ? 0 : amount)
-    }, 0)
-
+    const counts = summary || { total: 0, approved: 0, reimbursed: 0, rejected: 0, reimbursedAmount: 0 }
+    const actionablePending = (analytics?.byStatus || []).filter(bucket => ['Pending', 'Under Coordinator'].includes(bucket._id)).reduce((sum, bucket) => sum + bucket.count, 0)
     return [
-      {
-        title: "Total Requests",
-        value: allRequests.length.toString(),
-        icon: Users,
-        color: "blue",
-        subtitle: "+2 this month",
-      },
-      {
-        title: "Pending Requests",
-        value: pendingRequests.length.toString(),
-        icon: Clock,
-        color: "orange",
-        subtitle: "Awaiting approval",
-      },
-      {
-        title: "Approved Requests",
-        value: approvedRequests.length.toString(),
-        icon: CheckCircle,
-        color: "green",
-        subtitle: `₹${totalDisbursed.toLocaleString()} reimbursed`,
-      },
-      {
-        title: "Rejected Requests",
-        value: rejectedRequests.length.toString(),
-        icon: XCircle,
-        color: "red",
-        subtitle: "Need revision",
-      },
+      { title: 'Total Requests', value: String(counts.total), icon: Users, color: 'blue', subtitle: 'All visible requests' },
+      { title: 'Pending Requests', value: String(actionablePending), icon: Clock, color: 'orange', subtitle: 'Awaiting coordinator approval' },
+      { title: 'Approved Requests', value: String((analytics?.byStatus || []).filter(bucket => ['Under HOD', 'Under Principal', 'Approved', 'Reimbursed'].includes(bucket._id)).reduce((sum, bucket) => sum + bucket.count, 0)), icon: CheckCircle, color: 'green', subtitle: `Reimbursed: ${counts.reimbursedAmount.toLocaleString()}` },
+      { title: 'Rejected Requests', value: String(counts.rejected), icon: XCircle, color: 'red', subtitle: 'Need revision' }
     ]
-  }, [studentRequests, approvedRequests, rejectedRequests, allRequests])
+  }, [summary, analytics])
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleViewRequest = useCallback(async (request) => {
@@ -296,7 +204,7 @@ export default function CoordinatorDashboard() {
       try {
         // SECURITY: Sanitize rejection reason before sending to API
         const sanitizedReason = sanitizeRejectionReason(rejectReason);
-        
+
         const formId = rejectModal.request._id || rejectModal.request.applicationId || rejectModal.request.id
 
         // Update status to "Rejected" with sanitized remarks
@@ -404,7 +312,7 @@ export default function CoordinatorDashboard() {
                   </h3>
                 </div>
                 <span className="text-xs sm:text-sm text-gray-500 self-start sm:self-center">
-                  {studentRequests.length} Total
+                  {pagination.total} total; {studentRequests.length} on this page
                 </span>
               </div>
               {loading ? (
@@ -464,18 +372,24 @@ export default function CoordinatorDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10 page-content">
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={changeTab}
         userProfile={userProfile}
         setUserProfile={setUserProfile}
         notifications={notifications}
         markNotificationAsRead={markNotificationAsRead}
         markAllNotificationsAsRead={markAllNotificationsAsRead}
       />
-      <PageContainer>{renderContent()}</PageContainer>
+      <PageContainer>
+        {requestError && <div role="alert" className="mb-4 rounded border border-red-200 bg-red-50 p-4 text-red-800">
+          {requestError} <button onClick={() => void fetchRequests()} className="ml-3 underline">Retry</button>
+        </div>}
+        {renderContent()}
+        {['home', 'approved', 'rejected'].includes(activeTab) && <Pagination page={page} totalPages={pagination.totalPages} total={pagination.total} pageSize={20} noun="requests" busy={loading} onPageChange={setPage} />}
+      </PageContainer>
 
       {/* View Modal for Coordinator */}
       {viewModal.show && (
-        <div
+        <div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
           className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 p-4"
           onClick={closeViewModal}
         >
@@ -487,7 +401,7 @@ export default function CoordinatorDashboard() {
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
                 Request Details
               </h3>
-              <button
+              <button aria-label="Close"
                 onClick={closeViewModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -595,21 +509,21 @@ export default function CoordinatorDashboard() {
                       {requestDetails.documents.map((doc, index) => {
                         // SECURITY: Validate URL before rendering to prevent XSS
                         const isValidUrl = doc.url && (
-                          doc.url.startsWith('https://') || 
+                          doc.url.startsWith('https://') ||
                           doc.url.startsWith('http://')
                         );
-                        
+
                         // Only allow Cloudinary URLs (trusted domain)
                         const isTrustedDomain = doc.url && (
                           doc.url.includes('cloudinary.com') ||
                           doc.url.includes('res.cloudinary.com')
                         );
-                        
+
                         if (!isValidUrl || !isTrustedDomain) {
                           console.warn('Blocked potentially unsafe document URL:', doc.url);
                           return null;
                         }
-                        
+
                         return (
                           <a
                             key={index}
@@ -645,7 +559,7 @@ export default function CoordinatorDashboard() {
 
       {/* Reject Modal - Enhanced with smooth transitions and better interactions */}
       {rejectModal.show && (
-        <div
+        <div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
           className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
           onClick={closeRejectModal}
         >
@@ -659,7 +573,7 @@ export default function CoordinatorDashboard() {
             <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
               Please provide a reason for rejecting {rejectModal.request?.studentName}'s request:
             </p>
-            <textarea
+            <textarea aria-label="reject Reason"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg resize-none text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"

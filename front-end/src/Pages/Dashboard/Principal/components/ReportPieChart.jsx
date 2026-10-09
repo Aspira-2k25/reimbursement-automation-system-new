@@ -1,4 +1,4 @@
-import React from 'react'
+
 import {
   PieChart,
   Pie,
@@ -15,10 +15,10 @@ import {
  * @param {string} title - Chart title
  * @param {number} height - Chart height
  */
-const ReportPieChart = ({ 
-  data = [], 
-  title = "Distribution Analysis", 
-  height = 300 
+const ReportPieChart = ({
+  data = [],
+  title = "Distribution Analysis",
+  height = 300
 }) => {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
@@ -42,7 +42,7 @@ const ReportPieChart = ({
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
       </div>
-      
+
       <div style={{ height: height }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

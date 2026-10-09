@@ -2,7 +2,6 @@ import React from "react"
 import { Eye, Pencil, Trash2, X, AlertCircle, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { jsPDF } from "jspdf"
 import { studentFormsAPI } from "../../../../services/api"
 
 const modalStyle = "fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -110,156 +109,93 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       className="icon-btn hover:bg-blue-50"
                       onClick={async () => {
                         try {
-                          // Fetch latest complete form data from database
-                          let formDetails = { ...r };
-                          try {
-                            const res = await studentFormsAPI.getById(r._id || r.applicationId || r.id);
-                            const full = res?.form || res;
-                            if (full && typeof full === 'object') {
-                              formDetails = { ...formDetails, ...full };
-                            }
-                          } catch (fetchErr) {
-                            console.warn('Could not fetch full details, using table state:', fetchErr);
-                          }
+                          const { jsPDF } = await import("jspdf");
+                          const { form } = await studentFormsAPI.getById(r._id || r.applicationId || r.id);
+                          const record = { ...r, ...form };
+                        // Generate PDF
+                        const doc = new jsPDF();
+                        const pageWidth = doc.internal.pageSize.getWidth();
+                        let y = 20;
 
-                          // Generate Professional Institutional PDF
-                          const doc = new jsPDF();
-                          const pageWidth = doc.internal.pageSize.getWidth();
-                          let y = 16;
+                        // Title
+                        doc.setFontSize(18);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT APPLICATION FORM', pageWidth / 2, y, { align: 'center' });
+                        y += 15;
 
-                          // Institutional Header
-                          doc.setFont('helvetica', 'bold');
-                          doc.setFontSize(10);
-                          doc.setTextColor(80, 80, 80);
-                          doc.text("PARSHVANATH CHARITABLE TRUST'S", pageWidth / 2, y, { align: 'center' });
-                          y += 6;
+                        // Application ID and Status
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Application ID: ${record.applicationId || record._id || record.id || 'N/A'}`, 20, y);
+                        y += 7;
+                        doc.text(`Status: ${record.status || 'Pending'}`, 20, y);
+                        y += 12;
 
-                          doc.setFontSize(14);
-                          doc.setTextColor(15, 23, 42);
-                          doc.text('A. P. SHAH INSTITUTE OF TECHNOLOGY', pageWidth / 2, y, { align: 'center' });
-                          y += 5;
+                        // Applicant Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('APPLICANT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Name: ${record.name || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Student ID: ${record.studentId || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Email: ${record.email || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Department: ${record.department || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Division: ${record.division || 'N/A'}`, 20, y); y += 12;
 
-                          doc.setFontSize(9.5);
-                          doc.setFont('helvetica', 'italic');
-                          doc.setTextColor(71, 85, 105);
-                          doc.text('(Approved by AICTE New Delhi & Govt. of Maharashtra, Affiliated to University of Mumbai)', pageWidth / 2, y, { align: 'center' });
-                          y += 7;
+                        // Reimbursement Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REIMBURSEMENT DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Type: ${record.reimbursementType || record.category || 'NPTEL'}`, 20, y); y += 7;
+                        doc.text(`Amount: Rs. ${(record.amount || 0).toLocaleString('en-IN')}`, 20, y); y += 7;
+                        doc.text(`Academic Year: ${record.academicYear || 'N/A'}`, 20, y); y += 12;
 
-                          doc.setDrawColor(203, 213, 225);
-                          doc.setLineWidth(0.5);
-                          doc.line(15, y, pageWidth - 15, y);
-                          y += 8;
+                        // Bank Details Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('BANK DETAILS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Account Name: ${record.accountName || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`Account Number: ${record.accountNumber || 'N/A'}`, 20, y); y += 7;
+                        doc.text(`IFSC Code: ${record.ifscCode || 'N/A'}`, 20, y); y += 12;
 
-                          // Document Title
-                          doc.setFont('helvetica', 'bold');
-                          doc.setFontSize(12);
-                          doc.setTextColor(15, 23, 42);
-                          doc.text('NPTEL REIMBURSEMENT APPLICATION ACKNOWLEDGMENT', pageWidth / 2, y, { align: 'center' });
-                          y += 10;
+                        // Dates Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('DATES', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        const submittedDate = record.submittedDate || record.createdAt ? new Date(record.submittedDate || record.createdAt).toLocaleDateString() : 'N/A';
+                        const updatedDate = record.updatedDate || record.updatedAt ? new Date(record.updatedDate || record.updatedAt).toLocaleDateString() : 'N/A';
+                        doc.text(`Submitted: ${submittedDate}`, 20, y); y += 7;
+                        doc.text(`Last Updated: ${updatedDate}`, 20, y); y += 12;
 
-                          // Application Meta Box
-                          doc.setFillColor(248, 250, 252);
-                          doc.setDrawColor(226, 232, 240);
-                          doc.roundedRect(15, y, pageWidth - 30, 16, 2, 2, 'FD');
-                          
-                          doc.setFontSize(9.5);
-                          doc.setFont('helvetica', 'bold');
-                          doc.setTextColor(51, 65, 85);
-                          doc.text(`Application ID:`, 20, y + 6);
-                          doc.setFont('helvetica', 'normal');
-                          doc.text(String(formDetails.applicationId || formDetails._id || formDetails.id || '-'), 50, y + 6);
+                        // Remarks Section
+                        doc.setFontSize(13);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('REMARKS', 20, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(record.remarks || record.rejectionRemarks || 'No remarks', 20, y); y += 15;
 
-                          doc.setFont('helvetica', 'bold');
-                          doc.text(`Status:`, 120, y + 6);
-                          doc.setFont('helvetica', 'normal');
-                          doc.text(String(formDetails.status || 'Pending'), 135, y + 6);
+                        // Footer
+                        doc.setFontSize(9);
+                        doc.setTextColor(128);
+                        doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, 280, { align: 'center' });
 
-                          doc.setFont('helvetica', 'bold');
-                          doc.text(`Submitted On:`, 20, y + 12);
-                          doc.setFont('helvetica', 'normal');
-                          const subDate = formDetails.submittedDate || formDetails.createdAt ? new Date(formDetails.submittedDate || formDetails.createdAt).toLocaleDateString('en-IN') : '-';
-                          doc.text(subDate, 50, y + 12);
+                        // Save PDF
+                        doc.save(`Application_${record.applicationId || record._id || 'form'}.pdf`);
 
-                          doc.setFont('helvetica', 'bold');
-                          doc.text(`Academic Year:`, 120, y + 12);
-                          doc.setFont('helvetica', 'normal');
-                          doc.text(String(formDetails.academicYear || '2026-2027'), 150, y + 12);
-                          y += 24;
-
-                          // Helper function for clean section headers
-                          const printSectionHeader = (title) => {
-                            doc.setFont('helvetica', 'bold');
-                            doc.setFontSize(10.5);
-                            doc.setTextColor(59, 148, 94); // APSIT Emerald
-                            doc.text(title, 15, y);
-                            doc.setDrawColor(59, 148, 94);
-                            doc.setLineWidth(0.3);
-                            doc.line(15, y + 2, pageWidth - 15, y + 2);
-                            y += 8;
-                          };
-
-                          // Helper for two-column field rows
-                          const printFieldRow = (label1, val1, label2, val2) => {
-                            doc.setFontSize(9);
-                            doc.setFont('helvetica', 'bold');
-                            doc.setTextColor(71, 85, 105);
-                            doc.text(label1, 15, y);
-                            doc.setFont('helvetica', 'normal');
-                            doc.setTextColor(15, 23, 42);
-                            doc.text(String(val1 || '-'), 50, y);
-
-                            if (label2) {
-                              doc.setFont('helvetica', 'bold');
-                              doc.setTextColor(71, 85, 105);
-                              doc.text(label2, 115, y);
-                              doc.setFont('helvetica', 'normal');
-                              doc.setTextColor(15, 23, 42);
-                              doc.text(String(val2 || '-'), 145, y);
-                            }
-                            y += 6;
-                          };
-
-                          // 1. Applicant Details
-                          printSectionHeader('1. APPLICANT DETAILS');
-                          printFieldRow('Full Name:', formDetails.name || formDetails.studentName || '-', 'Student ID / Roll:', formDetails.studentId || '-');
-                          printFieldRow('Department:', formDetails.department || '-', 'Division:', formDetails.division || '-');
-                          printFieldRow('Email Address:', formDetails.email || '-', '', '');
-                          y += 4;
-
-                          // 2. Course & Reimbursement Details
-                          printSectionHeader('2. NPTEL COURSE & REIMBURSEMENT DETAILS');
-                          printFieldRow('Course Name:', formDetails.courseName || '-', 'Score / Marks (%):', formDetails.marks !== undefined && formDetails.marks !== null ? `${formDetails.marks}%` : '-');
-                          printFieldRow('Claim Amount:', `Rs. ${(formDetails.amount || 0).toLocaleString('en-IN')}`, 'Category:', formDetails.reimbursementType || formDetails.category || 'NPTEL');
-                          y += 4;
-
-                          // 3. Bank Account Details
-                          printSectionHeader('3. BANK ACCOUNT DETAILS (FOR DISBURSEMENT)');
-                          printFieldRow('Account Name:', formDetails.accountName || formDetails.name || '-', 'Account Number:', formDetails.accountNumber || '-');
-                          printFieldRow('IFSC Code:', formDetails.ifscCode || '-', '', '');
-                          y += 4;
-
-                          // 4. Remarks & Verification
-                          printSectionHeader('4. REMARKS & ADMINISTRATIVE STATUS');
-                          doc.setFontSize(9);
-                          doc.setFont('helvetica', 'normal');
-                          doc.setTextColor(51, 65, 85);
-                          const remarkText = formDetails.remarks || formDetails.rejectionRemarks || formDetails.accountsRemarks || 'Application submitted successfully for administrative review.';
-                          doc.text(remarkText, 15, y, { maxWidth: pageWidth - 30 });
-                          y += 18;
-
-                          // Footer note & date
-                          doc.setFontSize(8);
-                          doc.setTextColor(148, 163, 184);
-                          doc.text('This is an auto-generated system acknowledgment from APSIT Reimbursement Automation Portal.', pageWidth / 2, 275, { align: 'center' });
-                          doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, 280, { align: 'center' });
-
-                          // Save PDF
-                          doc.save(`Application_${formDetails.applicationId || formDetails._id || 'form'}.pdf`);
-                          toast.success('Application PDF downloaded successfully!');
-                        } catch (err) {
-                          console.error('PDF generation error:', err);
-                          toast.error('Failed to generate PDF document');
-                        }
+                        } catch (error) { toast.error(error.error || "Unable to download application. Please retry."); }
                       }}
                       title="Download Application Form"
                       aria-label="Download"

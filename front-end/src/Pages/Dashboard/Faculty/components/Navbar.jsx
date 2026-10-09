@@ -9,15 +9,12 @@ import apshahLogo from "../../../../assets/images/Apshah_logo.png"
 // import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 function initials(name) {
-  if (!name || typeof name !== 'string') return "U"
   return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
+    .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "U"
+    .toUpperCase()
 }
 /**
  * Faculty Navbar Component

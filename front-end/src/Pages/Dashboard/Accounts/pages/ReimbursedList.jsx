@@ -1,5 +1,6 @@
-import React, { useMemo, useCallback, useState, useRef } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import Pagination from '../../../../components/Pagination'
+import { useMemo, useCallback, useState, useRef } from "react";
+import { AnimatePresence, motion as Motion } from 'framer-motion'
 import {
   CheckCircle,
   FileText,
@@ -18,20 +19,22 @@ import { toast } from 'react-hot-toast'
 import StatCard from '../components/StatCard'
 import PrintableForm from '../components/PrintableForm'
 import { useAccountsContext } from './AccountsLayout'
+import { serializeCsv } from '../../../../utils/csv'
 
 const ReimbursedList = () => {
   const navigate = useNavigate()
   const {
     allRequests,
     departments,
-    loading
+    loading,
+    searchQuery, setSearchQuery,
+    departmentFilter, setDepartmentFilter,
+    typeFilter, setTypeFilter,
+    dateFilter, setDateFilter,
+    queuePage, setQueuePage, queuePagination, summary
   } = useAccountsContext()
 
   const [printModal, setPrintModal] = useState({ show: false, request: null })
-  const [searchQuery, setSearchQuery] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState('All')
-  const [typeFilter, setTypeFilter] = useState('All')
-  const [dateFilter, setDateFilter] = useState({ from: '', to: '' })
   const printRef = useRef(null)
 
   // Get only reimbursed requests
@@ -39,59 +42,14 @@ const ReimbursedList = () => {
     return allRequests.filter(r => r.status === 'Reimbursed')
   }, [allRequests])
 
-  // Filter reimbursed requests
-  const filteredRequests = useMemo(() => {
-    return reimbursedRequests.filter(request => {
-      // Search filter
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase()
-        const matchesSearch =
-          request.id?.toLowerCase().includes(searchLower) ||
-          request.applicationId?.toLowerCase().includes(searchLower) ||
-          request.applicantName?.toLowerCase().includes(searchLower) ||
-          request.department?.toLowerCase().includes(searchLower) ||
-          request.email?.toLowerCase().includes(searchLower)
-        if (!matchesSearch) return false
-      }
-
-      // Department filter
-      if (departmentFilter !== 'All' && request.department !== departmentFilter) {
-        return false
-      }
-
-      // Type filter (Student/Faculty)
-      if (typeFilter !== 'All' && request.applicantType !== typeFilter) {
-        return false
-      }
-
-      // Date filter
-      if (dateFilter.from && new Date(request.submittedDate) < new Date(dateFilter.from)) {
-        return false
-      }
-      if (dateFilter.to && new Date(request.submittedDate) > new Date(dateFilter.to)) {
-        return false
-      }
-
-      return true
-    })
-  }, [reimbursedRequests, searchQuery, departmentFilter, typeFilter, dateFilter])
-
-  // Calculate stats for reimbursed only
-  const reimbursedStats = useMemo(() => {
-    const total = reimbursedRequests.length
-    const totalAmount = reimbursedRequests.reduce((sum, r) => sum + (r.amountNum || 0), 0)
-    const studentCount = reimbursedRequests.filter(r => r.applicantType === 'Student').length
-    const facultyCount = reimbursedRequests.filter(r => r.applicantType === 'Faculty').length
-    const avgAmount = total > 0 ? Math.round(totalAmount / total) : 0
-
-    return {
-      total,
-      totalAmount,
-      studentCount,
-      facultyCount,
-      avgAmount
-    }
-  }, [reimbursedRequests])
+  // All filters run on the server before pagination.
+  const filteredRequests = reimbursedRequests
+  const reimbursedStats = useMemo(() => ({
+    total: summary?.reimbursed ?? 'Unavailable',
+    totalAmount: summary?.reimbursedAmount ?? 'Unavailable',
+    studentCount: reimbursedRequests.filter(request => request.applicantType === 'Student').length,
+    facultyCount: reimbursedRequests.filter(request => request.applicantType !== 'Student').length
+  }), [summary, reimbursedRequests])
 
   const handleViewRequest = useCallback((request) => {
     const formId = request._id || request.id
@@ -120,23 +78,23 @@ const ReimbursedList = () => {
 
   const handleExportToCSV = useCallback(() => {
     const headers = ['Application ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
-    const csvContent = [
-      headers.join(','),
+    const csvContent = serializeCsv([
+      headers,
       ...filteredRequests.map(request => [
         request.applicationId || request.id,
-        `"${request.applicantName}"`,
+        request.applicantName,
         request.applicantType,
-        `"${request.courseName || 'N/A'}"`,
+        request.courseName || 'N/A',
         request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A',
         request.department,
         request.amountNum || 0,
         request.status,
-        `"${request.bankName || 'N/A'}"`,
-        `"${request.accountNumber || 'N/A'}"`,
-        `"${request.ifscCode || 'N/A'}"`,
+        request.bankName || 'N/A',
+        request.accountNumber || 'N/A',
+        request.ifscCode || 'N/A',
         request.submittedDate
-      ].join(','))
-    ].join('\n')
+      ])
+    ])
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -157,28 +115,28 @@ const ReimbursedList = () => {
     {
       title: "Total Reimbursed",
       value: reimbursedStats.total.toString(),
-      subtitle: "Completed requests",
+      subtitle: "All time completed requests",
       icon: CheckCircle,
       color: 'teal'
     },
     {
       title: "Total Amount",
       value: `₹${reimbursedStats.totalAmount.toLocaleString()}`,
-      subtitle: "Successfully reimbursed",
+      subtitle: "All time reimbursed amount",
       icon: IndianRupee,
       color: 'teal'
     },
     {
       title: "Student Requests",
       value: reimbursedStats.studentCount.toString(),
-      subtitle: "Student reimbursements",
+      subtitle: "Student reimbursements on this page",
       icon: FileText,
       color: 'teal'
     },
     {
       title: "Faculty Requests",
       value: reimbursedStats.facultyCount.toString(),
-      subtitle: "Faculty reimbursements",
+      subtitle: "Staff reimbursements on this page",
       icon: TrendingUp,
       color: 'teal'
     }
@@ -187,7 +145,7 @@ const ReimbursedList = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <motion.div
+      <Motion.div
         className="bg-gradient-to-r from-[#57BA98] to-[#3B945E] rounded-xl p-4 sm:p-6 text-white shadow-lg"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -196,7 +154,7 @@ const ReimbursedList = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">
-              Reimbursed Requests 
+              Reimbursed Requests
             </h1>
             <p className="text-white/80 mb-4 text-sm sm:text-base">
               Successfully completed reimbursements
@@ -213,28 +171,28 @@ const ReimbursedList = () => {
             </div>
           </div>
           <div className="hidden md:block">
-            <motion.div
+            <Motion.div
               className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 rounded-full flex items-center justify-center"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ duration: 0.2 }}
             >
               <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white/80" />
-            </motion.div>
+            </Motion.div>
           </div>
         </div>
-      </motion.div>
+      </Motion.div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {dashboardStats.map((stat, index) => (
-          <motion.div
+          <Motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
             <StatCard {...stat} />
-          </motion.div>
+          </Motion.div>
         ))}
       </div>
 
@@ -244,7 +202,7 @@ const ReimbursedList = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Reimbursed Requests</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {filteredRequests.length} of {reimbursedRequests.length} reimbursed requests
+              {filteredRequests.length} on this page; {queuePagination.total} matching reimbursements total
             </p>
           </div>
 
@@ -255,7 +213,7 @@ const ReimbursedList = () => {
               className="flex items-center gap-2 px-4 py-2 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
-              Export CSV
+              Export Current Page CSV
             </button>
           </div>
         </div>
@@ -265,7 +223,7 @@ const ReimbursedList = () => {
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
+            <input aria-label="search Query"
               type="text"
               placeholder="Search by ID, name, department..."
               value={searchQuery}
@@ -275,7 +233,7 @@ const ReimbursedList = () => {
           </div>
 
           {/* Department Filter */}
-          <select
+          <select aria-label="department Filter"
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
             className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
@@ -287,7 +245,7 @@ const ReimbursedList = () => {
           </select>
 
           {/* Type Filter */}
-          <select
+          <select aria-label="type Filter"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
@@ -302,7 +260,7 @@ const ReimbursedList = () => {
           {/* Date From */}
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <input
+            <input aria-label="from"
               type="date"
               value={dateFilter.from}
               onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
@@ -313,7 +271,7 @@ const ReimbursedList = () => {
           </div>
 
           {/* Date To */}
-          <input
+          <input aria-label="to"
             type="date"
             value={dateFilter.to}
             onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
@@ -373,7 +331,7 @@ const ReimbursedList = () => {
                 </tr>
               ) : (
                 filteredRequests.map((request, index) => (
-                  <motion.tr
+                  <Motion.tr
                     key={request.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -431,25 +389,26 @@ const ReimbursedList = () => {
                         </button>
                       </div>
                     </td>
-                  </motion.tr>
+                  </Motion.tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+        <Pagination page={queuePage} totalPages={queuePagination.totalPages} total={queuePagination.total} pageSize={20} noun="requests" busy={loading} onPageChange={setQueuePage} />
       </div>
 
       {/* Print Modal */}
       <AnimatePresence>
         {printModal.show && printModal.request && (
-          <motion.div
+          <Motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
             className="print-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closePrintModal}
           >
-            <motion.div
+            <Motion.div
               className="print-modal-shell bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -466,7 +425,7 @@ const ReimbursedList = () => {
                     <Printer className="w-4 h-4" />
                     Print
                   </button>
-                  <button
+                  <button aria-label="Close"
                     onClick={closePrintModal}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                   >
@@ -477,8 +436,8 @@ const ReimbursedList = () => {
               <div ref={printRef} className="print-form-host p-6">
                 <PrintableForm request={printModal.request} />
               </div>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

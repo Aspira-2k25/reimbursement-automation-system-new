@@ -1,15 +1,16 @@
+require('dotenv').config({ quiet: true });
+const { Worker } = require('bullmq');
+const Redis = require('ioredis');
 const emailService = require('../utils/emailService');
 const logger = require('../utils/logger');
 const he = require('he');
+const connectMongoDB = require('../config/mongo');
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
 let emailWorker = null;
 
 try {
-  const { Worker } = require('bullmq');
-  const Redis = require('ioredis');
-
   const connection = new Redis(REDIS_URL, {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
@@ -65,32 +66,52 @@ try {
         studentId: notificationData.studentId,
         amount: notificationData.amount,
       });
+    } else if (notificationData.type === 'reimbursed') {
+      emailResult = await emailService.sendReimbursedEmail({
+        name: notificationData.userName || 'User',
+        email: notificationData.userEmail,
+        applicationId: notificationData.applicationId,
+        studentId: notificationData.studentId,
+        amount: notificationData.amount,
+        status: notificationData.status,
+        remarks: notificationData.remarks,
+      });
+    } else {
+      emailResult = await emailService.sendEmail(
+        notificationData.userEmail,
+        notificationData.title || `Application Update: ${notificationData.applicationId}`,
+        `<p>Dear ${he.encode(notificationData.userName || 'User')},</p><p>${he.encode(notificationData.message || '')}</p><p>Status: ${he.encode(notificationData.status || '')}</p>`
+      );
     }
 
-    logger.info(`Processed email job ${job.id} for ${notificationData.userEmail}`, {
-      success: emailResult.success,
-      type: notificationData.type,
-      applicationId: notificationData.applicationId,
-    });
+    if (!emailResult.success) {
+      throw new Error(emailResult.error || 'Email sending failed');
+    }
+    if (notificationData.notificationId) {
+      await connectMongoDB();
+      await require('../models/Notification').updateOne({ _id: notificationData.notificationId }, { $set: { emailSent: true } });
+    }
 
     return emailResult;
   }, {
     connection,
-    concurrency: 5,
+    concurrency: 5
   });
 
   emailWorker.on('completed', (job) => {
-    logger.debug(`Email worker completed job ${job.id}`);
+    logger.info(`Email job ${job.id} completed successfully for ${job.data?.userEmail}`);
   });
 
   emailWorker.on('failed', (job, err) => {
-    logger.error(`Email worker failed job ${job?.id}: ${err.message}`, {
-      jobData: job?.data,
-      error: err.stack,
+    logger.error(`Email job ${job?.id} failed: ${err.message}`, {
+      jobId: job?.id,
+      data: job?.data,
+      error: err.message
     });
   });
+
 } catch (error) {
-  // Gracefully fallback if Redis/bullmq is unavailable
+  console.warn('Failed to start emailWorker:', error.message);
 }
 
 module.exports = emailWorker;

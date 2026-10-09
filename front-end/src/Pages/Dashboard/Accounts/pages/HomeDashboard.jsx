@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback, useState, useRef } from 'react'
+import Pagination from '../../../../components/Pagination'
+import { useMemo, useCallback, useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Wallet,
@@ -45,7 +46,10 @@ const HomeDashboard = () => {
     dateFilter,
     setDateFilter,
     loading,
-    setActiveTab
+    setActiveTab,
+    queuePage,
+    setQueuePage,
+    queuePagination
   } = useAccountsContext()
 
   const [printModal, setPrintModal] = useState({ show: false, request: null })
@@ -54,6 +58,7 @@ const HomeDashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedRequests, setSelectedRequests] = useState(new Set())
   const printRef = useRef(null)
+  const [localPage, setLocalPage] = useState(1)
 
   // Handler functions
   const handleViewRequest = useCallback((request) => {
@@ -158,14 +163,6 @@ const HomeDashboard = () => {
     }
   }, [selectedRequests, allRequests, updateRequestStatus])
 
-  const handleSelectAll = useCallback((checked) => {
-    const allIds = getFilteredRequests().map(r => r.id)
-    if (checked) {
-      setSelectedRequests(new Set(allIds))
-    } else {
-      setSelectedRequests(new Set())
-    }
-  }, [getFilteredRequests])
 
   const handleSelectRequest = useCallback((requestId, checked) => {
     setSelectedRequests(prev => {
@@ -218,24 +215,51 @@ const HomeDashboard = () => {
     return allFiltered.filter(r => r.status !== 'Reimbursed')
   }, [getFilteredRequests, statusFilter])
 
+  const serverPaged = typeof setQueuePage === 'function' && queuePagination != null
+  const page = serverPaged ? queuePage : localPage
+  const totalPages = serverPaged ? Math.max(1, queuePagination.totalPages || 1) : Math.max(1, Math.ceil(filteredRequests.length / 20))
+  const safePage = Math.min(page || 1, totalPages)
+  const visibleRequests = serverPaged ? filteredRequests : filteredRequests.slice((safePage - 1) * 20, safePage * 20)
+  const selectableRequests = visibleRequests.filter(request => request.status === 'Approved')
+  const filtersKey = JSON.stringify([searchQuery, statusFilter, departmentFilter, typeFilter, dateFilter.from, dateFilter.to])
+  const previousFilters = useRef(filtersKey)
+  useEffect(() => {
+    if (previousFilters.current !== filtersKey) {
+      previousFilters.current = filtersKey
+      setLocalPage(1)
+      if (serverPaged) setQueuePage(1)
+    }
+    setSelectedRequests(new Set())
+  }, [filtersKey, safePage, serverPaged, setQueuePage])
+  const changePage = nextPage => {
+    setSelectedRequests(new Set())
+    if (serverPaged) setQueuePage(nextPage)
+    else setLocalPage(nextPage)
+  }
+  const handleSelectAll = checked => setSelectedRequests(new Set(checked ? selectableRequests.map(request => request.id) : []))
+
   const handleExportToCSV = useCallback(() => {
     const headers = ['Application ID', 'Applicant', 'Type', 'Course Name', 'Marks', 'Department', 'Amount', 'Status', 'Bank Name', 'Account No', 'IFSC', 'Date']
     const csvContent = [
       headers.join(','),
-      ...filteredRequests.map(request => [
+      ...visibleRequests.map(request => [
         request.applicationId || request.id,
-        `"${request.applicantName}"`,
+        request.applicantName,
         request.applicantType,
-        `"${request.courseName || 'N/A'}"`,
+        request.courseName || 'N/A',
         request.marks !== undefined && request.marks !== 'N/A' ? `${request.marks}%` : 'N/A',
         request.department,
         request.amountNum || 0,
         request.status,
-        `"${request.bankName || 'N/A'}"`,
-        `"${request.accountNumber || 'N/A'}"`,
-        `"${request.ifscCode || 'N/A'}"`,
+        request.bankName || 'N/A',
+        request.accountNumber || 'N/A',
+        request.ifscCode || 'N/A',
         request.submittedDate
-      ].join(','))
+      ].map(value => {
+        const text = String(value ?? '')
+        const safe = /^[\s]*[=+@-]/.test(text) || /^[\t\r\n]/.test(text) ? "'" + text : text
+        return '"' + safe.replace(/"/g, '""') + '"'
+      }).join(','))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
@@ -246,7 +270,7 @@ const HomeDashboard = () => {
     a.click()
     window.URL.revokeObjectURL(url)
     toast.success('Exported to CSV successfully!')
-  }, [filteredRequests])
+  }, [visibleRequests])
 
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
@@ -317,13 +341,13 @@ const HomeDashboard = () => {
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">
+            <h1 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 text-white">
               Welcome, {userProfile?.fullName || 'Accounts Officer'} 👋
             </h1>
-            <p className="text-white/80 mb-4 text-sm sm:text-base">
+            <p className="text-white/80 mb-2 sm:mb-4 text-sm sm:text-base">
               {userProfile?.designation || 'Accounts Officer'} • Reimbursement Dashboard
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-white/90">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-6 text-xs sm:text-sm text-white/90">
               <div className="flex items-center gap-2">
                 <Wallet className="w-4 h-4" />
                 <span>{accountsStats.pendingDisbursement} Pending</span>
@@ -351,7 +375,7 @@ const HomeDashboard = () => {
       </motion.div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {dashboardStats.map((stat, index) => (
           <motion.div
             key={index}
@@ -370,7 +394,7 @@ const HomeDashboard = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Reimbursement Queue</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {filteredRequests.length} of {allRequests.filter(r => r.status === 'Approved').length} pending requests
+              {visibleRequests.length} requests shown; {serverPaged ? queuePagination.total : filteredRequests.length} matching requests total. Selection applies to this page.
             </p>
           </div>
 
@@ -393,7 +417,7 @@ const HomeDashboard = () => {
               className="flex items-center gap-2 px-4 py-2 bg-[#57BA98] text-white rounded-lg hover:bg-[#3B945E] transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
-              Export CSV
+              Export Current Page CSV
             </button>
           </div>
         </div>
@@ -403,7 +427,7 @@ const HomeDashboard = () => {
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
+            <input aria-label="search Query"
               type="text"
               placeholder="Search by ID, name, department..."
               value={searchQuery}
@@ -413,7 +437,7 @@ const HomeDashboard = () => {
           </div>
 
           {/* Status Filter */}
-          <select
+          <select aria-label="status Filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
@@ -424,7 +448,7 @@ const HomeDashboard = () => {
           </select>
 
           {/* Department Filter */}
-          <select
+          <select aria-label="department Filter"
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
             className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
@@ -436,7 +460,7 @@ const HomeDashboard = () => {
           </select>
 
           {/* Type Filter */}
-          <select
+          <select aria-label="type Filter"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57BA98] text-sm"
@@ -451,7 +475,7 @@ const HomeDashboard = () => {
           {/* Date From */}
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <input
+            <input aria-label="from"
               type="date"
               value={dateFilter.from}
               onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
@@ -462,7 +486,7 @@ const HomeDashboard = () => {
           </div>
 
           {/* Date To */}
-          <input
+          <input aria-label="to"
             type="date"
             value={dateFilter.to}
             onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
@@ -491,14 +515,28 @@ const HomeDashboard = () => {
         </div>
 
         {/* Request Table */}
-        <div className="overflow-x-auto">
+<div className="sm:hidden space-y-3 p-3" aria-label="Request cards">
+<label className="flex items-center gap-2 p-3 text-sm text-slate-700"><input type="checkbox" checked={selectableRequests.length > 0 && selectableRequests.every(request => selectedRequests.has(request.id))} onChange={event => handleSelectAll(event.target.checked)} disabled={loading || isLoading || selectableRequests.length === 0} />Select approved requests on this page</label>{loading && <p role="status" className="p-3 text-sm text-slate-600">Loading requests...</p>}
+{!loading && visibleRequests.length === 0 && <p className="p-3 text-sm text-slate-600">No requests found matching your criteria.</p>}
+{!loading && visibleRequests.map(request => <article key={request.id} className="rounded-lg border border-slate-200 p-3 space-y-2 break-words">
+<label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={selectedRequests.has(request.id)} onChange={event => handleSelectRequest(request.id, event.target.checked)} disabled={request.status !== 'Approved' || isLoading} />Select request</label>
+<p className="font-mono text-xs text-slate-600 break-all">{request.applicationId || request.id}</p>
+<h3 className="font-semibold text-slate-900">{request.applicantName}</h3>
+<p className="text-sm text-slate-600">{request.applicantType} · {request.department}</p>
+<p className="text-sm text-slate-800">{request.courseName || 'Course not specified'}</p>
+<div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-slate-900">{request.amount}</span>{getStatusBadge(request.status)}</div>
+<div className="flex flex-wrap gap-2 text-sm"><button onClick={() => handleViewRequest(request)}  className="px-3 py-2 rounded-lg border text-slate-700 disabled:opacity-50">View</button><button onClick={() => handlePrintRequest(request)}  className="px-3 py-2 rounded-lg border text-slate-700 disabled:opacity-50">Print</button>{request.status === 'Approved' && <><button onClick={() => handleMarkReimbursed(request)} disabled={isLoading} className="px-3 py-2 rounded-lg bg-green-700 text-white disabled:opacity-50">Mark reimbursed</button><button onClick={() => handleRejectRequest(request)} disabled={isLoading} className="px-3 py-2 rounded-lg border border-red-700 text-red-700 disabled:opacity-50">Reject</button></>}</div>
+</article>)}
+</div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedRequests.size === filteredRequests.length && filteredRequests.length > 0}
+                    checked={selectableRequests.length > 0 && selectableRequests.every(request => selectedRequests.has(request.id))}
+                    aria-label="Select approved requests on this page"
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="rounded border-gray-300 text-[#3B945E] focus:ring-[#57BA98]"
                   />
@@ -530,7 +568,7 @@ const HomeDashboard = () => {
                   </td>
                 </tr>
               ) : (
-                filteredRequests.map((request, index) => (
+                visibleRequests.map((request, index) => (
                   <motion.tr
                     key={request.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -540,12 +578,12 @@ const HomeDashboard = () => {
                       }`}
                   >
                     <td className="px-4 py-3">
-                      <input
+                      <input aria-label="Select request"
                         type="checkbox"
                         checked={selectedRequests.has(request.id)}
                         onChange={(e) => handleSelectRequest(request.id, e.target.checked)}
                         className="rounded border-gray-300 text-[#3B945E] focus:ring-[#57BA98]"
-                        disabled={request.status === 'Reimbursed'}
+                        disabled={request.status !== 'Approved' || isLoading}
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -630,12 +668,13 @@ const HomeDashboard = () => {
             </tbody>
           </table>
         </div>
+        <Pagination page={safePage} totalPages={totalPages} total={serverPaged ? queuePagination.total : filteredRequests.length} pageSize={20} noun="requests" busy={loading || isLoading} onPageChange={changePage} />
       </div>
 
       {/* Print Modal */}
       <AnimatePresence>
         {printModal.show && printModal.request && (
-          <motion.div
+          <motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
             className="print-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -659,7 +698,7 @@ const HomeDashboard = () => {
                     <Printer className="w-4 h-4" />
                     Print
                   </button>
-                  <button
+                  <button aria-label="Close"
                     onClick={closePrintModal}
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                   >
@@ -678,7 +717,7 @@ const HomeDashboard = () => {
       {/* Reject Modal */}
       <AnimatePresence>
         {rejectModal.show && rejectModal.request && (
-          <motion.div
+          <motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -718,7 +757,7 @@ const HomeDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Reason for Rejection <span className="text-red-500">*</span>
                   </label>
-                  <textarea
+                  <textarea aria-label="reject Remarks"
                     value={rejectRemarks}
                     onChange={(e) => setRejectRemarks(e.target.value)}
                     placeholder="Please provide detailed reason for rejection (e.g., incorrect bank details, missing documents, etc.)"

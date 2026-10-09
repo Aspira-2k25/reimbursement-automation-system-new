@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Users, Clock, BarChart3 } from 'lucide-react';
+import { ChevronRight } from "lucide-react";
 import { useAuth } from '../../context/AuthContext';
 
 import apshahLogo from '../../assets/images/Apshah_logo.png';
@@ -165,33 +165,25 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="w-full mx-auto px-4 sm:px-6 md:px-12 lg:px-24 py-12 sm:py-16 lg:py-20 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center">
+      <section id="features" className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
         <motion.div {...fadeInUp}>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/60 text-[#3B945E] text-xs font-semibold mb-4">
-            <span className="h-2 w-2 rounded-full bg-[#3B945E] animate-pulse"></span>
-            APSIT Digital Transformation Portal
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 leading-tight tracking-tight" style={{ color: theme.dark }}>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight" style={{ color: theme.dark }}>
             Automate Your Reimbursement <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.mint})` }}>Workflow</span>
           </h1>
-          <p className="text-sm sm:text-base lg:text-lg mb-6 sm:mb-8 leading-relaxed text-slate-600">
-            Eliminate paperwork, track requests in real-time, and streamline approvals. Our platform digitizes the entire reimbursement process for students, faculty, coordinators, HODs, and accounts.
+          <p className="text-lg mb-8 leading-relaxed" style={{ color: '#4b5563' }}>
+            Eliminate paperwork, track requests in real-time, and streamline approvals. Our platform digitizes the entire process for students, faculty, HODs, and administrators.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex gap-4">
             <button
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 text-white rounded-xl hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="px-8 py-3 text-white rounded-lg hover:shadow-xl transition-all font-medium flex items-center gap-2"
               style={{ backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.sea})` }}
               onClick={() => navigate('/login')}
             >
               Submit Request <ChevronRight size={18} />
             </button>
             <button
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 border-2 rounded-xl transition-all font-semibold text-sm sm:text-base"
+              className="px-8 py-3 border-2 rounded-lg transition-all font-medium"
               style={{ borderColor: '#e5e7eb', color: '#374151' }}
-              onClick={() => {
-                const el = document.getElementById('how-it-works');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.green; e.currentTarget.style.color = theme.green; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#374151'; }}
             >
@@ -202,14 +194,14 @@ export default function LandingPage() {
 
         <motion.div
           {...fadeInUp}
-          className="relative flex justify-center mt-6 md:mt-0"
+          className="relative flex justify-center"
         >
           <Avatar3D />
         </motion.div>
       </section>
 
       {/* Features Section */}
-      <section id="how-it-works" className="w-full mx-auto px-4 sm:px-6 md:px-12 lg:px-24 py-12 sm:py-16 lg:py-20">
+      <section id="how-it-works" className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20">
         <motion.div {...fadeInUp} className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4" style={{ color: theme.dark }}>How It Works</h2>
           <p className="text-lg" style={{ color: '#4b5563' }}>A simple, transparent process for everyone.</p>
@@ -288,17 +280,17 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
+                <li><a href="#features" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
+                <li><a href="#how-it-works" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
+                <li><a href="/login" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Help Center</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Documentation</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Contact Admin</a></li>
+                <li><a href="#how-it-works">Submission guidance</a></li>
+                <li>NPTEL reimbursement: maximum ₹1,500 per application.</li>
+                <li>For assistance, contact your departmental coordinator.</li>
               </ul>
             </div>
           </div>

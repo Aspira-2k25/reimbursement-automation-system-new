@@ -1,12 +1,13 @@
-import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
+import usePersistentNotifications from '../../../../hooks/usePersistentNotifications'
+import { useState, createContext, useContext, useCallback, useMemo, useEffect, useRef } from "react";
 import { AnimatePresence, motion as Motion } from 'framer-motion'
-import { useLocation, useNavigate } from 'react-router-dom'
+import useDashboardTab from '../../../../hooks/useDashboardTab'
 import { ArrowLeft } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialAccountsData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
-import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
+import { studentFormsAPI, facultyFormsAPI, dashboardAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
@@ -27,43 +28,31 @@ export const useAccountsContext = () => {
 
 const AccountsLayout = () => {
   const { user } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
-
-  // Get initial tab from URL hash
-  const getTabFromHash = () => {
-    const hash = location.hash.replace('#', '')
-    return hash || 'home'
-  }
-
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [activeTab, setActiveTab] = useState(getTabFromHash())
+  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth < 1024)
+  const [activeTab, handleSetActiveTab] = useDashboardTab('/dashboard/accounts', ['home','reimbursed','profile','change-password'])
   const [userProfile, setUserProfile] = useState(initialAccountsData.userProfile)
   const [allRequests, setAllRequests] = useState(initialAccountsData.allRequests)
   const [departments] = useState(initialAccountsData.departments)
   const [notifications, setNotifications] = useState([])
+  const persistentNotifications = usePersistentNotifications()
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [departmentFilter, setDepartmentFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' })
-
-  // Sync activeTab with URL hash for browser navigation support
+  const [queuePage, setQueuePage] = useState(1)
+  const [queuePagination, setQueuePagination] = useState({ total: 0, totalPages: 1 })
+  const [summary, setSummary] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [requestError, setRequestError] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const requestGeneration = useRef(0)
   useEffect(() => {
-    const hash = location.hash.replace('#', '')
-    if (hash && hash !== activeTab) {
-      setActiveTab(hash)
-    } else if (!hash && activeTab !== 'home') {
-      setActiveTab('home')
-    }
-  }, [location.hash, activeTab])
-
-  // Custom setActiveTab that also updates URL
-  const handleSetActiveTab = useCallback((tab) => {
-    setActiveTab(tab)
-    navigate(tab === 'home' ? '/dashboard/accounts' : `/dashboard/accounts#${tab}`, { replace: false })
-  }, [navigate])
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+  useEffect(() => { setQueuePage(1) }, [activeTab, debouncedSearch, statusFilter, departmentFilter, typeFilter, dateFilter.from, dateFilter.to])
 
   // Handle responsive behavior - auto-collapse on mobile
   useEffect(() => {
@@ -134,6 +123,7 @@ const AccountsLayout = () => {
       _id: f._id,
       applicationId: f.applicationId || f._id, // Prefer applicationId, fallback to _id
       userId: f.userId,
+      formType: f.formType,
       applicantName: f.name || 'N/A',
       applicantId: f.studentId || f.facultyId || 'N/A',
       applicantType: f.applicantType || 'Student',
@@ -170,89 +160,43 @@ const AccountsLayout = () => {
     }
   }, [])
 
-  // Fetch all requests for Accounts (Approved + Reimbursed)
   const fetchRequests = useCallback(async () => {
+    const generation = ++requestGeneration.current
+    setLoading(true)
     try {
-      setLoading(true)
-
-      // Fetch forms for accounts (Approved and Reimbursed status)
-      const [
-        studentAccountsData,
-        facultyAccountsData
-      ] = await Promise.allSettled([
-        studentFormsAPI.listForAccounts(),
-        facultyFormsAPI.listForAccounts()
+      const [data, aggregates] = await Promise.all([
+        dashboardAPI.list({ page: queuePage, limit: 20,
+          status: activeTab === 'reimbursed' ? 'Reimbursed' : statusFilter === 'All' ? 'Approved' : statusFilter,
+          search: debouncedSearch, department: departmentFilter, applicantType: typeFilter,
+          startDate: dateFilter.from, endDate: dateFilter.to }),
+        dashboardAPI.analytics()
       ])
-
-      let allForms = []
-
-      // Process student forms
-      if (studentAccountsData.status === 'fulfilled') {
-        const forms = (studentAccountsData.value?.forms || studentAccountsData.value || [])
-          .map(f => ({ ...f, applicantType: 'Student' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Process faculty forms
-      if (facultyAccountsData.status === 'fulfilled') {
-        const forms = (facultyAccountsData.value?.forms || facultyAccountsData.value || [])
-          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Deduplicate forms by unique identifier (_id or applicationId or id)
-      const uniqueFormsMap = new Map()
-      for (const form of allForms) {
-        const key = String(form._id || form.id || form.applicationId)
-        if (key && !uniqueFormsMap.has(key)) {
-          uniqueFormsMap.set(key, form)
-        }
-      }
-      const uniqueForms = Array.from(uniqueFormsMap.values())
-
-      // Map backend data to dashboard format
-      const mappedRequests = uniqueForms.map(mapFormToRequest)
-
-      setAllRequests(mappedRequests)
+      if (generation !== requestGeneration.current) return
+      setAllRequests((data.forms || []).map(mapFormToRequest))
+      setQueuePagination(data.pagination)
+      setSummary(aggregates.summary)
+      setAnalytics(aggregates)
+      setRequestError('')
+      if (queuePage > Math.max(1, data.pagination.totalPages)) setQueuePage(Math.max(1, data.pagination.totalPages))
     } catch (error) {
-      toast.error(error?.error || 'Failed to fetch requests')
-      setAllRequests([])
+      if (generation === requestGeneration.current) setRequestError(error?.error || 'Failed to fetch requests. Please retry.')
     } finally {
-      setLoading(false)
+      if (generation === requestGeneration.current) setLoading(false)
     }
-  }, [mapFormToRequest])
+  }, [queuePage, activeTab, statusFilter, debouncedSearch, departmentFilter, typeFilter, dateFilter.from, dateFilter.to, mapFormToRequest])
 
-  // Fetch requests on component mount
   useEffect(() => {
-    fetchRequests()
+    void fetchRequests()
+    return () => { requestGeneration.current += 1 }
   }, [fetchRequests])
 
-  // Calculate statistics
   const accountsStats = useMemo(() => {
-    const total = allRequests.length
-    const approved = allRequests.filter(r => r.status === 'Approved').length
-    const reimbursed = allRequests.filter(r => r.status === 'Reimbursed').length
-    const pendingReimbursement = approved // Approved but not yet reimbursed
-    const totalAmount = allRequests.reduce((sum, r) => sum + (r.amountNum || 0), 0)
-    const reimbursedAmount = allRequests
-      .filter(r => r.status === 'Reimbursed')
-      .reduce((sum, r) => sum + (r.amountNum || 0), 0)
-    const pendingAmount = allRequests
-      .filter(r => r.status === 'Approved')
-      .reduce((sum, r) => sum + (r.amountNum || 0), 0)
-
-    return {
-      total,
-      approved,
-      reimbursed,
-      pendingDisbursement: pendingReimbursement,
-      totalAmount,
-      reimbursedAmount,
-      disbursedAmount: reimbursedAmount,
-      pendingAmount,
-      disbursementRate: total > 0 ? Math.round((reimbursed / total) * 100) : 0
-    }
-  }, [allRequests])
+    const totals = summary || { total: 0, approved: 0, reimbursed: 0, totalAmount: 0, reimbursedAmount: 0 }
+    const pendingAmount = analytics?.byStatus?.find(bucket => bucket._id === 'Approved')?.totalAmount || 0
+    return { ...totals, pendingDisbursement: totals.approved,
+      disbursedAmount: totals.reimbursedAmount, pendingAmount,
+      disbursementRate: totals.total ? Math.round(totals.reimbursed / totals.total * 100) : 0 }
+  }, [summary, analytics])
 
   // Update request status (mark as reimbursed or rejected)
   const updateRequestStatus = useCallback(async (requestId, newStatus, comments = '') => {
@@ -261,12 +205,11 @@ const AccountsLayout = () => {
       const request = allRequests.find(r => r.id === requestId || r.applicationId === requestId || r._id === requestId)
 
       if (!request) {
-        toast.error('Request not found')
-        return
+        throw new Error('Request not found')
       }
 
       // Determine which API to call based on applicant type
-      const isStudent = request.applicantType === 'Student'
+      const isStudent = request.formType === 'student' || request.applicantType === 'Student'
       const apiCall = isStudent ? studentFormsAPI : facultyFormsAPI
       const formId = request._id || request.id
 
@@ -292,57 +235,21 @@ const AccountsLayout = () => {
         return r
       }))
 
+      await fetchRequests()
+
       if (newStatus === 'Rejected') {
         toast.error(`Request rejected`)
       } else {
         toast.success(`Request marked as ${newStatus}`)
       }
     } catch (error) {
-      toast.error(error?.error || 'Failed to update request status')
+      toast.error(error?.error || error?.message || 'Failed to update request status')
+      throw error
     }
-  }, [allRequests])
+  }, [allRequests, fetchRequests])
 
-  // Filter requests based on search and filters
-  const getFilteredRequests = useCallback(() => {
-    return allRequests.filter(request => {
-      // Search filter
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase()
-        const matchesSearch =
-          request.id?.toLowerCase().includes(searchLower) ||
-          request.applicationId?.toLowerCase().includes(searchLower) ||
-          request.applicantName?.toLowerCase().includes(searchLower) ||
-          request.department?.toLowerCase().includes(searchLower) ||
-          request.email?.toLowerCase().includes(searchLower)
-        if (!matchesSearch) return false
-      }
-
-      // Status filter
-      if (statusFilter !== 'All' && request.status !== statusFilter) {
-        return false
-      }
-
-      // Department filter
-      if (departmentFilter !== 'All' && request.department !== departmentFilter) {
-        return false
-      }
-
-      // Type filter (Student/Faculty)
-      if (typeFilter !== 'All' && request.applicantType !== typeFilter) {
-        return false
-      }
-
-      // Date filter
-      if (dateFilter.from && new Date(request.submittedDate) < new Date(dateFilter.from)) {
-        return false
-      }
-      if (dateFilter.to && new Date(request.submittedDate) > new Date(dateFilter.to)) {
-        return false
-      }
-
-      return true
-    })
-  }, [allRequests, searchQuery, statusFilter, departmentFilter, typeFilter, dateFilter])
+  // Server applies filters before pagination; never filter a bounded page again.
+  const getFilteredRequests = useCallback(() => allRequests, [allRequests])
 
   // Mark notification as read
   const markNotificationAsRead = useCallback((notificationId) => {
@@ -413,12 +320,16 @@ const AccountsLayout = () => {
     notifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    fetchRequests
+    fetchRequests,
+    refreshRequests: fetchRequests,
+    queuePage, setQueuePage, queuePagination, summary, analytics, requestError,
+    ...persistentNotifications
   }), [
     userProfile, allRequests, departments, accountsStats, updateRequestStatus,
     getFilteredRequests, searchQuery, statusFilter, departmentFilter, typeFilter,
     dateFilter, loading, activeTab, isCollapsed, notifications,
-    markNotificationAsRead, markAllNotificationsAsRead, fetchRequests, handleSetActiveTab
+    markNotificationAsRead, markAllNotificationsAsRead, fetchRequests, handleSetActiveTab,
+    queuePage, queuePagination, summary, analytics, requestError, persistentNotifications
   ])
 
   return (
@@ -434,7 +345,7 @@ const AccountsLayout = () => {
 
         <div className="flex-1 flex flex-col min-w-0">
           <Header userProfile={userProfile} currentPage={
-            activeTab === 'home' ? 'Reimbursement Dashboard' :
+            activeTab === 'home' ? 'Accounts Dashboard' :
               activeTab === 'reimbursed' ? 'Reimbursed List' :
               activeTab === 'profile' ? 'Profile Settings' :
               activeTab === 'change-password' ? 'Change Password' :
@@ -442,6 +353,9 @@ const AccountsLayout = () => {
           } />
 
           <main className="flex-1 p-4 sm:p-6 overflow-auto">
+            {requestError && <div role="alert" className="mb-4 rounded border border-red-200 bg-red-50 p-4 text-red-800">
+              {requestError} <button onClick={() => void fetchRequests()} className="ml-3 underline">Retry</button>
+            </div>}
             <AnimatePresence mode="wait">
               <Motion.div
                 key={activeTab}

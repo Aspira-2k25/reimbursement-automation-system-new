@@ -4,12 +4,13 @@ import './index.css'
 import App from './App.jsx'
 import {GoogleOAuthProvider} from '@react-oauth/google'
 import { AuthProvider } from './context/AuthContext.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const appTree = (
-  <AuthProvider>
+  <ErrorBoundary><AuthProvider>
     <App />
-  </AuthProvider>
+  </AuthProvider></ErrorBoundary>
 )
 
 if (!clientId) {

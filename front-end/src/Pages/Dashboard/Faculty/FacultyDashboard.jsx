@@ -55,7 +55,7 @@ export default function FacultyDashboard() {
       navigate("/faculty-nptel-form");
 
     } else {
-      toast.success(`Application started for ${option.title}`)
+      toast('This reimbursement type is not available yet.')
       // TODO: Implement actual application logic
     }
   }
@@ -94,7 +94,7 @@ export default function FacultyDashboard() {
               <StatCard
                 key={opt.id}
                 option={opt}
-                onApply={() => handleApply(opt)}
+                onApply={() => handleApply(opt)} disabled={opt.id !== 'nptel'}
               />
             ))
           ) : (

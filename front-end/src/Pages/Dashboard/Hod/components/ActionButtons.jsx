@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from "react";
 import { motion } from 'framer-motion'
 import { Eye, Check, X, MoreHorizontal, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -116,7 +116,7 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
   if (variant === 'dropdown') {
     return (
       <div className="relative group">
-        <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+        <button aria-label="More actions" className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
           <MoreHorizontal className="w-4 h-4" />
         </button>
 
@@ -167,7 +167,7 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
         whileTap={{ scale: 0.95 }}
       >
         <Eye className="w-4 h-4" />
-        <span className="hidden sm:inline">View</span>
+        <span className="inline">View</span>
       </motion.button>
 
       {canApprove && (
@@ -184,7 +184,7 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
           ) : (
             <Check className="w-4 h-4" />
           )}
-          <span className="hidden sm:inline">
+          <span className="inline">
             {actionLoading ? 'Approving...' : 'Approve'}
           </span>
         </motion.button>
@@ -199,7 +199,7 @@ const ActionButtons = ({ request, onView, onApprove, onReject, variant = 'defaul
           whileTap={{ scale: 0.95 }}
         >
           <X className="w-4 h-4" />
-          <span className="hidden sm:inline">Reject</span>
+          <span className="inline">Reject</span>
         </motion.button>
       )}
     </div>

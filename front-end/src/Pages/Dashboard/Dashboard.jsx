@@ -5,37 +5,33 @@ import { toast } from "react-hot-toast"
 import { AnimatePresence, motion } from "framer-motion"
 
 import StudentNavbar from "./Student/components/Navbar"
-import StudentDashboard from "./Student/StudentDashboard"
-import StudentRequestStatus from "./Student/RequestStatus"
-import StudentProfileSettings from "./Student/ProfileSettings"
+const StudentDashboard = React.lazy(() => import('./Student/StudentDashboard'))
+const StudentRequestStatus = React.lazy(() => import('./Student/RequestStatus'))
+const StudentProfileSettings = React.lazy(() => import('./Student/ProfileSettings'))
 import { ProfileProvider } from "./Student/ProfileContext"
 import { NotificationProvider as StudentNotificationProvider } from "./Student/NotificationContext"
 
 import FacultyNavbar from "./Faculty/components/Navbar"
-import FacultyDashboard from "./Faculty/FacultyDashboard"
-import FacultyRequestStatus from "./Faculty/RequestStatus"
-import FacultyProfileSettings from "./Faculty/ProfileSettings"
+const FacultyDashboard = React.lazy(() => import('./Faculty/FacultyDashboard'))
+const FacultyRequestStatus = React.lazy(() => import('./Faculty/RequestStatus'))
+const FacultyProfileSettings = React.lazy(() => import('./Faculty/ProfileSettings'))
 import { ProfileProvider as FacultyProfileProvider } from "./Faculty/ProfileContext"
 import { NotificationProvider as FacultyNotificationProvider } from "./Faculty/NotificationContext"
 
-import CoordinatorNavbar from "./Coordinator/components/Navbar" // Navigation bar for faculty users
-import CoordinatorDashboard from "./Coordinator/CoordinatorDashboard" // Manage Students Request page for faculty
-import CoordinatorApprovedRequest from "./Coordinator/ApprovedRequest" // Approved Requests of students
-import CoordinatorApplyReimbursement from "./Coordinator/ApplyReimbursement" // Main dashboard for faculty
-import CoordinatorProfileSettings from "./Coordinator/ProfileSettings" // Profile settings page for faculty
-import ChangePassword from "../../components/ChangePassword"
+ // Navigation bar for faculty users
+const CoordinatorDashboard = React.lazy(() => import('./Coordinator/CoordinatorDashboard'))
+ // Approved Requests of students
+ // Main dashboard for faculty
+ // Profile settings page for faculty
+const ChangePassword = React.lazy(() => import('../../components/ChangePassword'))
 
-import HODDashboard from "./Hod/HODDashboard"
+const HODDashboard = React.lazy(() => import('./Hod/HODDashboard'))
 
-import PrincipalDashboard from "./Principal/PrincipalDashboard"
+const PrincipalDashboard = React.lazy(() => import('./Principal/PrincipalDashboard'))
 
-import AccountsDashboard from "./Accounts/AccountsDashboard"
+const AccountsDashboard = React.lazy(() => import('./Accounts/AccountsDashboard'))
 
-import AdminDashboard from "./Admin/AdminDashboard"
-
-export default function Dashboard() {
-  const location = useLocation()
-  const { user } = useAuth()
+const AdminDashboard = React.lazy(() => import('./Admin/AdminDashboard'))
 
   const PageWrapper = ({ children, type = "fade" }) => {
     const transitions = {
@@ -68,6 +64,11 @@ export default function Dashboard() {
     )
   }
 
+
+export default function Dashboard() {
+  const location = useLocation()
+  const { user } = useAuth()
+
   React.useEffect(() => {
     if (location.pathname === "/logout") {
       toast.success("Logged out successfully")
@@ -76,6 +77,10 @@ export default function Dashboard() {
 
 
   const userRole = user?.role || "Student"
+  const targetRole = location.pathname.match(/^\/dashboard\/(faculty|coordinator|hod|principal|accounts|admin)(?:\/|$)/)?.[1]
+  if (targetRole && targetRole !== userRole.toLowerCase()) {
+    return <Navigate to={userRole === 'Student' ? '/dashboard' : '/dashboard/' + userRole.toLowerCase()} replace />
+  }
 
   // Admin users are restricted to /dashboard/admin only
   if (userRole === "Admin" && !location.pathname.startsWith("/dashboard/admin")) {
@@ -137,8 +142,6 @@ export default function Dashboard() {
   }
 
   if (location.pathname.startsWith("/dashboard/admin")) {
-    // For testing: allow admin dashboard to be accessed without login.
-    // Remove or guard this for production.
     return (
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, #8B5CF6 15%, white) 0%, white 40%)' }}>
         <AdminDashboard />

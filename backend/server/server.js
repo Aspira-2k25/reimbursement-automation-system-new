@@ -45,26 +45,15 @@ const KNOWN_WEAK_SECRETS = [
   'your_64_character_or_longer_random_secret_here_minimum_sixty_four_chars'
 ];
 
-// Validate REFRESH_TOKEN_SECRET
-if (process.env.JWT_SECRET === process.env.REFRESH_TOKEN_SECRET) {
-  console.warn('⚠️  REFRESH_TOKEN_SECRET should be different from JWT_SECRET for better security.');
-}
-
 if (process.env.NODE_ENV === 'production') {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < SECRET_MIN_LENGTH) {
     throw new Error(`JWT_SECRET must be at least ${SECRET_MIN_LENGTH} characters. Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`);
-  }
-  if (!process.env.REFRESH_TOKEN_SECRET || process.env.REFRESH_TOKEN_SECRET.length < SECRET_MIN_LENGTH) {
-    throw new Error(`REFRESH_TOKEN_SECRET must be at least ${SECRET_MIN_LENGTH} characters.`);
   }
 
   if (KNOWN_WEAK_SECRETS.includes(process.env.JWT_SECRET.toLowerCase())) {
     throw new Error('JWT_SECRET is a known weak/default value. Generate a secure random string.');
   }
-  if (KNOWN_WEAK_SECRETS.includes(process.env.REFRESH_TOKEN_SECRET.toLowerCase())) {
-    throw new Error('REFRESH_TOKEN_SECRET is a known weak/default value. Generate a secure random string.');
-  }
-  console.log('✅ JWT and Refresh secret validation passed');
+  console.log('✅ JWT secret validation passed');
 } else {
   // Development mode - warn but allow
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < SECRET_MIN_LENGTH ||
@@ -81,10 +70,13 @@ const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const { csrfProtection, csrfTokenHandler } = require('./middleware/csrf');
 const http = require('http');
-const { Server: IOServer } = require('socket.io');
+
 
 // Database/connectors
 const connectMongoDB = require('./config/mongo');
@@ -163,7 +155,7 @@ const corsOptions = {
     }
 
     console.warn(`CORS blocked origin: ${origin}`);
-    callback(new Error('Not allowed by CORS'));
+    callback(Object.assign(new Error('Not allowed by CORS'), { status: 403 }));
   },
   credentials: true, // Important: allow cookies to be sent
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -189,9 +181,18 @@ app.use(securityHeaders);
 // ============================================
 
 // General API rate limiting
+const requestLimitKey = req => {
+  const token = req.cookies?.auth_token || req.headers.authorization?.replace(/^Bearer /, '');
+  try {
+    const user = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    if (user.userId) return `user:${crypto.createHash('sha256').update(String(user.userId)).digest('hex')}`;
+  } catch (_) { /* Unauthenticated requests share an IP budget, with IPv6 normalization. */ }
+  return `ip:${ipKeyGenerator(req.ip)}`;
+};
 const limiter = rateLimit({
+  keyGenerator: requestLimitKey,
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100, // 100 requests per window
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 1000, // 100 requests per window
   message: {
     error: 'Too many requests',
     message: 'Please try again later.',
@@ -203,6 +204,12 @@ const limiter = rateLimit({
   skip: (req) => req.path === '/' && req.method === 'GET'
 });
 app.use('/api/', limiter);
+app.use('/api', (req, res, next) => {
+  if (process.env.MAINTENANCE_MODE === 'true' && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return res.status(503).json({ error: 'Applications are temporarily read-only for maintenance.' });
+  }
+  next();
+});
 
 // Strict rate limiting for authentication endpoints
 const authLimiter = rateLimit({
@@ -222,6 +229,7 @@ app.use('/api/auth/google', authLimiter);
 
 // Form submission rate limiting
 const formSubmitLimiter = rateLimit({
+  keyGenerator: requestLimitKey,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10, // 10 form submissions per hour
   message: {
@@ -248,7 +256,13 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false
 });
 app.use('/api/password/forgot-password', passwordResetLimiter);
-app.use('/api/password/send-otp', passwordResetLimiter);
+const accountOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 5, keyGenerator: requestLimitKey,
+  message: { error: 'Too many verification code requests. Please retry after 15 minutes.', retryAfter: 900 },
+  standardHeaders: true, legacyHeaders: false
+});
+app.use('/api/password/send-otp', accountOtpLimiter);
+app.use('/api/auth/username/send-otp', accountOtpLimiter);
 app.use('/api/password/verify-otp', passwordResetLimiter);
 app.use('/api/password/reset-password', passwordResetLimiter);
 
@@ -327,6 +341,10 @@ app.get('/api/users',
 // Cache-Control middleware for read-only GET endpoints
 // Short cache to reduce redundant DB hits while keeping data fresh
 app.use('/api', (req, res, next) => {
+  if (req.originalUrl.split('?')[0] === '/api/csrf-token') {
+    res.set('Cache-Control', 'no-store');
+    return next();
+  }
   if (req.method === 'GET') {
     // IMPORTANT:
     // - Any request that includes cookies or Authorization is user-specific. Never cache it.
@@ -348,6 +366,11 @@ app.use('/api', (req, res, next) => {
 
 // Activity logging middleware (captures all non-admin user actions)
 const activityLogger = require('./middleware/activityLogger');
+app.use('/api', async (req, res, next) => {
+  if (['/csrf-token', '/csp-report'].includes(req.path)) return next();
+  try { await connectMongoDB(); next(); }
+  catch (_) { res.status(503).json({ error: 'Database service unavailable. Please retry.' }); }
+});
 app.use('/api', activityLogger);
 
 // Auth routes (CSRF exempt for login, but protected for logout)
@@ -357,10 +380,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/password', passwordRoutes);
 
 // Uploads (local or specific upload route)
-app.use('/api/uploads', uploadRoutes);
+app.use('/api/uploads', csrfProtection, uploadRoutes);
 
 // Cloudinary / user upload controller (keeps the same path used in your second file)
-app.use('/api/users', uploadRoute);
+app.use('/api/users', csrfProtection, uploadRoute);
 
 // Forms (MongoDB) - Apply CSRF protection to state-changing routes
 app.use('/api/forms', csrfProtection, formRoutes);
@@ -369,10 +392,11 @@ app.use('/api/forms', csrfProtection, formRoutes);
 app.use('/api/student-forms', csrfProtection, studentFormRoutes);
 
 // Notification routes
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/notifications', csrfProtection, notificationRoutes);
 
 // Announcement routes (dynamic reminder banner)
-app.use('/api/announcements', announcementRoutes);
+app.use('/api/announcements', csrfProtection, announcementRoutes);
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 // CSRF token endpoint for frontend (uses new custom handler)
 app.get('/api/csrf-token', csrfTokenHandler);
@@ -548,35 +572,30 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ----------------- Server bootstrap -----------------
+// In serverless / test environments we export the app and let the platform
+// handle the HTTP server.
+// IMPORTANT: In serverless, we should NOT connect to databases on module load
+// because: 1) It slows down cold starts, 2) Connections might fail and crash the function
+// Instead, connect lazily when routes are actually called (lazy initialization)
+// Only connect immediately if running as a traditional server (local dev)
+if (require.main === module) {
+  connectMongoDB().catch((err) => {
+    console.error('❌ Failed to connect MongoDB on startup', err);
+    // In local dev, we can exit if DB connection fails
+    process.exit(1);
+  });
+}
+// In serverless, MongoDB will connect on first route that needs it
+
 // When running this file directly (local dev), start the HTTP server
 async function startServer() {
   try {
-    try {
-      await connectMongoDB();
-    } catch (dbErr) {
-      console.warn('⚠️  MongoDB connection failed on startup. Please update your MONGO_URI in .env with valid credentials.');
-    }
-
+    await connectMongoDB();
     const PORT = process.env.PORT || 5000;
 
     const server = http.createServer(app);
-    // Socket.io for real-time logs
-    const io = new IOServer(server, {
-      cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-        methods: ['GET', 'POST'],
-        credentials: true
-      }
-    });
-
-    // Attach socket instance to logger so logger can emit events
-    try {
-      logger.attachSocket(io);
-    } catch (e) {
-      console.warn('Could not attach socket to logger', e.message || e);
-    }
-
-    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
     // ── Graceful shutdown ──
     const gracefulShutdown = async (signal) => {
@@ -602,6 +621,8 @@ async function startServer() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (err) {
     console.error('❌ Failed to start server', err);
+    // In local dev it's okay to exit; in serverless this path isn't used.
+    process.exit(1);
   }
 }
 

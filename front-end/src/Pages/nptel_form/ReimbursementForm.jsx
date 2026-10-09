@@ -19,17 +19,17 @@ const sanitizeInput = (input) => {
 
 // SECURITY: Validate file type and size (1MB limit)
 const validateFile = (file) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'];
+  const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
   const maxSize = 1 * 1024 * 1024; // 1MB
 
   if (!file) return { valid: true };
 
   if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'Only JPEG, PNG, WebP, and PDF files are allowed' };
+    return { valid: false, error: 'Only JPEG, PNG and PDF files are allowed' };
   }
 
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 1MB' };
+    return { valid: false, error: 'File must be 1 MB or smaller' };
   }
 
   return { valid: true };
@@ -40,10 +40,10 @@ const ReimbursementForm = () => {
   const { user } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: '',
+    name: user?.name || '',
     facultyId: '',
     department: '',
-    email: '',
+    email: user?.email || '',
     amount: '',
     accountName: '',
     ifscCode: '',
@@ -62,10 +62,11 @@ const ReimbursementForm = () => {
 
   React.useEffect(() => {
     const department = resolveDepartment(user?.department);
+    setFormData(prev => ({ ...prev, name: prev.name || user?.name || '', email: user?.email || prev.email }));
     if (department) {
       setFormData(prev => ({ ...prev, department: department }));
     }
-  }, [user?.department]);
+  }, [user?.department, user?.name, user?.email]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -153,7 +154,17 @@ const ReimbursementForm = () => {
       }
     }
 
+    for (const [field, ref] of [['nptelResult', nptelFileRef], ['idCard', idCardFileRef]]) {
+      const file = ref.current?.files[0];
+      if (!file) newErrors[field] = 'This document is required';
+      else {
+        const validation = validateFile(file);
+        if (!validation.valid) newErrors[field] = validation.error;
+      }
+    }
     setErrors(newErrors);
+    const firstInvalidField = Object.keys(newErrors)[0];
+    if (firstInvalidField) document.getElementById(firstInvalidField)?.focus();
     return Object.keys(newErrors).length === 0;
   };
 
@@ -334,8 +345,8 @@ const ReimbursementForm = () => {
 
 
   return (
-    <div className="min-h-screen bg-green-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+    <div className="min-h-screen bg-green-50 py-4 sm:py-8 px-3 sm:px-4">
+      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-4 sm:p-6">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
@@ -344,22 +355,22 @@ const ReimbursementForm = () => {
           Back
         </button>
         <div className="border-b border-gray-200 pb-4 mb-6 mt-2">
-          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4 sm:gap-0 mb-2">
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-2 sm:gap-0 mb-2">
 
             {/* Mobile Layout: Logos side by side above the text */}
             <div className="w-full flex justify-between px-2 sm:hidden">
-              <img src={apshahLogo} alt="A.P. Shah Logo" className="h-18 w-18 object-contain" />
-              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-16 w-16 object-contain" />
+              <img src={apshahLogo} alt="A.P. Shah Logo" className="h-10 w-10 object-contain" />
+              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-10 w-10 object-contain" />
             </div>
 
             {/* Desktop Layout: Left Logo */}
             <img src={apshahLogo} alt="A.P. Shah Logo" className="hidden sm:block h-20 w-20 object-contain" />
 
             <div className="flex-1 px-0 sm:px-4">
-              <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-800 leading-tight">
-                Department of Information Technology
+              <h1 className="text-base sm:text-2xl font-bold text-center text-gray-800 leading-tight">
+                A. P. Shah Institute of Technology
               </h1>
-              <h2 className="text-lg sm:text-xl font-semibold text-center text-gray-700 mt-2 leading-snug">
+              <h2 className="text-base sm:text-xl font-semibold text-center text-gray-700 mt-1 leading-snug">
                 Application for Faculty Reimbursement
               </h2>
             </div>
@@ -373,11 +384,11 @@ const ReimbursementForm = () => {
           <p>Date: {new Date().toLocaleDateString()}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form noValidate onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="bg-teal-50 p-4 rounded-md">
               <p className="text-sm text-teal-800 font-medium">
-                This is for NPTEL reimbursement application. Please fill all the required details accurately.
+                Maximum reimbursement: ₹1,500. Keep your NPTEL result and institute ID card ready; PDF, JPEG or PNG, up to 1 MB each.
               </p>
             </div>
           </div>
@@ -391,6 +402,8 @@ const ReimbursementForm = () => {
                   Name *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? 'name-error' : undefined}
                   type="text"
                   id="name"
                   name="name"
@@ -400,7 +413,7 @@ const ReimbursementForm = () => {
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
-                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                {errors.name && <p id="name-error" role="alert" className="text-red-600 text-sm mt-1">{errors.name}</p>}
               </div>
 
               {/* Faculty ID Field */}
@@ -409,6 +422,8 @@ const ReimbursementForm = () => {
                   Faculty ID *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.facultyId)}
+                  aria-describedby={errors.facultyId ? 'facultyId-error' : undefined}
                   type="text"
                   id="facultyId"
                   name="facultyId"
@@ -422,7 +437,7 @@ const ReimbursementForm = () => {
                       : 'border-gray-300'
                     }`}
                 />
-                {errors.facultyId && <p className="text-red-500 text-xs mt-1">{errors.facultyId}</p>}
+                {errors.facultyId && <p id="facultyId-error" role="alert" className="text-red-600 text-sm mt-1">{errors.facultyId}</p>}
               </div>
 
 
@@ -433,6 +448,8 @@ const ReimbursementForm = () => {
                   Department *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.department)}
+                  aria-describedby={errors.department ? 'department-error' : undefined}
                   type="text"
                   id="department"
                   name="department"
@@ -440,7 +457,7 @@ const ReimbursementForm = () => {
                   readOnly
                   className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
                 />
-                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
+                {errors.department && <p id="department-error" role="alert" className="text-red-600 text-sm mt-1">{errors.department}</p>}
               </div>
 
               {/* Email Field */}
@@ -449,8 +466,10 @@ const ReimbursementForm = () => {
                   Email *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                   type="email"
-                  id="email"
+                  id="email" readOnly
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -462,7 +481,7 @@ const ReimbursementForm = () => {
                       : 'border-gray-300'
                     }`}
                 />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                {errors.email && <p id="email-error" role="alert" className="text-red-600 text-sm mt-1">{errors.email}</p>}
               </div>
             </div>
           </div>
@@ -478,17 +497,19 @@ const ReimbursementForm = () => {
                   Academic Year *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.academicYear)}
+                  aria-describedby={errors.academicYear ? 'academicYear-error' : undefined}
                   type="text"
                   id="academicYear"
                   name="academicYear"
                   value={formData.academicYear}
                   onChange={handleChange}
-                  placeholder="e.g. 2023-2024"
+                  placeholder={`e.g. ${new Date().getFullYear()}-${new Date().getFullYear() + 1}`}
                   required
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.academicYear ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
-                {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
+                {errors.academicYear && <p id="academicYear-error" role="alert" className="text-red-600 text-sm mt-1">{errors.academicYear}</p>}
               </div>
 
               {/* Amount Field */}
@@ -497,6 +518,8 @@ const ReimbursementForm = () => {
                   Amount (₹) *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.amount)}
+                  aria-describedby={errors.amount ? 'amount-error' : undefined}
                   type="number"
                   id="amount"
                   name="amount"
@@ -514,7 +537,7 @@ const ReimbursementForm = () => {
                       : 'border-gray-300'
                     }`}
                 />
-                {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                {errors.amount && <p id="amount-error" role="alert" className="text-red-600 text-sm mt-1">{errors.amount}</p>}
                 <p className="text-xs text-gray-500 mt-1">Amount must be between ₹1 and ₹1500</p>
               </div>
             </div>
@@ -550,6 +573,8 @@ const ReimbursementForm = () => {
                   Account Name *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.accountName)}
+                  aria-describedby={errors.accountName ? 'accountName-error' : undefined}
                   type="text"
                   id="accountName"
                   name="accountName"
@@ -559,7 +584,7 @@ const ReimbursementForm = () => {
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountName ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
-                {errors.accountName && <p className="text-red-500 text-xs mt-1">{errors.accountName}</p>}
+                {errors.accountName && <p id="accountName-error" role="alert" className="text-red-600 text-sm mt-1">{errors.accountName}</p>}
               </div>
 
               <div>
@@ -567,6 +592,8 @@ const ReimbursementForm = () => {
                   IFSC Code *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.ifscCode)}
+                  aria-describedby={errors.ifscCode ? 'ifscCode-error' : undefined}
                   type="text"
                   id="ifscCode"
                   name="ifscCode"
@@ -577,7 +604,7 @@ const ReimbursementForm = () => {
                     }`}
                   placeholder="e.g., SBIN0000123"
                 />
-                {errors.ifscCode && <p className="text-red-500 text-xs mt-1">{errors.ifscCode}</p>}
+                {errors.ifscCode && <p id="ifscCode-error" role="alert" className="text-red-600 text-sm mt-1">{errors.ifscCode}</p>}
               </div>
 
               <div className="md:col-span-2">
@@ -585,6 +612,8 @@ const ReimbursementForm = () => {
                   Account Number *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.accountNumber)}
+                  aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
                   type="text"
                   id="accountNumber"
                   name="accountNumber"
@@ -594,7 +623,7 @@ const ReimbursementForm = () => {
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.accountNumber ? 'border-red-500' : 'border-gray-300'
                     }`}
                 />
-                {errors.accountNumber && <p className="text-red-500 text-xs mt-1">{errors.accountNumber}</p>}
+                {errors.accountNumber && <p id="accountNumber-error" role="alert" className="text-red-600 text-sm mt-1">{errors.accountNumber}</p>}
               </div>
             </div>
           </div>
@@ -604,6 +633,8 @@ const ReimbursementForm = () => {
               NPTEL Course Name <span className="text-gray-900 font-bold">*</span>
             </label>
             <input
+                  aria-invalid={Boolean(errors.courseName)}
+                  aria-describedby={errors.courseName ? 'courseName-error' : undefined}
               type="text"
               id="courseName"
               name="courseName"
@@ -613,7 +644,7 @@ const ReimbursementForm = () => {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.courseName ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Enter NPTEL course name"
             />
-            {errors.courseName && <p className="text-red-500 text-xs mt-1">{errors.courseName}</p>}
+            {errors.courseName && <p id="courseName-error" role="alert" className="text-red-600 text-sm mt-1">{errors.courseName}</p>}
           </div>
 
           <div className="border-t border-gray-200 pt-4">
@@ -621,6 +652,8 @@ const ReimbursementForm = () => {
               NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span>
             </label>
             <input
+                  aria-invalid={Boolean(errors.marks)}
+                  aria-describedby={errors.marks ? 'marks-error' : undefined}
               type="number"
               id="marks"
               name="marks"
@@ -634,7 +667,7 @@ const ReimbursementForm = () => {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.marks ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Enter your NPTEL course marks"
             />
-            {errors.marks && <p className="text-red-500 text-xs mt-1">{errors.marks}</p>}
+            {errors.marks && <p id="marks-error" role="alert" className="text-red-600 text-sm mt-1">{errors.marks}</p>}
             <p className="text-xs text-gray-500 mt-1">Enter marks between 0 and 100</p>
           </div>
 
@@ -647,7 +680,7 @@ const ReimbursementForm = () => {
           {/* Document Upload Section */}
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-lg font-medium text-gray-800 mb-4">
-              Supporting Documents (pdf)
+              Supporting Documents (PDF, JPEG or PNG)
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -660,6 +693,8 @@ const ReimbursementForm = () => {
                   Upload NPTEL Result *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.nptelResult)}
+                  aria-describedby={errors.nptelResult ? 'nptelResult-error' : undefined}
                   type="file"
                   id="nptelResult"
                   name="nptelResult"
@@ -668,6 +703,7 @@ const ReimbursementForm = () => {
                   required
                   onChange={(e) => {
                     const file = e.target.files[0];
+                    setErrors(previous => ({ ...previous, [e.target.name]: '' }));
                     if (file) {
                       const validation = validateFile(file);
                       if (!validation.valid) {
@@ -683,6 +719,7 @@ const ReimbursementForm = () => {
                    hover:file:bg-teal-100"
                 />
                 <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
+                {errors.nptelResult && <p id="nptelResult-error" role="alert" className="text-red-600 text-sm mt-1">{errors.nptelResult}</p>}
 
               </div>
 
@@ -695,6 +732,8 @@ const ReimbursementForm = () => {
                   Upload Faculty ID Card *
                 </label>
                 <input
+                  aria-invalid={Boolean(errors.idCard)}
+                  aria-describedby={errors.idCard ? 'idCard-error' : undefined}
                   type="file"
                   id="idCard"
                   name="idCard"
@@ -703,6 +742,7 @@ const ReimbursementForm = () => {
                   required
                   onChange={(e) => {
                     const file = e.target.files[0];
+                    setErrors(previous => ({ ...previous, [e.target.name]: '' }));
                     if (file) {
                       const validation = validateFile(file);
                       if (!validation.valid) {
@@ -718,6 +758,7 @@ const ReimbursementForm = () => {
                    hover:file:bg-teal-100"
                 />
                 <p className="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG — Max 1MB</p>
+                {errors.idCard && <p id="idCard-error" role="alert" className="text-red-600 text-sm mt-1">{errors.idCard}</p>}
 
               </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from "react";
 import { motion } from 'framer-motion';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
@@ -39,12 +39,6 @@ export default function LoginPage() {
       const role = (user?.role || '').toLowerCase();
       if (role === 'admin') {
         navigate('/dashboard/admin', { replace: true });
-      } else if (role === 'principal') {
-        navigate('/dashboard/principal', { replace: true });
-      } else if (role === 'hod') {
-        navigate('/dashboard/hod', { replace: true });
-      } else if (role === 'accounts') {
-        navigate('/dashboard/accounts', { replace: true });
       } else if (role === 'coordinator') {
         navigate('/dashboard/coordinator', { replace: true });
       } else if (role === 'faculty') {
@@ -147,12 +141,13 @@ export default function LoginPage() {
               )}
               {/* Name Input */}
               <div className="relative">
-                <User className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
+                <User className={`absolute left-3 sm:left-4 bottom-4  w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
+                <label htmlFor="login-username" className="block mb-2 text-sm font-medium text-slate-700">Username</label>
                 <input
                   type="text"
                   placeholder="Username"
-                  name="username"
+                  id="login-username" name="username"
                   autoComplete="username"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
@@ -164,12 +159,13 @@ export default function LoginPage() {
 
               {/* Email Input */}
               <div className="relative">
-                <Mail className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
+                <Mail className={`absolute left-3 sm:left-4 top-1/2  w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
+                <label htmlFor="login-email" className="block mb-2 text-sm font-medium text-slate-700">Email</label>
                 <input
                   type="email"
                   placeholder="Email"
-                  name="email"
+                  id="login-email" name="email"
                   autoComplete="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
@@ -181,12 +177,13 @@ export default function LoginPage() {
 
               {/* Password Input */}
               <div className="relative">
-                <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
+                <Lock className={`absolute left-3 sm:left-4 top-1/2  w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
+                <label htmlFor="login-password" className="block mb-2 text-sm font-medium text-slate-700">Password</label>
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
-                  name="password"
+                  id="login-password" name="password"
                   autoComplete="current-password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
@@ -196,8 +193,9 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors duration-200 focus:outline-none"
+                  className="absolute right-3 sm:right-4 bottom-4  text-gray-400 hover:text-[#3B945E] transition-colors duration-200 focus:outline-none"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />

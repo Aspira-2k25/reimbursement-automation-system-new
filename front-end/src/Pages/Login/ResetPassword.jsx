@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -149,7 +149,7 @@ export default function ResetPassword() {
                   {/* New Password */}
                   <div className="relative">
                     <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'newPassword' ? 'text-[#3B945E]' : 'text-gray-400'}`} />
-                    <input
+                    <label className="block text-sm font-medium text-slate-700 mb-2">New password<input
                       type={showPassword.new ? "text" : "password"}
                       placeholder="New Password"
                       value={formData.newPassword}
@@ -159,7 +159,7 @@ export default function ResetPassword() {
                       className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                       required
                       minLength={6}
-                    />
+                    /></label>
                     <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))} className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors duration-200 focus:outline-none">
                       {showPassword.new ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
@@ -168,7 +168,7 @@ export default function ResetPassword() {
                   {/* Confirm Password */}
                   <div className="relative">
                     <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'confirmPassword' ? 'text-[#3B945E]' : 'text-gray-400'}`} />
-                    <input
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Confirm new password<input
                       type={showPassword.confirm ? "text" : "password"}
                       placeholder="Confirm Password"
                       value={formData.confirmPassword}
@@ -178,7 +178,7 @@ export default function ResetPassword() {
                       className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                       required
                       minLength={6}
-                    />
+                    /></label>
                     <button type="button" onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))} className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors duration-200 focus:outline-none">
                       {showPassword.confirm ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>

@@ -2,10 +2,11 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import react from 'eslint-plugin-react'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'node_modules']),
+  globalIgnores(['dist']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -22,20 +23,14 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
+    plugins: { react },
+    settings: { react: { version: 'detect' } },
     rules: {
-      'no-unused-vars': [
-        'warn',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^([A-Z_]|motion|React|user|error|Icon)',
-          ignoreRestSiblings: true,
-        },
-      ],
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-      'no-useless-escape': 'warn',
+      'react/jsx-uses-vars': 'error',
+      'no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true,
+        allowExportNames: ['useAuth', 'useProfile', 'useHODContext', 'usePrincipalContext', 'useAccountsContext', 'useAdminContext', 'useNotificationContext'] }],
     },
   },
+  { files: ['vite.config.js', 'eslint.config.js'], languageOptions: { globals: globals.node } },
 ])

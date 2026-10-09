@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 
 // Cache connection state across serverless invocations
 let isConnected = false;
+let connectionPromise = null;
 
 const connectMongoDB = async () => {
   // Reuse existing connection if already established
@@ -20,7 +21,11 @@ const connectMongoDB = async () => {
   }
 
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    if (!connectionPromise) {
+      connectionPromise = mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 })
+        .finally(() => { connectionPromise = null; });
+    }
+    const conn = await connectionPromise;
 
     isConnected = conn.connection.readyState === 1;
     console.log("MongoDB connected successfully ✅");

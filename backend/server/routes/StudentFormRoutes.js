@@ -11,69 +11,53 @@ const upload = require("../middleware/multer");
 const { validateUploadedFiles } = require("../middleware/multer");
 const { generateApplicationId } = require("../utils/applicationIdGenerator");
 const notificationService = require('../utils/notificationService');
+const { DEPARTMENT_LIST } = require('../constants/statusEnums');
 const dbUtils = require('../utils/database');
-const { sanitizeString, sanitizeApplicationId, isValidObjectId, DEPARTMENT_ALIASES, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
+const { sanitizeApplicationId, isValidObjectId, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
 
+
+const { applicantBody, validateSubmission, validateEdit, ownerSummary, paginatedForms } = require('../utils/formPolicy');
+
+const documentKinds = ['nptelResult', 'idCard'];
+function replacementDocuments(existing, uploads) {
+  const documents = (existing || []).map((document, index) => ({
+    ...(document.toObject ? document.toObject() : document),
+    kind: document.kind || (existing.length === 2 ? documentKinds[index] : undefined)
+  }));
+  const obsolete = [];
+  for (const [index, result] of uploads.entries()) {
+    if (!result) continue;
+    const kind = documentKinds[index];
+    const slot = documents.findIndex(document => document.kind === kind);
+    const replacement = cloudinary.toDocument(result, kind);
+    if (slot < 0) documents.push(replacement);
+    else { obsolete.push(documents[slot]); documents[slot] = replacement; }
+  }
+  return { documents, obsolete };
+}
+function ambiguousDocuments(form, req) {
+  return req.files && Object.values(req.files).flat().length && form.documents?.length === 1 && !form.documents[0].kind;
+}
 
 // POST /api/student-forms/submit
 router.post(
   "/submit",
   authMiddleware.verifyToken,
+  authMiddleware.requireRole(['Student']),
   upload.fields([
     { name: "nptelResult", maxCount: 1 },
     { name: "idCard", maxCount: 1 },
   ]),
   validateUploadedFiles, //<<- validate file content using magic numbers
+  validateSubmission(true),
+  require('../middleware/submissionQuota'),
   async (req, res) => {
+    const stagedUploads = [];
+    let committed = false;
     try {
       const userId = req.user.userId || req.user.email;
 
       if (!userId) return res.status(400).json({ error: "User ID not found in token" });
-
-      // ── Daily submission limit: max 3 per student per day ──
-      const MAX_DAILY_SUBMISSIONS = 3;
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const todayCount = await StudentForm.countDocuments({
-        userId: String(userId),
-        createdAt: { $gte: todayStart }
-      });
-
-      if (todayCount >= MAX_DAILY_SUBMISSIONS) {
-        return res.status(429).json({
-          error: "Daily submission limit reached",
-          message: `Students can submit a maximum of ${MAX_DAILY_SUBMISSIONS} forms per day. You have already submitted ${todayCount} today.`
-        });
-      }
-
-      // Upload received files to Cloudinary in parallel (if present)
-      const uploadPromises = [];
-      if (req.files?.nptelResult?.[0]) {
-        uploadPromises.push(
-          uploadFile(req.files.nptelResult[0], {
-            folder: "reimbursement-Forms/Student_Form",
-            resource_type: "auto",
-            use_filename: true,
-            unique_filename: false
-          })
-        );
-      } else {
-        uploadPromises.push(Promise.resolve(null));
-      }
-      if (req.files?.idCard?.[0]) {
-        uploadPromises.push(
-          uploadFile(req.files.idCard[0], {
-            folder: "reimbursement-Forms/Student_Form",
-            resource_type: "auto",
-            use_filename: true,
-            unique_filename: false
-          })
-        );
-      } else {
-        uploadPromises.push(Promise.resolve(null));
-      }
-      const [nptelResultUpload, idCardUpload] = await Promise.all(uploadPromises);
 
       // Validate required fields before saving
       const requiredFields = ['name', 'studentId', 'division', 'email'];
@@ -87,15 +71,15 @@ router.post(
       }
 
       // Parse numeric fields — preserving EXACT user input without rounding
-      const amount = req.body.amount ? Number(req.body.amount) : undefined;
-      const marks = req.body.marks ? Number(req.body.marks) : undefined;
+      const amount = req.body.amount !== undefined ? Number(req.body.amount) : undefined;
+      const marks = req.body.marks !== undefined ? Number(req.body.marks) : undefined;
 
       // Generate globally unique Application ID (atomic counter — no retries needed)
       // Format: S-IT-NPT-2026-001 (Student, IT Dept, NPTEL, 2026, Global Sequence 1)
       const tokenDepartment = req.user?.department;
       const bodyDepartment = req.body.department;
       const normalizedDepartment = getNormalizedDepartment(tokenDepartment || bodyDepartment);
-      if (!normalizedDepartment) {
+      if (!normalizedDepartment || !DEPARTMENT_LIST.includes(normalizedDepartment)) {
         return res.status(400).json({
           error: 'Department is not configured for your account. Please contact administrator.'
         });
@@ -107,8 +91,40 @@ router.post(
         department: normalizedDepartment
       });
 
+      // Upload received files to Cloudinary in parallel (if present)
+      const uploadPromises = [];
+      if (req.files?.nptelResult?.[0]) {
+        uploadPromises.push(
+          uploadFile(req.files.nptelResult[0], {
+            ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
+            folder: "reimbursement-Forms/Student_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: true
+          })
+        );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
+      }
+      if (req.files?.idCard?.[0]) {
+        uploadPromises.push(
+          uploadFile(req.files.idCard[0], {
+            ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
+            folder: "reimbursement-Forms/Student_Form",
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: true
+          })
+        );
+      } else {
+        uploadPromises.push(Promise.resolve(null));
+      }
+      const [nptelResultUpload, idCardUpload] = await cloudinary.uploadBatch(uploadPromises);
+
       const newStudentForm = new StudentForm({
-        ...req.body,
+        ...applicantBody(req.body),
         department: normalizedDepartment,
         amount,
         marks,
@@ -117,15 +133,17 @@ router.post(
         status: "Pending",
         documents: [
           nptelResultUpload
-            ? { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id }
+            ? cloudinary.toDocument(nptelResultUpload, 'nptelResult')
             : null,
           idCardUpload
-            ? { url: idCardUpload.secure_url, publicId: idCardUpload.public_id }
+            ? cloudinary.toDocument(idCardUpload, 'idCard')
             : null,
         ].filter(Boolean),
       });
 
       await newStudentForm.save();
+      committed = true;
+      req.submissionSaved = true;
 
       // submission notification
       await notificationService.createNotification({
@@ -140,12 +158,14 @@ router.post(
         userName: req.body.name || req.user.username || 'Student',
         studentId: req.body.studentId,
         amount: req.body.amount,
-      }, true); // Send email notification
+      }, true).catch(error => console.error('Notification deferred:', error.message)); // Do not fail a committed application
 
       res.status(201).json({ message: "Student form submitted successfully!", form: newStudentForm });
     } catch (err) {
       console.error("Error saving student form:", err);
-      res.status(500).json({ error: "Failed to save student form", details: err.message });
+      res.status(500).json({ error: "Failed to save student form" });
+    } finally {
+      if (!committed) await cloudinary.rollbackUploads(stagedUploads);
     }
   }
 );
@@ -162,14 +182,15 @@ router.get(
       }
 
       // Use direct string match (after normalizeUserIds migration)
-      const forms = await StudentForm.find({
+      const result = await paginatedForms(StudentForm, {
         userId: String(userId)
-      }).select('-documents').sort({ createdAt: -1 });
+      }, req, { sort: { createdAt: -1 } });
 
-      return res.json({ forms });
+      result.summary = await ownerSummary(StudentForm, { userId: String(userId) });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching user forms:", err);
-      res.status(500).json({ error: "Failed to fetch user forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch user forms" });
     }
   }
 );
@@ -190,12 +211,12 @@ router.get(
       const deptFilter = buildDepartmentFilter(userRole, req.user.department);
       const query = { $and: [{ status: "Pending" }, deptFilter] };
 
-      const forms = await StudentForm.find(query).select('-documents').sort({ createdAt: -1 });
+      const result = await paginatedForms(StudentForm, query, req, { sort: { createdAt: -1 } });
 
-      return res.json({ forms });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching pending forms:", err);
-      res.status(500).json({ error: "Failed to fetch pending forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch pending forms" });
     }
   }
 );
@@ -220,12 +241,12 @@ router.get(
           deptFilter
         ]
       };
-      const forms = await StudentForm.find(query).select('-documents').sort({ updatedAt: -1 });
+      const result = await paginatedForms(StudentForm, query, req, { sort: { updatedAt: -1 } });
 
-      return res.json({ forms });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching approved forms:", err);
-      res.status(500).json({ error: "Failed to fetch approved forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch approved forms" });
     }
   }
 );
@@ -267,12 +288,12 @@ router.get(
         ]
       };
 
-      const forms = await StudentForm.find(query).select('-documents').sort({ updatedAt: -1 });
+      const result = await paginatedForms(StudentForm, query, req, { sort: { updatedAt: -1 } });
 
-      return res.json({ forms });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching rejected forms:", err);
-      res.status(500).json({ error: "Failed to fetch rejected forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch rejected forms" });
     }
   }
 );
@@ -290,14 +311,14 @@ router.get(
       }
 
       // Fetch forms with status "Under Principal" (awaiting principal approval)
-      const forms = await StudentForm.find({
+      const result = await paginatedForms(StudentForm, {
         status: "Under Principal"
-      }).select('-documents').sort({ updatedAt: -1 });
+      }, req, { sort: { updatedAt: -1 } });
 
-      return res.json({ forms });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching principal forms:", err);
-      res.status(500).json({ error: "Failed to fetch principal forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch principal forms" });
     }
   }
 );
@@ -319,18 +340,18 @@ router.get(
       // - "Approved" (awaiting reimbursement)
       // - "Reimbursed" (successfully processed by Accounts)
       // - "Rejected" by Accounts only (not rejections from other levels)
-      const forms = await StudentForm.find({
+      const result = await paginatedForms(StudentForm, {
         $or: [
           { status: "Approved" },
           { status: "Reimbursed" },
           { status: "Rejected", rejectedBy: "Accounts" }
         ]
-      }).select('-documents').sort({ updatedAt: -1 });
+      }, req, { sort: { updatedAt: -1 } });
 
-      return res.json({ forms });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching accounts forms:", err);
-      res.status(500).json({ error: "Failed to fetch accounts forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch accounts forms" });
     }
   }
 );
@@ -361,12 +382,12 @@ router.get(
         ]
       };
 
-      const forms = await StudentForm.find(query).select('-documents').sort({ updatedAt: -1 });
+      const result = await paginatedForms(StudentForm, query, req, { sort: { updatedAt: -1 } });
 
-      return res.json({ forms });
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching HOD forms:", err);
-      res.status(500).json({ error: "Failed to fetch HOD forms", details: err.message });
+      res.status(500).json({ error: "Failed to fetch HOD forms" });
     }
   }
 );
@@ -385,6 +406,8 @@ router.post(
   ]),
   validateUploadedFiles, //<<- validate file content using magic numbers
   async (req, res) => {
+    const stagedUploads = [];
+    let committed = false;
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
       const rawId = req.params.id;
@@ -410,8 +433,7 @@ router.post(
       const userId = req.user.userId || req.user.email || req.user.id;
       const userRole = req.user.role?.toLowerCase();
       const isOwner = String(form.userId) === String(userId);
-      const isAdmin = ['coordinator', 'hod', 'principal', 'accounts', 'admin'].includes(userRole);
-      if (!isOwner && !isAdmin) {
+      if (!isOwner) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
@@ -420,9 +442,11 @@ router.post(
       }
 
       // Only owner can update documents when form is Pending
-      if (form.status !== 'Pending' && !isAdmin) {
+      if (form.status !== 'Pending') {
         return res.status(403).json({ error: "Cannot update documents for this form status" });
       }
+
+      if (ambiguousDocuments(form, req)) return res.status(409).json({ error: 'Legacy attachment type is unknown. Contact administrator before replacing documents.' });
 
       let nptelResultUpload = null;
       let idCardUpload = null;
@@ -430,10 +454,12 @@ router.post(
       if (req.files?.nptelResult?.[0]) {
         docUploadPromises.push(
           uploadFile(req.files.nptelResult[0], {
+            ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
             folder: "reimbursement-Forms/Student_Form",
-            resource_type: "auto",
+            resource_type: "image",
             use_filename: true,
-            unique_filename: false,
+            unique_filename: true,
           })
         );
       } else {
@@ -442,32 +468,49 @@ router.post(
       if (req.files?.idCard?.[0]) {
         docUploadPromises.push(
           uploadFile(req.files.idCard[0], {
+            ownerId: String(req.user.userId || req.user.email),
+            tracking: stagedUploads,
             folder: "reimbursement-Forms/Student_Form",
-            resource_type: "auto",
+            resource_type: "image",
             use_filename: true,
-            unique_filename: false,
+            unique_filename: true,
           })
         );
       } else {
         docUploadPromises.push(Promise.resolve(null));
       }
-      [nptelResultUpload, idCardUpload] = await Promise.all(docUploadPromises);
+      [nptelResultUpload, idCardUpload] = await cloudinary.uploadBatch(docUploadPromises);
 
-      const documents = [...(form.documents || [])];
-      if (nptelResultUpload) {
-        documents[0] = { url: nptelResultUpload.secure_url, publicId: nptelResultUpload.public_id };
-      }
-      if (idCardUpload) {
-        documents[1] = { url: idCardUpload.secure_url, publicId: idCardUpload.public_id };
-      }
+      const { documents, obsolete } = replacementDocuments(form.documents, [nptelResultUpload, idCardUpload]);
 
-      return res.json({ documents });
+      const updated = await StudentForm.findOneAndUpdate(
+        { _id: form._id, userId: String(userId), status: 'Pending', updatedAt: form.updatedAt },
+        { $set: { documents } }, { new: true, runValidators: true });
+      if (!updated) return res.status(409).json({ error: 'Application changed. Refresh and retry.' });
+      committed = true;
+      for (const document of obsolete) {
+        await cloudinary.deleteDocument(document, form.userId).catch(error => console.error('Deferred cleanup:', error.message));
+      }
+      return res.json({ documents: require('../utils/cloudinary').serializeDocuments(updated.documents) });
     } catch (err) {
       console.error("Error uploading documents for student form:", err);
-      res.status(500).json({ error: "Failed to upload documents", details: err.message });
+      res.status(500).json({ error: "Failed to upload documents" });
+    } finally {
+      if (!committed) await cloudinary.rollbackUploads(stagedUploads);
     }
   }
 );
+
+
+router.get('/history', authMiddleware.verifyToken, async (req, res) => {
+  try {
+    const role = req.user.role?.toLowerCase();
+    const allowed = ['student', 'coordinator', 'hod', 'principal', 'accounts'];
+    if (!allowed.includes(role)) return res.status(403).json({ error: 'Forbidden' });
+    const query = { userId: String(req.user.userId || req.user.email) };
+    return res.json(await paginatedForms(StudentForm, query, req));
+  } catch (_) { res.status(503).json({ error: 'Applications unavailable. Please retry.' }); }
+});
 
 // GET /api/student-forms/:id - fetch a specific form by Mongo _id or applicationId
 router.get(
@@ -519,7 +562,7 @@ router.get(
       return res.json({ form });
     } catch (err) {
       console.error("Error fetching form by id:", err);
-      res.status(500).json({ error: "Failed to fetch form", details: err.message });
+      res.status(500).json({ error: "Failed to fetch form" });
     }
   }
 );
@@ -528,6 +571,7 @@ router.get(
 router.put(
   "/:id",
   authMiddleware.verifyToken,
+  validateEdit,
   async (req, res) => {
     try {
       // Sanitize the ID parameter to prevent NoSQL injection
@@ -587,7 +631,7 @@ router.put(
             'name', 'studentId', 'division', 'email', 'academicYear',
             'amount', 'accountName', 'ifscCode', 'accountNumber',
             'courseName', 'marks',
-            'remarks', 'documents', 'reimbursementType'
+            'remarks', 'reimbursementType'
           ];
         } else {
           return res.status(403).json({ error: 'Form can no longer be edited. Once an approver acts on a form, editing is permanently locked.' });
@@ -650,6 +694,10 @@ router.put(
           updates[field] = req.body[field];
         }
       });
+      if (userRole === 'principal' && req.body.status) {
+        updates.reviewedBy = String(req.user.userId || req.user.email);
+        updates.reviewedAt = new Date();
+      }
 
 
 
@@ -683,12 +731,13 @@ router.put(
       // Update updatedAt timestamp
       updates.updatedAt = new Date();
 
-      const updatedForm = await StudentForm.findByIdAndUpdate(
-        formId,
+      const updatedForm = await StudentForm.findOneAndUpdate(
+        { _id: formId, status: form.status, updatedAt: form.updatedAt },
         { $set: updates },
         { new: true, runValidators: true }
       );
 
+      if (!updatedForm) return res.status(409).json({ error: 'Application changed. Refresh and retry.' });
       // Check if status changed and trigger notifications
       if (updates.status && updates.status !== form.status) {
         const newStatus = updates.status;
@@ -770,7 +819,7 @@ router.put(
       return res.json({ form: updatedForm });
     } catch (err) {
       console.error("Error updating form:", err);
-      res.status(500).json({ error: "Failed to update form", details: err.message });
+      res.status(500).json({ error: "Failed to update form" });
     }
   }
 );
@@ -822,20 +871,22 @@ router.delete(
         });
       }
 
+      const deleted = await StudentForm.findOneAndDelete({ _id: form._id, userId: form.userId, status: form.status, updatedAt: form.updatedAt });
+      if (!deleted) return res.status(409).json({ error: 'Application changed. Refresh and retry.' });
       // Delete associated files from Cloudinary
       if (form.documents) {
         for (const doc of form.documents) {
           if (doc.publicId) {
-            await cloudinary.uploader.destroy(doc.publicId);
+            await require('../utils/cloudinary').deleteDocument(doc, form.userId).catch(error => console.error('Deferred document cleanup:', error.message));
           }
         }
       }
 
-      await StudentForm.findByIdAndDelete(form._id);
+
       return res.json({ message: "Form deleted successfully" });
     } catch (err) {
       console.error("Error deleting form:", err);
-      res.status(500).json({ error: "Failed to delete form", details: err.message });
+      res.status(500).json({ error: "Failed to delete form" });
     }
   }
 );

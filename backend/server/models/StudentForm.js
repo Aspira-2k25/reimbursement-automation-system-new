@@ -14,12 +14,13 @@ const StudentFormSchema = new mongoose.Schema({
     department: { type: String }, // Department for HOD filtering
     email: { type: String, required: true },
     academicYear: { type: String },
-    amount: { type: Number },
+    amount: { type: Number, required: true, min: 0.01, max: require('../utils/formPolicy').MAX_AMOUNT,
+        validate: value => Number.isFinite(value) && Math.abs(value * 100 - Math.round(value * 100)) < 1e-6 },
     accountName: { type: String },
     ifscCode: { type: String },
     accountNumber: { type: String },
     courseName: { type: String, required: true }, // NPTEL Course Name for reimbursement
-    marks: { type: Number, required: true }, // NPTEL course marks (0-100)
+    marks: { type: Number, required: true, min: 0, max: 100 },
     reimbursementType: { type: String, default: "NPTEL" },
     status: { type: String, default: "Pending", enum: ["Pending", "Under Coordinator", "Under HOD", "Under Principal", "Approved", "Reimbursed", "Rejected"] },
     // Track which role rejected the application (for workflow visibility)
@@ -38,12 +39,21 @@ const StudentFormSchema = new mongoose.Schema({
             mimetype: String,
             url: String,
             publicId: String,
+            resourceType: String,
+            deliveryType: String,
+            format: String,
+            kind: { type: String, enum: ['nptelResult', 'idCard'] },
         },
     ],
-}, { timestamps: true });
+}, { timestamps: true, toJSON: { transform(_doc, result) {
+    result.documents = require('../utils/cloudinary').serializeDocuments(result.documents);
+    return result;
+} } });
 
 // Indexes for query performance on commonly filtered fields
 StudentFormSchema.index({ userId: 1 });
+StudentFormSchema.index({ userId: 1, createdAt: -1 });
+StudentFormSchema.index({ status: 1, department: 1, updatedAt: -1 });
 StudentFormSchema.index({ email: 1 });
 StudentFormSchema.index({ email: 1, status: 1 }); // User dashboard queries
 StudentFormSchema.index({ status: 1 });

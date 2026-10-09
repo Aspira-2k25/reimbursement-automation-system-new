@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useAuth } from '../context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
 
@@ -32,17 +32,18 @@ const RoleGuard = ({ allowedRoles, children, fallback = null }) => {
     if (fallback) {
       return fallback;
     }
-    
+
     // Redirect to appropriate dashboard based on role
     const roleRedirects = {
-      'student': '/student',
-      'faculty': '/faculty',
-      'coordinator': '/coordinator',
-      'hod': '/hod',
-      'principal': '/principal',
-      'accounts': '/accounts'
+      'student': '/dashboard',
+      'faculty': '/dashboard/faculty',
+      'coordinator': '/dashboard/coordinator',
+      'hod': '/dashboard/hod',
+      'principal': '/dashboard/principal',
+      'accounts': '/dashboard/accounts',
+      'admin': '/dashboard/admin'
     };
-    
+
     const redirectPath = roleRedirects[userRole] || '/';
     return <Navigate to={redirectPath} replace />;
   }

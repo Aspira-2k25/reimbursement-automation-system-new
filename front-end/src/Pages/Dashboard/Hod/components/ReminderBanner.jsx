@@ -8,8 +8,11 @@ import { useHODContext } from '../pages/HODLayout'
  */
 export default function ReminderBanner() {
   const [dismissed, setDismissed] = React.useState(false)
+
+  // Get context data for dynamic message
   const contextData = useHODContext()
-  const allRequests = contextData?.allRequests || []
+
+  const allRequests = useMemo(() => contextData?.allRequests || [], [contextData?.allRequests])
 
   // Calculate dynamic message based on pending requests
   const { message, alertType, showBanner } = useMemo(() => {

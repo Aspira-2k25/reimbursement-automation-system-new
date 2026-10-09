@@ -129,7 +129,7 @@ export default function RequestTable({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {requests.map((request, index) => (
+          {requests.map((request) => (
             <tr key={request.id} className="hover:bg-gray-50 transition-colors">
               <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                 {request.id}
@@ -205,7 +205,7 @@ export default function RequestTable({
                       </>
                     ) : (
                       <>
-                        <button className="text-blue-600 hover:text-blue-900 active:text-blue-800 p-1 rounded hover:bg-blue-50 active:bg-blue-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                        <button aria-label="View details" className="text-blue-600 hover:text-blue-900 active:text-blue-800 p-1 rounded hover:bg-blue-50 active:bg-blue-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
                           <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                         <button className="text-gray-600 hover:text-gray-900 active:text-gray-800 p-1 rounded hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1">

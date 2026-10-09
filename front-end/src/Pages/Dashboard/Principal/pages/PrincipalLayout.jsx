@@ -1,17 +1,21 @@
-import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import Pagination from '../../../../components/Pagination'
+import useDashboardTab from '../../../../hooks/useDashboardTab'
+import usePersistentNotifications from '../../../../hooks/usePersistentNotifications'
+import { lazy } from 'react';
+import { useState, createContext, useContext, useCallback, useMemo, useEffect, useRef } from "react";
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialPrincipalData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
-import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
+import { studentFormsAPI, facultyFormsAPI, dashboardAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
-import ReportsAndAnalytics from './ReportsAndAnalytics'
+const ReportsAndAnalytics = lazy(() => import("./ReportsAndAnalytics"))
 import DepartmentRoster from './DepartmentRoster'
-import ProfileSettings from './ProfileSettings'
-import ChangePassword from '../../../../components/ChangePassword'
+const ProfileSettings = lazy(() => import("./ProfileSettings"))
+const ChangePassword = lazy(() => import("../../../../components/ChangePassword"))
 
 // Context for sharing Principal state across components
 const PrincipalContext = createContext()
@@ -24,20 +28,37 @@ export const usePrincipalContext = () => {
   return context
 }
 
-const PrincipalLayout = ({ children }) => {
+const PrincipalLayout = () => {
   const { user } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [activeTab, setActiveTab] = useState('home')
+  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth < 1024)
+  const [activeTab, setActiveTab] = useDashboardTab('/dashboard/principal', ["home","reports","roster","profile","change-password"])
   const [userProfile, setUserProfile] = useState(initialPrincipalData.userProfile)
-  const [allRequests, setAllRequests] = useState(initialPrincipalData.allRequests)
+  const [allRequests, setAllRequests] = useState([])
   const [departments, setDepartments] = useState(initialPrincipalData.departments)
   const [activityLog, setActivityLog] = useState([])
   const [notifications, setNotifications] = useState([])
+  const persistentNotifications = usePersistentNotifications()
   const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('Under Principal')
-  const [departmentFilter, setDepartmentFilter] = useState('All')
-  const [typeFilter, setTypeFilter] = useState('All')
+  const [searchQuery, updateSearchQuery] = useState('')
+  const [statusFilter, updateStatusFilter] = useState('Under Principal')
+  const [departmentFilter, updateDepartmentFilter] = useState('All')
+  const [typeFilter, updateTypeFilter] = useState('All')
+  const [queuePage, setQueuePage] = useState(1)
+  const [queuePagination, setQueuePagination] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [requestError, setRequestError] = useState(null)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const requestGeneration = useRef(0)
+  const setSearchQuery = useCallback(value => { setQueuePage(1); updateSearchQuery(value) }, [])
+  const setStatusFilter = useCallback(value => { setQueuePage(1); updateStatusFilter(value) }, [])
+  const setTypeFilter = useCallback(value => { setQueuePage(1); updateTypeFilter(value) }, [])
+  const setDepartmentFilter = useCallback(value => { setQueuePage(1); updateDepartmentFilter(value) }, [])
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
 
   // Handle responsive behavior - auto-collapse on mobile
   useEffect(() => {
@@ -139,94 +160,49 @@ const PrincipalLayout = ({ children }) => {
     }
   }, [])
 
-  // Fetch all requests for Principal (Under Principal + Approved only)
-  // Note: We don't fetch rejected forms because if HOD rejected, it never reached Principal
+  // Role-scoped queue pages and full filtered aggregates come from one backend policy.
   const fetchRequests = useCallback(async () => {
+    const generation = ++requestGeneration.current
+    if (!user) return
+    setLoading(true)
+    setRequestError(null)
+    const filters = { department: departmentFilter, applicantType: typeFilter, search: debouncedSearch }
     try {
-      setLoading(true)
-
-      // Fetch only approved/under-principal forms (not rejected - those never reached Principal)
-      const [
-        studentApprovedData,
-        facultyApprovedData
-      ] = await Promise.allSettled([
-        studentFormsAPI.listApproved(),
-        facultyFormsAPI.listApproved()
+      const [pageData, aggregateData] = await Promise.all([
+        dashboardAPI.list({ ...filters, page: queuePage, limit: 15, status: statusFilter === 'Under Accounts' ? 'Approved' : statusFilter }),
+        dashboardAPI.analytics(filters)
       ])
-
-      let allForms = []
-
-      // Process student forms (Under Principal + Approved status)
-      if (studentApprovedData.status === 'fulfilled') {
-        const forms = (studentApprovedData.value?.forms || studentApprovedData.value || [])
-          .map(f => ({ ...f, applicantType: 'Student' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Process faculty forms (Under Principal + Approved status)
-      if (facultyApprovedData.status === 'fulfilled') {
-        const forms = (facultyApprovedData.value?.forms || facultyApprovedData.value || [])
-          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Deduplicate forms by unique identifier (_id or applicationId or id)
-      const uniqueFormsMap = new Map()
-      for (const form of allForms) {
-        const key = String(form._id || form.id || form.applicationId)
-        if (key && !uniqueFormsMap.has(key)) {
-          uniqueFormsMap.set(key, form)
-        }
-      }
-      const uniqueForms = Array.from(uniqueFormsMap.values())
-
-      // Map backend data to dashboard format
-      const mappedRequests = uniqueForms.map(mapFormToRequest)
-
-      setAllRequests(mappedRequests)
+      if (generation !== requestGeneration.current) return
+      setAllRequests((pageData.forms || []).map(mapFormToRequest))
+      setQueuePagination(pageData.pagination)
+      if (queuePage > Math.max(1, pageData.pagination?.totalPages || 1)) setQueuePage(Math.max(1, pageData.pagination?.totalPages || 1))
+      setSummary(aggregateData.summary)
+      setAnalytics(aggregateData)
     } catch (error) {
-      toast.error(error?.error || 'Failed to fetch requests')
-      setAllRequests([])
+      if (generation !== requestGeneration.current) return
+      setRequestError(error.error || error.message || 'Unable to load dashboard data. Please retry.')
     } finally {
-      setLoading(false)
+      if (generation === requestGeneration.current) setLoading(false)
     }
-  }, [mapFormToRequest])
-
-  // Fetch requests on component mount
+  }, [user, queuePage, statusFilter, typeFilter, debouncedSearch, departmentFilter, mapFormToRequest])
   useEffect(() => {
     fetchRequests()
+    return () => { requestGeneration.current += 1 }
   }, [fetchRequests])
 
-  // Calculate college-wide statistics
   const collegeStats = useMemo(() => {
-    const total = allRequests.length
-    const pending = allRequests.filter(r => r.status === 'Under Principal').length
-    // Include all post-approval statuses for accurate counting
-    const approvedStatuses = ['Approved', 'Reimbursed']
-    const approved = allRequests.filter(r => approvedStatuses.includes(r.status)).length
-    const rejected = allRequests.filter(r => r.status === 'Rejected').length
-    const approvedAmount = allRequests
-      .filter(r => r.status === 'Reimbursed')
-      .reduce((sum, r) => sum + (parseFloat(r.amountNum) || 0), 0)
-
-    const processedRequests = approved + rejected
-    const approvalRate = processedRequests > 0 ? Math.round((approved / processedRequests) * 100) : 0
-    // Calculate dynamic budget utilization
-    const ANNUAL_BUDGET = 50000000 // ₹5 Crores annual reimbursement budget
-    const budgetUtilization = ANNUAL_BUDGET > 0
-      ? Math.min(Math.round((approvedAmount / ANNUAL_BUDGET) * 100), 100)
-      : 0
-
+    const counts = summary || {}
+    const approved = (counts.approved || 0) + (counts.reimbursed || 0)
+    const processed = approved + (counts.rejected || 0)
     return {
-      total,
-      pending,
-      approved,
-      rejected,
-      approvedAmount,
-      approvalRate,
-      budgetUtilization
+      total: counts.total || 0,
+      pending: analytics?.byStatus?.find(bucket => bucket._id === 'Under Principal')?.count || 0,
+      approved, rejected: counts.rejected || 0,
+      approvedAmount: counts.reimbursedAmount || 0,
+      approvalRate: processed ? Math.round(approved / processed * 100) : 0,
+      budgetUtilization: null,
     }
-  }, [allRequests])
+  }, [summary, analytics])
 
   // Function to render content based on active tab
   const renderContent = () => {
@@ -258,6 +234,13 @@ const PrincipalLayout = ({ children }) => {
     userProfile,
     setUserProfile,
     allRequests,
+    queuePage,
+    setQueuePage,
+    queuePagination,
+    summary,
+    analytics,
+    requestError,
+    refreshRequests: fetchRequests,
     setAllRequests,
     departments,
     setDepartments,
@@ -425,23 +408,8 @@ const PrincipalLayout = ({ children }) => {
       setNotifications(prev => [newNotification, ...prev])
     }, []),
 
-    // Filtering and search
-    getFilteredRequests: useCallback(() => {
-      return allRequests.filter(request => {
-        const matchesSearch =
-          request.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.department.toLowerCase().includes(searchQuery.toLowerCase())
-
-        const matchesStatus = statusFilter === 'All' || request.status === statusFilter
-        const matchesDepartment = departmentFilter === 'All' || request.department === departmentFilter
-        const matchesType = typeFilter === 'All' || request.applicantType === typeFilter
-
-        return matchesSearch && matchesStatus && matchesDepartment && matchesType
-      })
-    }, [allRequests, searchQuery, statusFilter, departmentFilter, typeFilter]),
-
+    getFilteredRequests: useCallback(() => allRequests, [allRequests]),
+    ...persistentNotifications
 
   }
 
@@ -449,7 +417,7 @@ const PrincipalLayout = ({ children }) => {
     <PrincipalContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50/30">
         {/* Sidebar - Fixed positioned, independent of main content scroll */}
-        <motion.div
+        <Motion.div
           initial={false}
           animate={{ width: isCollapsed ? 64 : 256 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -462,7 +430,7 @@ const PrincipalLayout = ({ children }) => {
             setIsCollapsed={setIsCollapsed}
             userProfile={userProfile}
           />
-        </motion.div>
+        </Motion.div>
 
         {/* Main Content Area - Has left margin to account for fixed sidebar */}
         <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'
@@ -483,8 +451,13 @@ const PrincipalLayout = ({ children }) => {
           {/* Page Content - Scrollable area */}
           <main className="flex-1 overflow-auto">
             <div className="p-4 sm:p-6">
+              {requestError && <div role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+                <p>{requestError}</p>
+                <button type="button" onClick={fetchRequests} className="mt-2 underline">Retry dashboard</button>
+              </div>}
+
               <AnimatePresence mode="wait">
-                <motion.div
+                <Motion.div
                   key={activeTab}
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -496,7 +469,8 @@ const PrincipalLayout = ({ children }) => {
                   }}
                 >
                   {renderContent()}
-                </motion.div>
+              {activeTab === 'home' && queuePagination && <Pagination page={queuePagination.page} totalPages={queuePagination.totalPages} total={queuePagination.total} pageSize={15} noun="requests" busy={loading} onPageChange={setQueuePage} />}
+                </Motion.div>
               </AnimatePresence>
             </div>
           </main>
@@ -505,7 +479,7 @@ const PrincipalLayout = ({ children }) => {
         {/* Mobile Overlay for Sidebar - Only on mobile devices */}
         <AnimatePresence>
           {!isCollapsed && (
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
