@@ -54,8 +54,8 @@ export default function ProfileSettings() {
   }
 
   return (
-    <><div><main className="mx-auto max-w-2xl px-3 sm:px-4 lg:px-6 py-6 sm:py-8 lg:py-10 page-content">
-      <div className="section">
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-6">
         {/* Header section */}
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold">Faculty Profile Settings</h1>
@@ -64,6 +64,11 @@ export default function ProfileSettings() {
           </p>
         </div>
 
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Profile details</h2>
+        <p className="mt-1 text-sm text-slate-500">Keep your display name up to date.</p>
         {/* Profile form */}
         <form
           className="mt-4 sm:mt-6 grid grid-cols-1 gap-3 sm:gap-4"
@@ -113,7 +118,7 @@ export default function ProfileSettings() {
           </label>
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-2 border-t border-slate-100 pt-5">
             <button
               type="button"
               onClick={handleReset}
@@ -132,8 +137,9 @@ export default function ProfileSettings() {
           </div>
         </form>
 
+      </section>
+      <ChangeUsername />
       </div>
-      <div className="mt-6"><ChangeUsername /></div>
-    </main></div></>
+    </main>
   )
 }

@@ -61,20 +61,22 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
   }
 
   return (
-    <><div><div className="space-y-4 sm:space-y-6">
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       {/* Header Section - Responsive */}
-      <div className="text-center px-4">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
+      <div className="mb-6">
+        <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-slate-900">
           Coordinator Profile Settings
         </h1>
-        <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
+        <p className="mt-1 text-sm sm:text-base text-slate-600">
           Update your name. Department, designation and role are managed by an administrator.
         </p>
       </div>
 
       {/* Profile Form - Responsive */}
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-900">Profile details</h2>
+          <p className="mt-1 mb-5 text-sm text-slate-500">Keep your display name up to date.</p>
           <div className="space-y-4 sm:space-y-6">
             {/* Full Name - Responsive */}
             <div>
@@ -87,7 +89,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
                 onChange={(e) => handleInputChange("fullName", e.target.value)}
                 disabled={!isEditing || isSaving}
                 maxLength={100}
-                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
+                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
               />
             </div>
 
@@ -101,7 +103,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
                 value={userData.department}
                 readOnly
                 disabled
-                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
+                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
               />
             </div>
 
@@ -115,7 +117,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
                 value={userData.designation}
                 readOnly
                 disabled
-                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
+                className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"
               />
             </div>
 
@@ -132,11 +134,11 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
             </div>
 
             {/* Action Buttons - Enhanced with better interactions */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
+            <div className="flex flex-col sm:flex-row gap-3 border-t border-slate-100 pt-5">
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 font-medium text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-md"
+                  className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-2.5 bg-teal-600 text-white rounded-md hover:bg-teal-700 active:bg-teal-800 transition-all duration-200 font-medium text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 shadow-sm hover:shadow-md"
                 >
                   Edit Profile
                 </button>
@@ -152,7 +154,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 font-medium text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-md"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-2.5 bg-teal-600 text-white rounded-md hover:bg-teal-700 active:bg-teal-800 transition-all duration-200 font-medium text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 shadow-sm hover:shadow-md"
                   >
                     {isSaving ? "Saving..." : "Save Changes"}
                   </button>
@@ -160,9 +162,9 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
               )}
             </div>
               </div>
-        </div>
+        </section>
+        <ChangeUsername />
       </div>
-      <ChangeUsername />
-    </div></div></>
+    </main>
   )
 }
