@@ -241,14 +241,14 @@ export default function Navbar() {
                     onClick={async () => {
                       await logout()
                       handleClose()
-                      navigate("/")
+                      navigate('/login', { replace: true })
                     }}
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         await logout()
                         handleClose()
-                        navigate("/")
+                        navigate('/login', { replace: true })
                       }
                     }}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-rose-50/60 active:bg-rose-100/60 rounded-lg transition-colors duration-150 focus:outline-none focus:bg-rose-50/60"

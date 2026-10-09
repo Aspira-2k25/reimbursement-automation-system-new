@@ -162,6 +162,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
               </div>
         </div>
       </div>
-    </div></div><div className="mx-auto max-w-5xl p-4 sm:p-6"><ChangeUsername /></div></>
+      <ChangeUsername />
+    </div></div></>
   )
 }

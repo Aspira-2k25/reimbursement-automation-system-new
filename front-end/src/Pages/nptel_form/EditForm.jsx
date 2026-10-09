@@ -1,6 +1,8 @@
+import NptelFormWizard from '../../components/NptelFormWizard';
+import { selectFormErrors } from '../../utils/nptelReview';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { studentFormsAPI, facultyFormsAPI } from '../../services/api'; // Import faculty API
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
@@ -105,7 +107,7 @@ export default function EditForm() {
     }
   }, [id, user, location.pathname, navigateToRoleRequests]);
 
-  const validateForm = () => {
+  const validateForm = (fields) => {
     const newErrors = {};
 
     if (!formData.name?.trim()) {
@@ -192,10 +194,11 @@ export default function EditForm() {
       if (file && file.size > 1024 * 1024) newErrors[field] = 'File must be 1 MB or smaller';
       else if (file && !['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) newErrors[field] = 'Choose a PDF, JPEG or PNG file';
     }
-    setErrors(newErrors);
-    const firstInvalidField = Object.keys(newErrors)[0];
+    const relevantErrors = selectFormErrors(newErrors, fields);
+    setErrors(relevantErrors);
+    const firstInvalidField = Object.keys(relevantErrors)[0];
     if (firstInvalidField) document.getElementById(['nptelResult', 'idCard'].includes(firstInvalidField) ? firstInvalidField : `edit-${firstInvalidField}`)?.focus();
-    return Object.keys(newErrors).length === 0;
+    return Object.keys(relevantErrors).length === 0;
   };
 
   const handleChange = (e) => {
@@ -329,9 +332,7 @@ export default function EditForm() {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+        <NptelFormWizard sections={[<div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div>
               <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Name *</label>
               <input
                 aria-invalid={Boolean(errors.name)}
@@ -349,8 +350,7 @@ export default function EditForm() {
                 <p id="edit-name-error" role="alert" className="mt-2 text-sm text-red-600">{errors.name}</p>
               )}
             </div>
-
-            {(formData?.applicantType && formData.applicantType !== 'Student') ? (
+{(formData?.applicantType && formData.applicantType !== 'Student') ? (
               <>
                 <div>
                   <label htmlFor="edit-facultyId" className="block text-sm font-medium text-gray-700">Faculty ID *</label>
@@ -413,8 +413,7 @@ export default function EditForm() {
                 </div>
               </>
             )}
-
-            <div>
+<div>
               <label htmlFor="edit-department" className="block text-sm font-medium text-gray-700">Department *</label>
               <input
                 aria-invalid={Boolean(errors.department)}
@@ -432,8 +431,7 @@ export default function EditForm() {
                 <p id="edit-department-error" role="alert" className="mt-2 text-sm text-red-600">{errors.department}</p>
               )}
             </div>
-
-            <div>
+<div>
               <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700">Email *</label>
               <input
                 aria-invalid={Boolean(errors.email)}
@@ -450,9 +448,8 @@ export default function EditForm() {
               {errors.email && (
                 <p id="edit-email-error" role="alert" className="mt-2 text-sm text-red-600">{errors.email}</p>
               )}
-            </div>
-
-            <div>
+            </div></div>,
+<div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div>
               <label htmlFor="edit-academicYear" className="block text-sm font-medium text-gray-700">Academic Year *</label>
               <input
                 aria-invalid={Boolean(errors.academicYear)}
@@ -471,8 +468,7 @@ export default function EditForm() {
                 <p id="edit-academicYear-error" role="alert" className="mt-2 text-sm text-red-600">{errors.academicYear}</p>
               )}
             </div>
-
-            <div>
+<div>
               <label htmlFor="edit-amount" className="block text-sm font-medium text-gray-700">Amount (₹) *</label>
               <input
                 aria-invalid={Boolean(errors.amount)}
@@ -494,70 +490,7 @@ export default function EditForm() {
                 <p id="edit-amount-error" role="alert" className="mt-2 text-sm text-red-600">{errors.amount}</p>
               )}
             </div>
-          </div>
-
-          {/* Bank Details Section */}
-          <div className="border-t pt-6 mt-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="edit-accountName" className="block text-sm font-medium text-gray-700">Account Holder Name *</label>
-              <input
-                aria-invalid={Boolean(errors.accountName)}
-                aria-describedby={errors.accountName ? 'edit-accountName-error' : undefined}
-                id="edit-accountName"
-                  type="text"
-                  name="accountName"
-                  value={formData?.accountName || ''}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                    ${errors.accountName ? 'border-red-300' : 'border-gray-300'}
-                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                />
-                {errors.accountName && (
-                  <p id="edit-accountName-error" role="alert" className="mt-2 text-sm text-red-600">{errors.accountName}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="edit-ifscCode" className="block text-sm font-medium text-gray-700">IFSC Code *</label>
-              <input
-                aria-invalid={Boolean(errors.ifscCode)}
-                aria-describedby={errors.ifscCode ? 'edit-ifscCode-error' : undefined}
-                id="edit-ifscCode"
-                  type="text"
-                  name="ifscCode"
-                  value={formData?.ifscCode || ''}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                    ${errors.ifscCode ? 'border-red-300' : 'border-gray-300'}
-                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                />
-                {errors.ifscCode && (
-                  <p id="edit-ifscCode-error" role="alert" className="mt-2 text-sm text-red-600">{errors.ifscCode}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="edit-accountNumber" className="block text-sm font-medium text-gray-700">Account Number *</label>
-              <input
-                aria-invalid={Boolean(errors.accountNumber)}
-                aria-describedby={errors.accountNumber ? 'edit-accountNumber-error' : undefined}
-                id="edit-accountNumber"
-                  type="text"
-                  name="accountNumber"
-                  value={formData?.accountNumber || ''}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
-                    ${errors.accountNumber ? 'border-red-300' : 'border-gray-300'}
-                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
-                />
-                {errors.accountNumber && (
-                  <p id="edit-accountNumber-error" role="alert" className="mt-2 text-sm text-red-600">{errors.accountNumber}</p>
-                )}
-              </div>
-
-              <div>
+<div>
                 <label htmlFor="edit-courseName" className="block text-sm font-medium text-gray-700">NPTEL Course Name <span className="text-gray-900 font-bold">*</span></label>
               <input
                 aria-invalid={Boolean(errors.courseName)}
@@ -576,8 +509,7 @@ export default function EditForm() {
                   <p id="edit-courseName-error" role="alert" className="mt-2 text-sm text-red-600">{errors.courseName}</p>
                 )}
               </div>
-
-              <div>
+<div>
                 <label htmlFor="edit-marks" className="block text-sm font-medium text-gray-700">NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span></label>
               <input
                 aria-invalid={Boolean(errors.marks)}
@@ -599,12 +531,63 @@ export default function EditForm() {
                 {errors.marks && (
                   <p id="edit-marks-error" role="alert" className="mt-2 text-sm text-red-600">{errors.marks}</p>
                 )}
+              </div></div>,
+<div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div>
+                <label htmlFor="edit-accountName" className="block text-sm font-medium text-gray-700">Account Holder Name *</label>
+              <input
+                aria-invalid={Boolean(errors.accountName)}
+                aria-describedby={errors.accountName ? 'edit-accountName-error' : undefined}
+                id="edit-accountName"
+                  type="text"
+                  name="accountName"
+                  value={formData?.accountName || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                    ${errors.accountName ? 'border-red-300' : 'border-gray-300'}
+                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.accountName && (
+                  <p id="edit-accountName-error" role="alert" className="mt-2 text-sm text-red-600">{errors.accountName}</p>
+                )}
               </div>
-            </div>
-          </div>
+<div>
+                <label htmlFor="edit-ifscCode" className="block text-sm font-medium text-gray-700">IFSC Code *</label>
+              <input
+                aria-invalid={Boolean(errors.ifscCode)}
+                aria-describedby={errors.ifscCode ? 'edit-ifscCode-error' : undefined}
+                id="edit-ifscCode"
+                  type="text"
+                  name="ifscCode"
+                  value={formData?.ifscCode || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                    ${errors.ifscCode ? 'border-red-300' : 'border-gray-300'}
+                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.ifscCode && (
+                  <p id="edit-ifscCode-error" role="alert" className="mt-2 text-sm text-red-600">{errors.ifscCode}</p>
+                )}
+              </div>
+<div>
+                <label htmlFor="edit-accountNumber" className="block text-sm font-medium text-gray-700">Account Number *</label>
+              <input
+                aria-invalid={Boolean(errors.accountNumber)}
+                aria-describedby={errors.accountNumber ? 'edit-accountNumber-error' : undefined}
+                id="edit-accountNumber"
+                  type="text"
+                  name="accountNumber"
+                  value={formData?.accountNumber || ''}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm
+                    ${errors.accountNumber ? 'border-red-300' : 'border-gray-300'}
+                    focus:border-teal-500 focus:ring-teal-500 sm:text-sm`}
+                />
+                {errors.accountNumber && (
+                  <p id="edit-accountNumber-error" role="alert" className="mt-2 text-sm text-red-600">{errors.accountNumber}</p>
+                )}
+              </div></div>,
+<div className="space-y-4">
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Update Documents (Optional)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="nptelResult" className="block text-sm font-medium text-gray-700">
@@ -652,35 +635,7 @@ export default function EditForm() {
                 {errors.idCard && <p id="idCard-error" role="alert" className="mt-2 text-sm text-red-600">{errors.idCard}</p>}
               </div>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={navigateToRoleRequests}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm flex items-center gap-2 transition-colors
-                ${saving ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500`}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
-          </div>
-        </form>
+          </div>]} values={formData} applicantType={formData.applicantType || user?.role} existingDocuments={formData.documents || []} editing validate={validateForm} onSubmit={handleSubmit} busy={saving} onCancel={navigateToRoleRequests} />
       </div>
     </div>
   );

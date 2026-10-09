@@ -1,6 +1,8 @@
+import NptelFormWizard from '../../components/NptelFormWizard';
+import { selectFormErrors } from '../../utils/nptelReview';
 import React, { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apshahLogo from "../../assets/images/Apshah_logo.png";
@@ -68,7 +70,7 @@ const ReimbursementForm = () => {
     }
   }, [user?.department, user?.name, user?.email]);
 
-  const validateForm = () => {
+  const validateForm = (fields) => {
     const newErrors = {};
 
     // Name validation
@@ -162,10 +164,11 @@ const ReimbursementForm = () => {
         if (!validation.valid) newErrors[field] = validation.error;
       }
     }
-    setErrors(newErrors);
-    const firstInvalidField = Object.keys(newErrors)[0];
+    const relevantErrors = selectFormErrors(newErrors, fields);
+    setErrors(relevantErrors);
+    const firstInvalidField = Object.keys(relevantErrors)[0];
     if (firstInvalidField) document.getElementById(firstInvalidField)?.focus();
-    return Object.keys(newErrors).length === 0;
+    return Object.keys(relevantErrors).length === 0;
   };
 
   //handle input change - SECURITY: Sanitize inputs
@@ -384,17 +387,8 @@ const ReimbursementForm = () => {
           <p>Date: {new Date().toLocaleDateString()}</p>
         </div>
 
-        <form noValidate onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="bg-teal-50 p-4 rounded-md">
-              <p className="text-sm text-teal-800 font-medium">
-                Maximum reimbursement: ₹1,500. Keep your NPTEL result and institute ID card ready; PDF, JPEG or PNG, up to 1 MB each.
-              </p>
-            </div>
-          </div>
+        <NptelFormWizard sections={[<div className="border-t border-gray-200 pt-4">
 
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Personal Details</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -484,12 +478,9 @@ const ReimbursementForm = () => {
                 {errors.email && <p id="email-error" role="alert" className="text-red-600 text-sm mt-1">{errors.email}</p>}
               </div>
             </div>
-          </div>
+          </div>,
+<div className="space-y-5"><div className="border-t border-gray-200 pt-4">
 
-
-
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Reimbursement Details</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -562,10 +553,48 @@ const ReimbursementForm = () => {
                 </label>
               </div>
             </div>
-          </div>
+          </div><div className="border-t border-gray-200 pt-4">
+            <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Course Name <span className="text-gray-900 font-bold">*</span>
+            </label>
+            <input
+                  aria-invalid={Boolean(errors.courseName)}
+                  aria-describedby={errors.courseName ? 'courseName-error' : undefined}
+              type="text"
+              id="courseName"
+              name="courseName"
+              value={formData.courseName}
+              onChange={handleChange}
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.courseName ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter NPTEL course name"
+            />
+            {errors.courseName && <p id="courseName-error" role="alert" className="text-red-600 text-sm mt-1">{errors.courseName}</p>}
+          </div><div className="border-t border-gray-200 pt-4">
+            <label htmlFor="marks" className="block text-sm font-medium text-gray-700 mb-2">
+              NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span>
+            </label>
+            <input
+                  aria-invalid={Boolean(errors.marks)}
+                  aria-describedby={errors.marks ? 'marks-error' : undefined}
+              type="number"
+              id="marks"
+              name="marks"
+              value={formData.marks}
+              onChange={handleChange}
+              onWheel={(e) => e.target.blur()}
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.marks ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your NPTEL course marks"
+            />
+            {errors.marks && <p id="marks-error" role="alert" className="text-red-600 text-sm mt-1">{errors.marks}</p>}
+            <p className="text-xs text-gray-500 mt-1">Enter marks between 0 and 100</p>
+          </div></div>,
+<div className="border-t border-gray-200 pt-4">
 
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Banking Details</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -626,62 +655,13 @@ const ReimbursementForm = () => {
                 {errors.accountNumber && <p id="accountNumber-error" role="alert" className="text-red-600 text-sm mt-1">{errors.accountNumber}</p>}
               </div>
             </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-4">
-            <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2">
-              NPTEL Course Name <span className="text-gray-900 font-bold">*</span>
-            </label>
-            <input
-                  aria-invalid={Boolean(errors.courseName)}
-                  aria-describedby={errors.courseName ? 'courseName-error' : undefined}
-              type="text"
-              id="courseName"
-              name="courseName"
-              value={formData.courseName}
-              onChange={handleChange}
-              required
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.courseName ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder="Enter NPTEL course name"
-            />
-            {errors.courseName && <p id="courseName-error" role="alert" className="text-red-600 text-sm mt-1">{errors.courseName}</p>}
-          </div>
-
-          <div className="border-t border-gray-200 pt-4">
-            <label htmlFor="marks" className="block text-sm font-medium text-gray-700 mb-2">
-              NPTEL Marks (%) <span className="text-gray-900 font-bold">*</span>
-            </label>
-            <input
-                  aria-invalid={Boolean(errors.marks)}
-                  aria-describedby={errors.marks ? 'marks-error' : undefined}
-              type="number"
-              id="marks"
-              name="marks"
-              value={formData.marks}
-              onChange={handleChange}
-              onWheel={(e) => e.target.blur()}
-              min="0"
-              max="100"
-              step="0.01"
-              required
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${errors.marks ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder="Enter your NPTEL course marks"
-            />
-            {errors.marks && <p id="marks-error" role="alert" className="text-red-600 text-sm mt-1">{errors.marks}</p>}
-            <p className="text-xs text-gray-500 mt-1">Enter marks between 0 and 100</p>
-          </div>
-
-          <div className="bg-yellow-50 p-4 rounded-md mt-6">
+          </div>,
+<div className="space-y-4"><div className="bg-yellow-50 p-4 rounded-md mt-6">
             <p className="text-sm text-yellow-800">
               <strong>Note:</strong> Please provide all required supporting documents for NPTEL reimbursement.
             </p>
-          </div>
+          </div><div className="border-t border-gray-200 pt-4">
 
-          {/* Document Upload Section */}
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">
-              Supporting Documents (PDF, JPEG or PNG)
-            </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* NPTEL Result */}
@@ -762,30 +742,7 @@ const ReimbursementForm = () => {
 
               </div>
             </div>
-          </div>
-
-
-          <div className="flex justify-center mt-8">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`px-8 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition duration-200 flex items-center gap-2
-                ${isSubmitting
-                  ? 'bg-teal-400 cursor-not-allowed text-white'
-                  : 'bg-teal-600 hover:bg-teal-700 text-white'
-                }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Submitting Application...
-                </>
-              ) : (
-                'Submit NPTEL Reimbursement Application'
-              )}
-            </button>
-          </div>
-        </form>
+          </div></div>]} values={formData} applicantType={user?.role} validate={validateForm} onSubmit={handleSubmit} busy={isSubmitting} onCancel={() => navigate(-1)} />
       </div>
     </div>
   );

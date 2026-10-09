@@ -48,20 +48,20 @@ export default function ChangeUsername() {
     } catch (failure) { reportError(failure); }
     finally { setPending(false); }
   };
-  return <section className="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
-    <h2 className="text-xl font-semibold text-slate-900">Change login username</h2>
-    <p className="mt-2 text-sm text-slate-600">Current username: <strong>{user.username || 'Unavailable'}</strong>. Confirm the change using a code sent to your registered email.</p>
+  return <section className="w-full min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
+    <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Change login username</h2>
+    <p className="mt-2 break-words text-sm text-slate-600">Current username: <strong>{user.username || 'Unavailable'}</strong>. Confirm the change using a code sent to your registered email.</p>
     <form onSubmit={confirm} className="mt-4 space-y-4">
       <div><label htmlFor={`${id}-username`} className="block text-sm font-medium text-slate-700">New username</label>
         <input id={`${id}-username`} value={username} disabled={pending} maxLength={100} autoComplete="username" aria-describedby={`${id}-hint`} onChange={event => { setUsername(event.target.value); setSentFor(null); setOtp(''); setError(''); setMessage(''); }} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-600" />
         <p id={`${id}-hint`} className="mt-1 text-xs text-slate-600">3–100 letters, numbers, dots, underscores or hyphens. Start with a letter or number. Your display name stays separate.</p></div>
-      <button type="button" onClick={send} disabled={pending || cooldown > 0 || !valid} className="rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-medium text-teal-800 disabled:cursor-not-allowed disabled:opacity-50">{pending ? 'Working…' : cooldown ? `Resend in ${cooldown}s` : sentFor ? 'Resend username OTP' : 'Send username OTP'}</button>
+      <button type="button" onClick={send} disabled={pending || cooldown > 0 || !valid} className="w-full sm:w-auto rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-medium text-teal-800 disabled:cursor-not-allowed disabled:opacity-50">{pending ? 'Working…' : cooldown ? `Resend in ${cooldown}s` : sentFor ? 'Resend username OTP' : 'Send username OTP'}</button>
       {sentFor && <div><label htmlFor={`${id}-otp`} className="block text-sm font-medium text-slate-700">Username verification code</label>
         <input id={`${id}-otp`} value={otp} disabled={pending} maxLength={6} inputMode="numeric" autoComplete="one-time-code" onChange={event => setOtp(event.target.value.replace(/\D/g, ''))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-600" />
         <p className="mt-1 text-xs text-slate-600">{expiry ? `Code expires in ${Math.ceil(expiry / 60)} minutes.` : 'Code expired. Request a new code.'}</p></div>}
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {message && <p role="status" className="rounded-lg bg-teal-50 p-3 text-sm text-teal-900">{message}</p>}
-      <button type="submit" disabled={pending || !valid || sentFor !== target || !expiry || otp.length !== 6} className="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">Confirm username change</button>
+      <button type="submit" disabled={pending || !valid || sentFor !== target || !expiry || otp.length !== 6} className="w-full sm:w-auto rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">Confirm username change</button>
     </form>
   </section>;
 }
