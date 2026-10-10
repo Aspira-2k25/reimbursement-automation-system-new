@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import Blobatar from '../../components/Blobatar';
+import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight } from "lucide-react";
@@ -6,80 +7,6 @@ import { useAuth } from '../../context/AuthContext';
 
 import apshahLogo from '../../assets/images/Apshah_logo.png';
 import websiteLogo from '../../assets/images/Website_logo.png';
-
-// Simple 3D Avatar Component using Canvas
-const Avatar3D = () => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Simple animated avatar
-    const drawAvatar = (time) => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, '#e0f7f4');
-      gradient.addColorStop(1, '#b3e5db');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const bobbing = Math.sin(time * 0.003) * 5;
-
-      // Head
-      ctx.fillStyle = '#f4a460';
-      ctx.beginPath();
-      ctx.arc(centerX, centerY - 20 + bobbing, 35, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Eyes
-      ctx.fillStyle = '#333';
-      ctx.beginPath();
-      ctx.arc(centerX - 12, centerY - 25 + bobbing, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(centerX + 12, centerY - 25 + bobbing, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Smile
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY - 15 + bobbing, 12, 0, Math.PI);
-      ctx.stroke();
-
-      // Body
-      ctx.fillStyle = '#14b8a6';
-      ctx.fillRect(centerX - 25, centerY + 15 + bobbing, 50, 50);
-
-      // Arms
-      ctx.fillStyle = '#f4a460';
-      ctx.fillRect(centerX - 35, centerY + 20 + bobbing, 15, 40);
-      ctx.fillRect(centerX + 20, centerY + 20 + bobbing, 15, 40);
-
-      requestAnimationFrame(drawAvatar);
-    };
-
-    drawAvatar(0);
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={300}
-      height={400}
-      className="w-full max-w-xs mx-auto rounded-2xl shadow-lg"
-    />
-  );
-};
 
 export default function LandingPage() {
   const [isHovered, setIsHovered] = useState(null);
@@ -196,7 +123,7 @@ export default function LandingPage() {
           {...fadeInUp}
           className="relative flex justify-center"
         >
-          <Avatar3D />
+          <Blobatar />
         </motion.div>
       </section>
 
@@ -211,7 +138,7 @@ export default function LandingPage() {
           {[
             { num: '1', title: 'Submit Claim', desc: 'Digitally fill forms and upload all your supporting documents and receipts.' },
             { num: '2', title: 'Automated Routing', desc: 'Requests are automatically sent through the multi-level approval chain: Coordinator, HOD, and Principal.' },
-            { num: '3', title: 'Process & Disburse', desc: 'Once fully authorized, the Accounts department processes the payment for final disbursement.' }
+            { num: '3', title: 'Process & Reimburse', desc: 'Once fully authorized, the Accounts department processes the payment for final reimbursement.' }
           ].map((step, i) => (
             <motion.div
               key={i}
@@ -295,7 +222,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-200 pt-8">
-            <p className="text-center text-sm" style={{ color: '#6b7280' }}>Developed by <b>Nirmala Patole</b>, <b>Alok Sahoo</b>, <b>Apoorva Puranik</b> , and <b>Vaibhavi Naik</b> From <b>TE-IT-B</b></p>
+            <p className="text-center text-sm" style={{ color: '#6b7280' }}>Developed by <b>Nirmala Patole</b>, <b>Alok Sahoo</b>, <b>Apoorva Puranik</b> , and <b>Vaibhavi Naik</b> From <b>BE-IT-B</b></p>
           </div>
         </div>
       </footer>

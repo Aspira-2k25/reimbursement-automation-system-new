@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { passwordAPI } from '../../services/api';
@@ -18,11 +17,6 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [tokenInvalid, setTokenInvalid] = useState(false);
 
-  const fadeInUp = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.6 }
-  };
 
   useEffect(() => {
     if (!token) {
@@ -61,7 +55,7 @@ export default function ResetPassword() {
   if (tokenInvalid) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#F2F2F2' }}>
-        <motion.div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 text-center" {...fadeInUp}>
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600" />
           </div>
@@ -77,7 +71,7 @@ export default function ResetPassword() {
           <Link to="/login" className="text-sm text-gray-500 hover:text-[#3B945E] transition-colors">
             Back to Login
           </Link>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -85,23 +79,23 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Side - Branding */}
-      <motion.div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
-        <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }}>
+        <Link to="/" aria-label="Go to landing page" className="absolute top-6 left-6 z-20 flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-green-700">
           <img src={apshahLogo} alt="A.P. Shah Institute of Technology Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-sm" />
           <span className="font-bold text-white text-sm sm:text-base tracking-wide drop-shadow-md max-w-[200px] leading-tight">
             PCT's A. P. Shah Institute of Technology
           </span>
-        </div>
+        </Link>
 
         <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-16 h-16 bg-white/10 transform rotate-45 rounded-lg animate-rotate-very-slow"></div>
-          <div className="absolute top-40 right-32 w-12 h-12 bg-white/10 transform rotate-45 rounded-lg animate-drift-slower"></div>
-          <div className="absolute bottom-32 left-16 w-20 h-20 bg-white/10 transform rotate-45 rounded-lg animate-float-slow"></div>
-          <div className="absolute top-32 right-16 w-32 h-32 bg-white/10 rounded-full animate-float-slow"></div>
-          <div className="absolute bottom-40 left-32 w-24 h-24 bg-white/10 rounded-full animate-drift-slower"></div>
+          <div className="absolute top-20 left-20 w-16 h-16 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute top-40 right-32 w-12 h-12 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute bottom-32 left-16 w-20 h-20 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute top-32 right-16 w-32 h-32 bg-white/10 rounded-full"></div>
+          <div className="absolute bottom-40 left-32 w-24 h-24 bg-white/10 rounded-full"></div>
         </div>
 
-        <motion.div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center" {...fadeInUp}>
+        <div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center">
           <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 object-contain drop-shadow-lg mb-6 lg:mb-8" />
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 leading-tight">
             Set New Password
@@ -109,13 +103,13 @@ export default function ResetPassword() {
           <p className="text-base sm:text-lg lg:text-xl text-white/90 leading-relaxed max-w-md px-4">
             Choose a strong password to secure your account
           </p>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Right Side - Form */}
-      <motion.div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }} {...fadeInUp}>
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }}>
         <div className="w-full max-w-md px-4 sm:px-0">
-          <motion.div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8" {...fadeInUp}>
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8">
             {success ? (
               <div className="text-center py-6">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -208,9 +202,9 @@ export default function ResetPassword() {
                 </form>
               </>
             )}
-          </motion.div>
+          </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

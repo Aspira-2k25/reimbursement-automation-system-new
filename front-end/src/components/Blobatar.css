@@ -1,0 +1,9 @@
+.blobatar{position:relative;isolation:isolate;width:100%;max-width:420px;min-width:0;padding:20px 12px;text-align:center}
+.blobatar-halo{position:absolute;z-index:-1;inset:7% 3% 20%;border-radius:45% 55% 60% 40%;background:radial-gradient(ellipse at center,#d8f3e8 0%,#effaf6 65%,transparent 72%)}
+.blobatar-character{display:block;width:100%;padding:16px;border:0;border-radius:40%;background:transparent;cursor:pointer}
+.blobatar-character:focus-visible{outline:3px solid #3B945E;outline-offset:4px}
+.blobatar-character svg{display:block;width:100%;height:auto;aspect-ratio:1}
+.blobatar[data-active=false] svg,.blobatar[data-active=false] svg *{animation-play-state:paused!important}
+.blobatar-caption{position:relative;color:#4b5563;font-size:13px}
+.blobatar-badge{display:inline-block;border:1px solid #c7e8d8;background:#f0faf5;border-radius:999px;padding:7px 14px;color:#286e47;font-weight:600}
+.blobatar-caption p{margin:10px 0}
