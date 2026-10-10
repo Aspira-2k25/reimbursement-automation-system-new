@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
 import { motion } from 'framer-motion'
 import { useAdminContext } from '../pages/AdminLayout'
 import { X, Loader } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const FacultyModal = () => {
-  const { editingStaff, setShowModal, handleSaveStaff, departments, loading } = useAdminContext()
+  const { editingStaff, setShowModal, handleSaveStaff } = useAdminContext()
 
   const [formData, setFormData] = useState({
     username: '',
@@ -119,7 +119,7 @@ const FacultyModal = () => {
   }
 
   return (
-    <motion.div
+    <motion.div role="dialog" aria-modal="true" aria-label="Reimbursement dialog"
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -148,7 +148,7 @@ const FacultyModal = () => {
           <h2 className="text-xl font-bold text-gray-900">
             {editingStaff ? 'Edit Staff' : 'Add New Staff'}
           </h2>
-          <button
+          <button aria-label="Close"
             onClick={() => setShowModal(false)}
             className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -163,7 +163,7 @@ const FacultyModal = () => {
             <label className="block text-sm font-medium text-gray-900 mb-1">
               Full Name *
             </label>
-            <input
+            <input aria-label="name"
               type="text"
               name="name"
               value={formData.name}
@@ -179,7 +179,7 @@ const FacultyModal = () => {
             <label className="block text-sm font-medium text-gray-900 mb-1">
               Username *
             </label>
-            <input
+            <input aria-label="username"
               type="text"
               name="username"
               value={formData.username}
@@ -195,7 +195,7 @@ const FacultyModal = () => {
             <label className="block text-sm font-medium text-gray-900 mb-1">
               Email Address
             </label>
-            <input
+            <input aria-label="email"
               type="email"
               name="email"
               value={formData.email}
@@ -211,7 +211,7 @@ const FacultyModal = () => {
             <label className="block text-sm font-medium text-gray-900 mb-1">
               Department
             </label>
-            <select
+            <select aria-label="department"
               name="department"
               value={formData.department}
               onChange={handleChange}
@@ -236,7 +236,7 @@ const FacultyModal = () => {
             <label className="block text-sm font-medium text-gray-900 mb-1">
               Role
             </label>
-            <select
+            <select aria-label="role"
               name="role"
               value={formData.role}
               onChange={handleChange}
@@ -256,7 +256,7 @@ const FacultyModal = () => {
             <label className="block text-sm font-medium text-gray-900 mb-1">
               Password {!editingStaff && '*'}
             </label>
-            <input
+            <input aria-label="password"
               type="password"
               name="password"
               value={formData.password}
@@ -277,7 +277,7 @@ const FacultyModal = () => {
               <label className="block text-sm font-medium text-gray-900 mb-1">
                 Confirm Password *
               </label>
-              <input
+              <input aria-label="confirm Password"
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}

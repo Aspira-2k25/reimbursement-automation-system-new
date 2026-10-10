@@ -9,14 +9,14 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
+    this.state = {
+      hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
@@ -28,26 +28,26 @@ class ErrorBoundary extends React.Component {
       error: error,
       errorInfo: errorInfo
     });
-    
+
     // You can also log to an error reporting service here
     // Example: logErrorToService(error, errorInfo);
   }
 
   handleRetry = () => {
     // Reset error state and attempt to re-render
-    this.setState({ 
-      hasError: false, 
+    this.setState({
+      hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null
     });
   };
 
   handleGoHome = () => {
     // Clear any stored errors and redirect to home
-    this.setState({ 
-      hasError: false, 
+    this.setState({
+      hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null
     });
     window.location.href = '/';
   };
@@ -60,15 +60,15 @@ class ErrorBoundary extends React.Component {
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            
+
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Something went wrong
             </h2>
-            
+
             <p className="text-gray-600 mb-6">
               We apologize for the inconvenience. An unexpected error has occurred.
             </p>
-            
+
             {/* Show error details in development only */}
             {import.meta.env.DEV && this.state.error && (
               <div className="bg-gray-100 rounded-lg p-4 mb-6 text-left overflow-auto max-h-40">
@@ -82,7 +82,7 @@ class ErrorBoundary extends React.Component {
                 )}
               </div>
             )}
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={this.handleRetry}
@@ -91,7 +91,7 @@ class ErrorBoundary extends React.Component {
                 <RefreshCw className="w-4 h-4" />
                 Try Again
               </button>
-              
+
               <button
                 onClick={this.handleGoHome}
                 className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"

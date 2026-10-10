@@ -5,7 +5,7 @@ const { uploadFile } = require("../utils/cloudinary");
 const upload = require("../middleware/multer");
 const { verifyToken } = require("../middleware/auth");
 
-router.post('/upload', verifyToken, upload.single('image'), async function (req, res) {
+router.post('/upload', verifyToken, upload.single('image'), upload.validateUploadedFiles, async function (req, res) {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -16,6 +16,7 @@ router.post('/upload', verifyToken, upload.single('image'), async function (req,
 
     // Use uploadFile helper which handles both memory buffers (serverless) and file paths (local dev)
     const result = await uploadFile(req.file, {
+      ownerId: String(req.user.userId || req.user.email),
       folder: 'reimbursement-Forms',
       resource_type: 'auto'
     });

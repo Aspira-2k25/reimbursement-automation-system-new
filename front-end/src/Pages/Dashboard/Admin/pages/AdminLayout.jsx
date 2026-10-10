@@ -1,9 +1,9 @@
-import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
+import { useState, createContext, useContext, useCallback, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
-import { useAuth } from '../../../../context/AuthContext'
+
 import { adminAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import FacultyManagement from './FacultyManagement'
@@ -24,7 +24,6 @@ export const useAdminContext = () => {
 }
 
 const AdminLayout = () => {
-  const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -33,7 +32,7 @@ const AdminLayout = () => {
     return hash || 'home'
   }
 
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth < 1024)
   const [activeTab, setActiveTab] = useState(getTabFromHash())
   const [staffList, setStaffList] = useState([])
   const [loading, setLoading] = useState(false)
@@ -73,9 +72,9 @@ const AdminLayout = () => {
   // Update user profile from AuthContext
 
   // Fetch staff list
-  const fetchStaff = useCallback(async () => {
+  const fetchStaff = useCallback(async ({ background = false } = {}) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const response = await adminAPI.getFacultyList()
       const staff = response.staff || []
       setStaffList(staff)
@@ -83,15 +82,25 @@ const AdminLayout = () => {
     } catch (error) {
       console.error('Error fetching staff:', error)
       toast.error(error?.error || 'Failed to fetch staff')
-      setStaffList([])
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }, [])
 
   // Fetch staff on mount
   useEffect(() => {
     fetchStaff()
+    const refreshVisible = () => { if (!document.hidden) fetchStaff({ background: true }) }
+    const timer = setInterval(refreshVisible, 30000)
+    document.addEventListener('visibilitychange', refreshVisible)
+    window.addEventListener('focus', refreshVisible)
+    window.addEventListener('staff:updated', refreshVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', refreshVisible)
+      window.removeEventListener('focus', refreshVisible)
+      window.removeEventListener('staff:updated', refreshVisible)
+    }
   }, [fetchStaff])
 
   // Filter faculty based on search and filters
@@ -116,7 +125,7 @@ const AdminLayout = () => {
   }, [staffList])
 
   // Add new staff member
-  const handleAddStaff = useCallback((data) => {
+  const handleAddStaff = useCallback(() => {
     setEditingStaff(null)
     setShowModal(true)
   }, [])

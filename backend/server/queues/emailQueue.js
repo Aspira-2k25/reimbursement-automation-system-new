@@ -1,13 +1,13 @@
+const { Queue } = require('bullmq');
+const Redis = require('ioredis');
+
+const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+
 let emailQueue = null;
 let redisConnection = null;
 let isRedisAvailable = false;
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-
-try {
-  const { Queue } = require('bullmq');
-  const Redis = require('ioredis');
-
+if (process.env.EMAIL_QUEUE_ENABLED === 'true' && process.env.REDIS_URL) try {
   redisConnection = new Redis(REDIS_URL, {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
@@ -46,8 +46,7 @@ try {
     }
   });
 } catch (error) {
-  // Graceful fallback if bullmq/ioredis not installed or redis not accessible
-  isRedisAvailable = false;
+  console.warn('Failed to initialize Redis Queue:', error.message);
 }
 
 /**
@@ -66,6 +65,7 @@ const addEmailJob = async (jobName, data) => {
 
 module.exports = {
   emailQueue,
+  redisConnection,
   addEmailJob,
-  isRedisAvailable: () => isRedisAvailable,
+  isRedisAvailable: () => isRedisAvailable
 };

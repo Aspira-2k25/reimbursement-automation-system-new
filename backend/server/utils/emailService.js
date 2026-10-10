@@ -7,12 +7,17 @@ const sanitizeHtml = (str) => {
   return he.encode(String(str));
 };
 
-// Initialize Resend
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const getConfigurationError = () => {
+  const key = process.env.RESEND_API_KEY || '';
+  const from = process.env.RESEND_FROM_EMAIL || '';
+  if (!key || !from || !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(from)) return 'EMAIL_NOT_CONFIGURED';
+  if (!/^re_[A-Za-z0-9_-]+$/.test(key)) return 'EMAIL_INVALID_KEY';
+  return null;
+};
 
 /** Returns true if Resend is configured enough to attempt sending. */
 const isSmtpConfigured = () => {
-  return Boolean(process.env.RESEND_API_KEY && resend);
+  return !getConfigurationError();
 };
 
 //email template
@@ -258,8 +263,8 @@ const emailTemplates = {
     `,
   }),
 
-  otpEmail: (otp) => ({
-    subject: 'Your OTP for Password Change - Reimbursement System',
+  otpEmail: (otp, purpose = 'password') => ({
+    subject: `Your OTP for ${purpose === 'username' ? 'Username' : 'Password'} Change - Reimbursement System`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -278,11 +283,11 @@ const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <h2>Password Change OTP</h2>
+            <h2>${purpose === 'username' ? 'Username' : 'Password'} Change OTP</h2>
           </div>
           <div class="content">
             <p>Hello,</p>
-            <p>Your OTP for password change is:</p>
+            <p>Your OTP for ${purpose === 'username' ? 'username' : 'password'} change is:</p>
 
             <div class="otp-box">
               <div class="otp-code">${sanitizeHtml(otp)}</div>
@@ -309,30 +314,49 @@ const emailTemplates = {
 
 // send email function
 
+const emailErrors = {
+  EMAIL_NOT_CONFIGURED: 'Email service is not configured. Contact the administrator.',
+  EMAIL_INVALID_KEY: 'Email credentials are invalid. Contact the administrator.',
+  EMAIL_SENDER_UNVERIFIED: 'Email sender is not verified. Contact the administrator.',
+  EMAIL_RATE_LIMITED: 'Email service is temporarily rate limited. Please try again later.',
+  EMAIL_DELIVERY_FAILED: 'Email could not be sent. Please try again later.',
+};
+const failure = code => ({ success: false, code, error: emailErrors[code] });
+const providerErrorCode = error => {
+  const name = String(error?.name || '');
+  const message = String(error?.message || '');
+  if (name === 'invalid_api_key' || /api key.*invalid|invalid.*api key/i.test(message)) return 'EMAIL_INVALID_KEY';
+  if (name === 'rate_limit_exceeded' || Number(error?.statusCode) === 429) return 'EMAIL_RATE_LIMITED';
+  if (/domain.*not verified|verify.*domain|sender.*not verified|testing emails.*own email/i.test(message)) return 'EMAIL_SENDER_UNVERIFIED';
+  return 'EMAIL_DELIVERY_FAILED';
+};
 const sendEmail = async (to, subject, html) => {
-  if (!isSmtpConfigured()) {
-    console.warn('Email not sent: RESEND_API_KEY not set. Set it in Render env to enable email.');
-    return { success: false, error: 'Resend not configured' };
+  const configurationError = getConfigurationError();
+  if (configurationError) {
+    console.warn('Email delivery blocked:', configurationError);
+    return failure(configurationError);
   }
   try {
-    const fromEmail = process.env.RESEND_FROM_EMAIL || '';
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const { data, error } = await resend.emails.send({
-      from: `Reimbursement System <${fromEmail}>`,
-      to: [to],
-      subject: subject,
-      html: html,
+      from: 'Reimbursement System <' + process.env.RESEND_FROM_EMAIL + '>',
+      to: [to], subject, html,
     });
-
     if (error) {
-      console.error('Resend API error:', error);
-      return { success: false, error: error.message };
+      const code = providerErrorCode(error);
+      // Canonical reason/status only: provider messages can contain credentials or email content.
+      console.error('Resend delivery rejected:', code, Number(error.statusCode) || 'unknown status');
+      return failure(code);
     }
-
-    console.log('Email sent successfully:', data.id);
+    if (!data?.id) {
+      console.error('Resend delivery failed: provider returned no message ID');
+      return failure('EMAIL_DELIVERY_FAILED');
+    }
     return { success: true, messageId: data.id };
   } catch (error) {
-    console.error('Error sending email via Resend:', error.message || error);
-    return { success: false, error: error.message };
+    const code = providerErrorCode(error);
+    console.error('Resend delivery failed:', code);
+    return failure(code);
   }
 };
 
@@ -368,8 +392,8 @@ const sendPasswordResetEmail = async (email, resetLink) => {
 };
 
 // Send OTP email
-const sendOtpEmail = async (email, otp) => {
-  const template = emailTemplates.otpEmail(otp);
+const sendOtpEmail = async (email, otp, purpose = 'password') => {
+  const template = emailTemplates.otpEmail(otp, purpose);
   return await sendEmail(email, template.subject, template.html);
 };
 

@@ -1,23 +1,16 @@
-import React, { useState, useCallback } from 'react'
+import ChangeUsername from '../../../../components/ChangeUsername'
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  User,
-  Mail,
-  Building,
-  Save,
-  Edit3,
-  X,
-  Shield,
-  Eye,
-  Lock,
-  AlertCircle
-} from 'lucide-react'
+import { User, Mail, Building, Save, Edit3, X, Shield, AlertCircle } from "lucide-react";
 import { toast } from 'react-hot-toast'
 import { usePrincipalContext } from './PrincipalLayout'
 import ChangePassword from '../../../../components/ChangePassword'
+import { authAPI } from '../../../../services/api'
+import { useAuth } from '../../../../context/AuthContext'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile } = usePrincipalContext()
+  const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     fullName: userProfile?.fullName || '',
@@ -29,6 +22,13 @@ const ProfileSettings = () => {
   })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+  useEffect(() => {
+    if (!isEditing) setFormData({
+      fullName: userProfile?.fullName || '', email: userProfile?.email || '',
+      phone: userProfile?.phone || '', designation: userProfile?.designation || '',
+      employeeId: userProfile?.employeeId || '', joinDate: userProfile?.joinDate || ''
+    })
+  }, [userProfile, isEditing])
 
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({
@@ -52,17 +52,6 @@ const ProfileSettings = () => {
       newErrors.fullName = 'Full name is required'
     }
 
-    if (!formData.email?.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address'
-    }
-
-
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
-      newErrors.phone = 'Please enter a valid phone number'
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }, [formData])
@@ -75,22 +64,22 @@ const ProfileSettings = () => {
 
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
+      const result = await authAPI.updateProfile({ name: formData.fullName.trim() })
+      if (!result.user) throw new Error('Profile response is missing')
       setUserProfile({
         ...userProfile,
-        ...formData
+        fullName: result.user.name
       })
+      window.dispatchEvent(new CustomEvent('auth:refreshed', { detail: { ...user, ...result.user } }))
 
       setIsEditing(false)
       toast.success('Profile updated successfully!')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to update profile. Please try again.')
     } finally {
       setIsLoading(false)
     }
-  }, [formData, userProfile, setUserProfile, validateForm])
+  }, [formData, userProfile, setUserProfile, validateForm, user])
 
   const handleCancel = useCallback(() => {
     setFormData({
@@ -106,7 +95,7 @@ const ProfileSettings = () => {
   }, [userProfile])
 
   return (
-    <div className="space-y-6">
+    <><div><div className="space-y-6">
       {/* Page Header */}
       <motion.div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -185,7 +174,7 @@ const ProfileSettings = () => {
                   Full Name *
                 </label>
                 <div className="relative">
-                  <input
+                  <input aria-label="full Name"
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
@@ -219,11 +208,11 @@ const ProfileSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Employee ID
                 </label>
-                <input
+                <input aria-label="employee Id"
                   type="text"
                   value={formData.employeeId}
                   onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                  disabled={!isEditing}
+                  readOnly
                   className={`w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
                     }`}
                 />
@@ -235,11 +224,11 @@ const ProfileSettings = () => {
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
+                  <input aria-label="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    disabled={!isEditing}
+                    readOnly
                     className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${errors.email
                       ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                       : 'border-gray-200'
@@ -273,7 +262,7 @@ const ProfileSettings = () => {
                 </label>
                 <div className="relative">
                   <Building className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
+                  <input aria-label="Input"
                     type="text"
                     value="Engineering College"
                     disabled
@@ -286,11 +275,11 @@ const ProfileSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Designation
                 </label>
-                <input
+                <input aria-label="designation"
                   type="text"
                   value={formData.designation}
                   onChange={(e) => handleInputChange('designation', e.target.value)}
-                  disabled={!isEditing}
+                  readOnly
                   className={`w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${!isEditing ? 'bg-gray-50 text-gray-900' : ''
                     }`}
                 />
@@ -299,6 +288,7 @@ const ProfileSettings = () => {
 
             </div>
           </div>
+          <ChangeUsername />
         </div>
 
         {/* Sidebar */}
@@ -315,9 +305,7 @@ const ProfileSettings = () => {
                   }
                 </span>
               </div>
-              <button className="text-sm text-green-600 hover:text-green-700 font-medium">
-                Upload New Picture
-              </button>
+              <p className="text-sm text-slate-600">Profile initials use your saved name.</p>
             </div>
           </div>
 
@@ -336,7 +324,7 @@ const ProfileSettings = () => {
 
         </div>
       </div>
-    </div>
+    </div></div></>
   )
 }
 

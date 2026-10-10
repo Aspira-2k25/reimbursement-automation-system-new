@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useState, useRef } from "react";
+import { User, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { dashboardPath } from '../../utils/dashboardPath'
 import apshahLogo from '../../assets/images/Apshah_logo.png'
 // import websiteLogo from '../../assets/images/Website_logo.png'
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
+  const signInPending = useRef(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,49 +32,36 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (signInPending.current) return;
+    signInPending.current = true;
     setIsLoading(true);
     setError('');
     try {
       const { user } = await login(formData.name, formData.email, formData.password);
-      const role = (user?.role || '').toLowerCase();
-      if (role === 'admin') {
-        navigate('/dashboard/admin', { replace: true });
-      } else if (role === 'principal') {
-        navigate('/dashboard/principal', { replace: true });
-      } else if (role === 'hod') {
-        navigate('/dashboard/hod', { replace: true });
-      } else if (role === 'accounts') {
-        navigate('/dashboard/accounts', { replace: true });
-      } else if (role === 'coordinator') {
-        navigate('/dashboard/coordinator', { replace: true });
-      } else if (role === 'faculty') {
-        navigate('/dashboard/faculty', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      navigate(dashboardPath(user?.role), { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
+      signInPending.current = false;
       setIsLoading(false);
     }
   };
 
   // Note: Faculty/Coordinator should authenticate via backend flow.
 
-  // Match Landing page animation: simple fade-in-up on mount
-  const fadeInUp = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.6 }
-  }
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
+      {isLoading && <div role="status" aria-live="polite" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-white/95 text-slate-900">
+        <Loader2 aria-hidden="true" className="h-10 w-10 animate-spin text-teal-700" />
+        <p className="text-lg font-semibold">Signing you in…</p>
+        <p className="text-sm text-slate-600">Verifying your account securely.</p>
+      </div>}
       {/* Left Side - Welcome Section */}
-      <motion.div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }} {...fadeInUp}>
+      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }}>
 
         {/* College Branding Top Left */}
-        <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+        <Link to="/" aria-label="Go to landing page" className="absolute top-6 left-6 z-20 flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-green-700">
           <img
             src={apshahLogo}
             alt="A.P. Shah Institute of Technology Logo"
@@ -83,30 +70,30 @@ export default function LoginPage() {
           <span className="font-bold text-white text-sm sm:text-base tracking-wide drop-shadow-md max-w-[200px] leading-tight">
             PCT's A. P. Shah Institute of Technology
           </span>
-        </div>
+        </Link>
         {/* Decorative geometric shapes */}
         <div className="absolute inset-0">
           {/* Diamond shapes */}
-          <div className="absolute top-20 left-20 w-16 h-16 bg-white/10 transform rotate-45 rounded-lg animate-rotate-very-slow"></div>
-          <div className="absolute top-40 right-32 w-12 h-12 bg-white/10 transform rotate-45 rounded-lg animate-drift-slower"></div>
-          <div className="absolute bottom-32 left-16 w-20 h-20 bg-white/10 transform rotate-45 rounded-lg animate-float-slow"></div>
-          <div className="absolute bottom-20 right-20 w-8 h-8 bg-white/10 transform rotate-45 rounded-lg animate-drift-slower"></div>
+          <div className="absolute top-20 left-20 w-16 h-16 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute top-40 right-32 w-12 h-12 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute bottom-32 left-16 w-20 h-20 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute bottom-20 right-20 w-8 h-8 bg-white/10 transform rotate-45 rounded-lg"></div>
 
           {/* Circles */}
-          <div className="absolute top-32 right-16 w-32 h-32 bg-white/10 rounded-full animate-float-slow"></div>
-          <div className="absolute bottom-40 left-32 w-24 h-24 bg-white/10 rounded-full animate-drift-slower"></div>
-          <div className="absolute top-60 left-40 w-16 h-16 bg-white/10 rounded-full animate-float-slow"></div>
+          <div className="absolute top-32 right-16 w-32 h-32 bg-white/10 rounded-full"></div>
+          <div className="absolute bottom-40 left-32 w-24 h-24 bg-white/10 rounded-full"></div>
+          <div className="absolute top-60 left-40 w-16 h-16 bg-white/10 rounded-full"></div>
           {/* Extra shapes */}
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 w-10 h-10 bg-white/10 transform rotate-45 rounded-lg animate-drift-slower"></div>
-          <div className="absolute top-1/3 left-10 w-8 h-8 bg-white/10 rounded-full animate-float-slow"></div>
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-14 h-14 bg-white/10 rounded-full animate-drift-slower"></div>
-          <div className="absolute top-24 right-10 w-6 h-6 bg-white/10 transform rotate-45 rounded-lg animate-rotate-very-slow"></div>
-          <div className="absolute bottom-24 right-36 w-12 h-12 bg-white/10 rounded-full animate-float-slow"></div>
-          <div className="absolute top-1/2 left-24 w-9 h-9 bg-white/5 transform rotate-45 rounded-lg animate-drift-slower"></div>
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 w-10 h-10 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute top-1/3 left-10 w-8 h-8 bg-white/10 rounded-full"></div>
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-14 h-14 bg-white/10 rounded-full"></div>
+          <div className="absolute top-24 right-10 w-6 h-6 bg-white/10 transform rotate-45 rounded-lg"></div>
+          <div className="absolute bottom-24 right-36 w-12 h-12 bg-white/10 rounded-full"></div>
+          <div className="absolute top-1/2 left-24 w-9 h-9 bg-white/5 transform rotate-45 rounded-lg"></div>
         </div>
 
         {/* Content */}
-        <motion.div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center" {...fadeInUp}>
+        <div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center">
           {/* Large System Logo on the Green Panel */}
           {/* <img
             // src={websiteLogo}
@@ -119,13 +106,13 @@ export default function LoginPage() {
           <p className="text-base sm:text-lg lg:text-xl text-white/90 leading-relaxed max-w-md px-4">
             To keep connected with us please login with your personal info
           </p>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Right Side - Form Section */}
-      <motion.div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }} {...fadeInUp}>
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }}>
         <div className="w-full max-w-md px-4 sm:px-0">
-          <motion.div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8" {...fadeInUp}>
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8">
             {/* Header */}
             <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
               {/* <img
@@ -146,47 +133,45 @@ export default function LoginPage() {
                 </div>
               )}
               {/* Name Input */}
-              <div className="relative">
-                <User className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
+              <div className="relative"><label htmlFor="login-username" className="block mb-2 text-sm font-medium text-slate-700">Username</label>
+<div className="relative"><User className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'name' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
-                <input
+<input
                   type="text"
                   placeholder="Username"
-                  name="username"
+                  id="login-username" name="username"
                   autoComplete="username"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   onFocus={() => setFocusedField('name')}
                   onBlur={() => setFocusedField('')}
                   className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
-                />
-              </div>
+                /></div></div>
 
               {/* Email Input */}
-              <div className="relative">
-                <Mail className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
+              <div className="relative"><label htmlFor="login-email" className="block mb-2 text-sm font-medium text-slate-700">Email</label>
+<div className="relative"><Mail className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
-                <input
+<input
                   type="email"
                   placeholder="Email"
-                  name="email"
+                  id="login-email" name="email"
                   autoComplete="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField('')}
                   className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
-                />
-              </div>
+                /></div></div>
 
               {/* Password Input */}
-              <div className="relative">
-                <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
+              <div className="relative"><label htmlFor="login-password" className="block mb-2 text-sm font-medium text-slate-700">Password</label>
+<div className="relative"><Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-[#3B945E]' : 'text-gray-400'
                   }`} />
-                <input
+<input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
-                  name="password"
+                  id="login-password" name="password"
                   autoComplete="current-password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
@@ -194,8 +179,9 @@ export default function LoginPage() {
                   onBlur={() => setFocusedField('')}
                   className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B945E]/20 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-500"
                 />
-                <button
+<button
                   type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3B945E] transition-colors duration-200 focus:outline-none"
                 >
@@ -204,13 +190,12 @@ export default function LoginPage() {
                   ) : (
                     <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                   )}
-                </button>
-              </div>
+                </button></div></div>
 
 
               <div className="text-right">
-                <a href="/forgot-password" className="text-gray-400 text-sm mr-3"><u>Forgot password?</u>
-                </a>
+                <Link to="/forgot-password" className="text-gray-400 text-sm mr-3"><u>Forgot password?</u>
+                </Link>
               </div>
 
               {/* Social Login Text */}
@@ -224,20 +209,22 @@ export default function LoginPage() {
               <div className="flex justify-center mb-6">
                 <GoogleLogin
                   onSuccess={async (credentialResponse) => {
+                    if (signInPending.current) return;
+                    signInPending.current = true;
+                    setIsLoading(true);
+                    setError('');
                     try {
                       const credential = credentialResponse?.credential;
                       if (!credential) {
                         throw new Error('No Google credential received');
                       }
-                      await loginWithGoogle(credential);
-                      navigate('/dashboard', { replace: true });
-                      setTimeout(() => {
-                        if (location.pathname !== '/dashboard') {
-                          window.location.assign('/dashboard');
-                        }
-                      }, 50);
+                      const { user } = await loginWithGoogle(credential);
+                      navigate(dashboardPath(user?.role), { replace: true });
                     } catch (err) {
                       setError(err.message || 'Google login failed. Please try again.');
+                    } finally {
+                      signInPending.current = false;
+                      setIsLoading(false);
                     }
                   }}
                   onError={() => {
@@ -272,9 +259,9 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-          </motion.div>
+          </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

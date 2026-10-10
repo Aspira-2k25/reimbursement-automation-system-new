@@ -27,6 +27,7 @@ model Staff {
   is_active             Boolean   @default(true)
   failed_login_attempts Int       @default(0) @map("failed_login_attempts")
   locked_until          DateTime? @map("locked_until")
+  sessions_revoked_at    DateTime?
   last_login            DateTime? @map("last_login")
   created_at            DateTime  @default(now()) @map("created_at")
   updated_at            DateTime  @updatedAt @map("updated_at")
@@ -73,7 +74,20 @@ model OtpVerification {
   otp         String   @db.VarChar(10)
   expiry_time DateTime
   created_at  DateTime @default(now())
-
   @@map("otp_verification")
   @@index([email])
+}
+
+// Purpose-bound hashed challenges; legacy OTP rows remain untouched.
+model AccountOtpChallenge {
+  id          Int      @id @default(autoincrement())
+  email       String   @db.VarChar(100)
+  otp         String   @db.VarChar(255)
+  purpose     String   @db.VarChar(20)
+  target_username String? @db.VarChar(100)
+  attempts    Int      @default(0)
+  expiry_time DateTime
+  created_at  DateTime @default(now())
+  @@map("account_otp_challenges")
+  @@unique([email, purpose])
 }

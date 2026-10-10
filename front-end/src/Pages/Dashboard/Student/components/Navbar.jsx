@@ -9,15 +9,12 @@ import apshahLogo from "../../../../assets/images/Apshah_logo.png"
 // import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 function initials(name) {
-  if (!name || typeof name !== 'string') return "U"
   return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
+    .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "U"
+    .toUpperCase()
 }
 
 /**
@@ -255,7 +252,7 @@ export default function Navbar() {
                       toast.dismiss()
                       await logout()
                       handleClose()
-                      navigate("/", { replace: true })
+                      navigate('/login', { replace: true })
                     }}
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -263,7 +260,7 @@ export default function Navbar() {
                         toast.dismiss()
                         await logout()
                         handleClose()
-                        navigate("/", { replace: true })
+                        navigate('/login', { replace: true })
                       }
                     }}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-rose-50/60 active:bg-rose-100/60 rounded-lg transition-colors duration-150 focus:outline-none"

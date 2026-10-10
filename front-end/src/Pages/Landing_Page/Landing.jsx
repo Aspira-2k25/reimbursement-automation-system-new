@@ -1,85 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import Blobatar from '../../components/Blobatar';
+import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Users, Clock, BarChart3 } from 'lucide-react';
+import { ChevronRight } from "lucide-react";
 import { useAuth } from '../../context/AuthContext';
 
 import apshahLogo from '../../assets/images/Apshah_logo.png';
 import websiteLogo from '../../assets/images/Website_logo.png';
-
-// Simple 3D Avatar Component using Canvas
-const Avatar3D = () => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Simple animated avatar
-    const drawAvatar = (time) => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, '#e0f7f4');
-      gradient.addColorStop(1, '#b3e5db');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const bobbing = Math.sin(time * 0.003) * 5;
-
-      // Head
-      ctx.fillStyle = '#f4a460';
-      ctx.beginPath();
-      ctx.arc(centerX, centerY - 20 + bobbing, 35, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Eyes
-      ctx.fillStyle = '#333';
-      ctx.beginPath();
-      ctx.arc(centerX - 12, centerY - 25 + bobbing, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(centerX + 12, centerY - 25 + bobbing, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Smile
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY - 15 + bobbing, 12, 0, Math.PI);
-      ctx.stroke();
-
-      // Body
-      ctx.fillStyle = '#14b8a6';
-      ctx.fillRect(centerX - 25, centerY + 15 + bobbing, 50, 50);
-
-      // Arms
-      ctx.fillStyle = '#f4a460';
-      ctx.fillRect(centerX - 35, centerY + 20 + bobbing, 15, 40);
-      ctx.fillRect(centerX + 20, centerY + 20 + bobbing, 15, 40);
-
-      requestAnimationFrame(drawAvatar);
-    };
-
-    drawAvatar(0);
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={300}
-      height={400}
-      className="w-full max-w-xs mx-auto rounded-2xl shadow-lg"
-    />
-  );
-};
 
 export default function LandingPage() {
   const [isHovered, setIsHovered] = useState(null);
@@ -165,33 +92,25 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="w-full mx-auto px-4 sm:px-6 md:px-12 lg:px-24 py-12 sm:py-16 lg:py-20 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center">
+      <section id="features" className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
         <motion.div {...fadeInUp}>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/60 text-[#3B945E] text-xs font-semibold mb-4">
-            <span className="h-2 w-2 rounded-full bg-[#3B945E] animate-pulse"></span>
-            APSIT Digital Transformation Portal
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 leading-tight tracking-tight" style={{ color: theme.dark }}>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight" style={{ color: theme.dark }}>
             Automate Your Reimbursement <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.mint})` }}>Workflow</span>
           </h1>
-          <p className="text-sm sm:text-base lg:text-lg mb-6 sm:mb-8 leading-relaxed text-slate-600">
-            Eliminate paperwork, track requests in real-time, and streamline approvals. Our platform digitizes the entire reimbursement process for students, faculty, coordinators, HODs, and accounts.
+          <p className="text-lg mb-8 leading-relaxed" style={{ color: '#4b5563' }}>
+            Eliminate paperwork, track requests in real-time, and streamline approvals. Our platform digitizes the entire process for students, faculty, HODs, and administrators.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex gap-4">
             <button
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 text-white rounded-xl hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="px-8 py-3 text-white rounded-lg hover:shadow-xl transition-all font-medium flex items-center gap-2"
               style={{ backgroundImage: `linear-gradient(90deg, ${theme.green}, ${theme.sea})` }}
               onClick={() => navigate('/login')}
             >
               Submit Request <ChevronRight size={18} />
             </button>
             <button
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 border-2 rounded-xl transition-all font-semibold text-sm sm:text-base"
+              className="px-8 py-3 border-2 rounded-lg transition-all font-medium"
               style={{ borderColor: '#e5e7eb', color: '#374151' }}
-              onClick={() => {
-                const el = document.getElementById('how-it-works');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.green; e.currentTarget.style.color = theme.green; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#374151'; }}
             >
@@ -202,14 +121,14 @@ export default function LandingPage() {
 
         <motion.div
           {...fadeInUp}
-          className="relative flex justify-center mt-6 md:mt-0"
+          className="relative flex justify-center"
         >
-          <Avatar3D />
+          <Blobatar />
         </motion.div>
       </section>
 
       {/* Features Section */}
-      <section id="how-it-works" className="w-full mx-auto px-4 sm:px-6 md:px-12 lg:px-24 py-12 sm:py-16 lg:py-20">
+      <section id="how-it-works" className="w-full mx-auto px-6 md:px-12 lg:px-24 py-20">
         <motion.div {...fadeInUp} className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4" style={{ color: theme.dark }}>How It Works</h2>
           <p className="text-lg" style={{ color: '#4b5563' }}>A simple, transparent process for everyone.</p>
@@ -219,7 +138,7 @@ export default function LandingPage() {
           {[
             { num: '1', title: 'Submit Claim', desc: 'Digitally fill forms and upload all your supporting documents and receipts.' },
             { num: '2', title: 'Automated Routing', desc: 'Requests are automatically sent through the multi-level approval chain: Coordinator, HOD, and Principal.' },
-            { num: '3', title: 'Process & Disburse', desc: 'Once fully authorized, the Accounts department processes the payment for final disbursement.' }
+            { num: '3', title: 'Process & Reimburse', desc: 'Once fully authorized, the Accounts department processes the payment for final reimbursement.' }
           ].map((step, i) => (
             <motion.div
               key={i}
@@ -288,22 +207,22 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
+                <li><a href="#features" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Features</a></li>
+                <li><a href="#how-it-works" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>How it works</a></li>
+                <li><a href="/login" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Login</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Help Center</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Documentation</a></li>
-                <li><a href="#" className="transition" style={{ color: '#6b7280' }} onMouseEnter={(e) => e.currentTarget.style.color = theme.green} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>Contact Admin</a></li>
+                <li><a href="#how-it-works">Submission guidance</a></li>
+                <li>NPTEL reimbursement: maximum ₹1,500 per application.</li>
+                <li>For assistance, contact your departmental coordinator.</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-200 pt-8">
-            <p className="text-center text-sm" style={{ color: '#6b7280' }}>Developed by <b>Nirmala Patole</b>, <b>Alok Sahoo</b>, <b>Apoorva Puranik</b> , and <b>Vaibhavi Naik</b> From <b>TE-IT-B</b></p>
+            <p className="text-center text-sm" style={{ color: '#6b7280' }}>Developed by <b>Nirmala Patole</b>, <b>Alok Sahoo</b>, <b>Apoorva Puranik</b> , and <b>Vaibhavi Naik</b> From <b>BE-IT-B</b></p>
           </div>
         </div>
       </footer>

@@ -2,11 +2,12 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
 const logger = require('../utils/logger');
-const { sendPasswordResetEmail, sendOtpEmail } = require('../utils/emailService');
+const { sendPasswordResetEmail } = require('../utils/emailService');
+const otpService = require('../utils/otpService');
 
 // Token expiry: 15 minutes, OTP expiry: 5 minutes
 const RESET_TOKEN_EXPIRY_MIN = 15;
-const OTP_EXPIRY_MIN = 5;
+
 
 const passwordController = {
   /**
@@ -117,18 +118,23 @@ const passwordController = {
       // Get staff details for logging
       const staffToUpdate = await prisma.staff.findUnique({
         where: { email: resetToken.email },
-        select: { id: true, name: true, username: true, email: true, role: true, department: true }
+        select: { id: true, name: true, username: true, email: true, role: true, department: true, is_active: true }
       });
 
-      if (!staffToUpdate) {
+      if (!staffToUpdate || !staffToUpdate.is_active) {
         console.error('Staff not found for email in reset token:', resetToken.email);
         return res.status(404).json({ error: 'User not found for password reset.' });
       }
 
       // Update password in staff table
-      await prisma.staff.update({
-        where: { id: staffToUpdate.id },
-        data: { password: hashedPassword }
+      await prisma.$transaction(async (transaction) => {
+        // Consume once and revoke every refresh family in the same commit as the password change.
+        await transaction.passwordResetToken.delete({ where: { id: resetToken.id } });
+        await transaction.staff.update({ where: { id: staffToUpdate.id }, data: { password: hashedPassword, sessions_revoked_at: new Date() } });
+        await transaction.refreshToken.updateMany({
+          where: { userId: { in: [String(staffToUpdate.id), staffToUpdate.email] }, revokedAt: null },
+          data: { revokedAt: new Date() }
+        });
       });
 
       logger.logActivity({
@@ -143,8 +149,6 @@ const passwordController = {
         userAgent: req.get('user-agent') || null
       });
 
-      // Delete the used token (single-use)
-      await prisma.passwordResetToken.delete({ where: { id: resetToken.id } });
 
       res.json({ message: 'Password has been reset successfully. You can now log in with your new password.' });
     } catch (error) {
@@ -159,43 +163,13 @@ const passwordController = {
    */
   sendOtp: async (req, res) => {
     try {
-      const userEmail = req.user?.email;
-
-      if (!userEmail) {
-        return res.status(400).json({ error: 'User email not found. Please update your profile with a valid email.' });
-      }
-
-      // Delete any existing OTPs for this email
-      await prisma.otpVerification.deleteMany({
-        where: { email: userEmail }
-      });
-
-      // Generate 6-digit OTP
-      const otp = crypto.randomInt(100000, 999999).toString();
-      const expiryTime = new Date(Date.now() + OTP_EXPIRY_MIN * 60 * 1000);
-
-      // Store OTP
-      await prisma.otpVerification.create({
-        data: {
-          email: userEmail,
-          otp,
-          expiry_time: expiryTime
-        }
-      });
-
-      // Send OTP email
-      const emailResult = await sendOtpEmail(userEmail, otp);
-
-      if (!emailResult.success) {
-        console.error('Failed to send OTP email:', emailResult.error);
-        return res.status(500).json({ error: 'Failed to send OTP email. Please try again.' });
-      }
-
-      res.json({ message: 'OTP has been sent to your registered email address.' });
-    } catch (error) {
-      console.error('Send OTP error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+      const id = Number(req.user?.userId);
+      if (!Number.isSafeInteger(id) || id <= 0) return res.status(403).json({ error: 'Password verification requires a staff account.' });
+      const staff = await prisma.staff.findUnique({ where: { id }, select: { email: true, is_active: true } });
+      if (!staff?.is_active || !staff.email) return res.status(403).json({ error: 'An active account with a registered email is required.' });
+      const result = await otpService.issue({ email: staff.email, purpose: 'password' });
+      return res.status(result.status || 200).json(result);
+    } catch (error) { return otpService.failure(error, res); }
   },
 
   /**
@@ -224,13 +198,16 @@ const passwordController = {
         return res.status(400).json({ error: 'User email not found in session' });
       }
 
+      if (!Number.isSafeInteger(Number(userId)) || Number(userId) <= 0) {
+        return res.status(400).json({ error: 'Password changes require a staff account' });
+      }
       // Get current user with password
       const staff = await prisma.staff.findUnique({
         where: { id: typeof userId === 'number' ? userId : parseInt(userId, 10) },
-        select: { id: true, password: true, email: true }
+        select: { id: true, password: true, email: true, is_active: true }
       });
 
-      if (!staff) {
+      if (!staff || !staff.is_active) {
         return res.status(404).json({ error: 'User not found' });
       }
 
@@ -240,34 +217,18 @@ const passwordController = {
         return res.status(400).json({ error: 'Current password is incorrect' });
       }
 
-      // Verify OTP
-      const otpRecord = await prisma.otpVerification.findFirst({
-        where: { email: userEmail },
-        orderBy: { created_at: 'desc' }
-      });
-
-      if (!otpRecord) {
-        return res.status(400).json({ error: 'No OTP found. Please request a new OTP.' });
-      }
-
-      if (otpRecord.otp !== otp) {
-        return res.status(400).json({ error: 'Invalid OTP. Please check and try again.' });
-      }
-
-      if (new Date() > new Date(otpRecord.expiry_time)) {
-        // Clean up expired OTP
-        await prisma.otpVerification.delete({ where: { id: otpRecord.id } });
-        return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
-      }
-
-      // Hash new password
+      if (!/^\d{6}$/.test(String(otp))) return res.status(400).json({ error: 'Enter the six-digit OTP.' });
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-      // Update password
-      await prisma.staff.update({
-        where: { id: staff.id },
-        data: { password: hashedPassword }
+      const result = await otpService.transaction(async transaction => {
+        const current = await transaction.staff.findUnique({ where: { id: staff.id }, select: { password: true, email: true, is_active: true } });
+        if (!current?.is_active || current.password !== staff.password || current.email !== staff.email) return { status: 409, error: 'Account changed. Sign in and request a new code.' };
+        const error = await otpService.consume(transaction, { email: staff.email, purpose: 'password', otp });
+        if (error) return error;
+        await transaction.staff.update({ where: { id: staff.id }, data: { password: hashedPassword, sessions_revoked_at: new Date() } });
+        await transaction.refreshToken.updateMany({ where: { userId: { in: [String(staff.id), staff.email] }, revokedAt: null }, data: { revokedAt: new Date() } });
+        return {};
       });
+      if (result.error) return res.status(result.status).json(result);
 
       logger.logActivity({
         action: 'password_change',
@@ -281,13 +242,10 @@ const passwordController = {
         userAgent: req.get('user-agent') || null
       });
 
-      // Delete used OTP (single-use)
-      await prisma.otpVerification.delete({ where: { id: otpRecord.id } });
 
       res.json({ message: 'Password changed successfully.' });
     } catch (error) {
-      console.error('Change password error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      return otpService.failure(error, res);
     }
   }
 };

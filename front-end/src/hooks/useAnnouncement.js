@@ -16,24 +16,15 @@ function getCached(role) {
 }
 
 function setCache(role, data) {
-  try {
-    sessionStorage.setItem(getCacheKey(role), JSON.stringify({ data, ts: Date.now() }));
-  } catch (err) {
-    console.debug('Failed to cache announcement:', err);
-  }
+  try { sessionStorage.setItem(getCacheKey(role), JSON.stringify({ data, ts: Date.now() })); } catch { /* Cache is optional when browser storage is unavailable. */ }
 }
 
 function getUserRole() {
   try {
     // Try to read role from sessionStorage user data (stored by AuthContext)
     const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
-    if (raw) {
-      const u = JSON.parse(raw);
-      return u?.role || '';
-    }
-  } catch (err) {
-    console.debug('Failed to read user role:', err);
-  }
+    if (raw) { const u = JSON.parse(raw); return u?.role || ''; }
+  } catch { /* Cache is optional when browser storage is unavailable. */ }
   return '';
 }
 

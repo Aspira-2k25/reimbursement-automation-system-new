@@ -95,7 +95,11 @@ const MAX_TOTAL_SIZE = 2 * 1024 * 1024; // 2MB total for all files
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: MAX_FILE_SIZE // 1MB per file
+    fileSize: MAX_FILE_SIZE,
+    files: 2,
+    fields: 30,
+    fieldSize: 4096,
+    parts: 32
   },
   fileFilter: fileFilter
 });

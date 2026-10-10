@@ -1,4 +1,18 @@
 const { Pool } = require('pg');
+const fs = require('fs');
+
+function verifiedTls(connection) {
+  const url = connection ? new URL(connection) : null;
+  const mode = url?.searchParams.get('sslmode');
+  const secure = process.env.NODE_ENV === 'production' || (mode && mode !== 'disable') || url?.searchParams.get('ssl') === 'true';
+  if (!secure) return false;
+  const options = { rejectUnauthorized: true };
+  if (process.env.PG_SSL_CA) options.ca = process.env.PG_SSL_CA.replace(/\\n/g, '\n');
+  else if (url?.searchParams.get('sslrootcert')) options.ca = fs.readFileSync(url.searchParams.get('sslrootcert'), 'utf8');
+  if (url?.searchParams.get('sslcert')) options.cert = fs.readFileSync(url.searchParams.get('sslcert'), 'utf8');
+  if (url?.searchParams.get('sslkey')) options.key = fs.readFileSync(url.searchParams.get('sslkey'), 'utf8');
+  return options;
+}
 
 // Support multiple database URL formats:
 // 1. DATABASE_URL (Prisma standard / local dev)
@@ -60,18 +74,17 @@ if (connectionString) {
   // Use connection string if available (Vercel/Prisma Postgres)
   try {
     poolConfig = {
-      connectionString,
+      connectionString: (() => {
+        const url = new URL(connectionString);
+        for (const key of ['sslmode', 'ssl', 'sslcert', 'sslkey', 'sslrootcert']) url.searchParams.delete(key);
+        return url.toString();
+      })(),
       max: parseInt(process.env.PG_POOL_MAX, 10) || 5, // keep low for small Render instances
       idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10) || 30000, // 30 seconds
       // Allow extra time for cold Postgres start on Render / external providers
       connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10) || 10000, // 10 seconds
       keepAlive: true, // Prevent Render from dropping idle TCP connections
-      ssl:
-        connectionString.includes('sslmode=require') || connectionString.includes('ssl=true')
-          ? { rejectUnauthorized: false }
-          : process.env.NODE_ENV === 'production'
-            ? { rejectUnauthorized: false }
-            : false
+      ssl: verifiedTls(connectionString)
     };
     pool = new Pool(poolConfig);
   } catch (error) {
@@ -90,7 +103,7 @@ if (connectionString) {
       max: parseInt(process.env.PG_POOL_MAX, 10) || 5,
       idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT_MS, 10) || 10000,
       connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10) || 10000,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      ssl: verifiedTls()
     };
     pool = new Pool(poolConfig);
   } catch (error) {

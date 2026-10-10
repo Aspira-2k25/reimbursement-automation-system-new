@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from "react";
 import {
   Search,
   Download,
@@ -142,7 +142,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
             {/* Search */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
+              <input aria-label="search Query"
                 type="text"
                 placeholder="Search members..."
                 value={searchQuery}
@@ -153,7 +153,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
 
             {/* Filters */}
             <div className="flex gap-2">
-              <select
+              <select aria-label="type Filter"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -272,7 +272,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <button aria-label="Collapse navigation"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -293,7 +293,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                 </button>
               ))}
 
-              <button
+              <button aria-label="Expand navigation"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

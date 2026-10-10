@@ -1,20 +1,23 @@
-import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useLocation } from 'react-router-dom'
+import Pagination from '../../../../components/Pagination'
+import useDashboardTab from '../../../../hooks/useDashboardTab'
+import usePersistentNotifications from '../../../../hooks/usePersistentNotifications'
+import { lazy } from 'react';
+import { useState, createContext, useContext, useCallback, useMemo, useEffect, useRef } from "react";
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { initialHodData } from '../data/mockData'
 import { useAuth } from '../../../../context/AuthContext'
-import { studentFormsAPI, facultyFormsAPI } from '../../../../services/api'
+import { studentFormsAPI, facultyFormsAPI, dashboardAPI } from '../../../../services/api'
 import { toast } from 'react-hot-toast'
 import { resolveDepartment } from '../../../../utils/departmentResolver'
 import HomeDashboard from './HomeDashboard'
-import ReportsAndAnalytics from './ReportsAndAnalytics'
-import ApplyForReimbursement from './ApplyForReimbursement'
-import ProfileSettings from './ProfileSettings'
+const ReportsAndAnalytics = lazy(() => import("./ReportsAndAnalytics"))
+const ApplyForReimbursement = lazy(() => import("./ApplyForReimbursement"))
+const ProfileSettings = lazy(() => import("./ProfileSettings"))
 import RequestStatus from './RequestStatus'
-import AllDepartmentOverview from './AllDepartmentOverview'
-import ChangePassword from '../../../../components/ChangePassword'
+const AllDepartmentOverview = lazy(() => import("./AllDepartmentOverview"))
+const ChangePassword = lazy(() => import("../../../../components/ChangePassword"))
 
 // Context for sharing HOD state across components
 const HODContext = createContext()
@@ -27,19 +30,34 @@ export const useHODContext = () => {
   return context
 }
 
-const HODLayout = ({ children }) => {
-  const location = useLocation()
+const HODLayout = () => {
   const { user } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [activeTab, setActiveTab] = useState('home')
+  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth < 1024)
+  const [activeTab, setActiveTab] = useDashboardTab('/dashboard/hod', ["home","reports","apply","request-status","all-departments","profile","change-password"])
   const [userProfile, setUserProfile] = useState(initialHodData.userProfile)
   const [allRequests, setAllRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [departmentMembers, setDepartmentMembers] = useState([])
   const [notifications, setNotifications] = useState([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('Pending') // Default to show pending/Under HOD requests
-  const [typeFilter, setTypeFilter] = useState('All')
+  const persistentNotifications = usePersistentNotifications()
+  const [searchQuery, updateSearchQuery] = useState('')
+  const [statusFilter, updateStatusFilter] = useState('Pending') // Default to show pending/Under HOD requests
+  const [typeFilter, updateTypeFilter] = useState('All')
+  const [queuePage, setQueuePage] = useState(1)
+  const [queuePagination, setQueuePagination] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [requestError, setRequestError] = useState(null)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const requestGeneration = useRef(0)
+  const setSearchQuery = useCallback(value => { setQueuePage(1); updateSearchQuery(value) }, [])
+  const setStatusFilter = useCallback(value => { setQueuePage(1); updateStatusFilter(value) }, [])
+  const setTypeFilter = useCallback(value => { setQueuePage(1); updateTypeFilter(value) }, [])
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
 
   // Handle responsive behavior - auto-collapse on mobile
   useEffect(() => {
@@ -118,99 +136,34 @@ const HODLayout = ({ children }) => {
     }
   }, [])
 
-  // Fetch both student AND faculty requests from API
+  // Role-scoped queue pages and full filtered aggregates come from one backend policy.
   const fetchRequests = useCallback(async () => {
+    const generation = ++requestGeneration.current
+    if (!user) return
+    setLoading(true)
+    setRequestError(null)
+    const filters = {  applicantType: typeFilter, search: debouncedSearch }
     try {
-      setLoading(true)
-
-      // Fetch student forms, faculty forms, and HOD's own forms in parallel
-      const [
-        studentHodData, studentApprovedData, studentRejectedData,
-        facultyHodData, facultyApprovedData, facultyRejectedData,
-        hodMineData
-      ] = await Promise.allSettled([
-        studentFormsAPI.listForHOD(),
-        studentFormsAPI.listApproved(),
-        studentFormsAPI.listRejected(),
-        facultyFormsAPI.listForHOD(),
-        facultyFormsAPI.listApproved(),
-        facultyFormsAPI.listRejected(),
-        facultyFormsAPI.listMine()
+      const [pageData, aggregateData] = await Promise.all([
+        dashboardAPI.list({ ...filters, page: queuePage, limit: 10, status: statusFilter === 'Under Accounts' ? 'Approved' : statusFilter }),
+        dashboardAPI.analytics(filters)
       ])
-
-      let allForms = []
-
-      // Process student forms (add applicantType: 'Student')
-      if (studentHodData.status === 'fulfilled') {
-        const forms = (studentHodData.value?.forms || studentHodData.value || [])
-          .map(f => ({ ...f, applicantType: 'Student' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      if (studentApprovedData.status === 'fulfilled') {
-        const forms = (studentApprovedData.value?.forms || studentApprovedData.value || [])
-          .map(f => ({ ...f, applicantType: 'Student' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      if (studentRejectedData.status === 'fulfilled') {
-        const forms = (studentRejectedData.value?.forms || studentRejectedData.value || [])
-          .map(f => ({ ...f, applicantType: 'Student' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Process faculty forms (already have applicantType from backend)
-      if (facultyHodData.status === 'fulfilled') {
-        const forms = (facultyHodData.value?.forms || facultyHodData.value || [])
-          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      if (facultyApprovedData.status === 'fulfilled') {
-        const forms = (facultyApprovedData.value?.forms || facultyApprovedData.value || [])
-          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      if (facultyRejectedData.status === 'fulfilled') {
-        const forms = (facultyRejectedData.value?.forms || facultyRejectedData.value || [])
-          .map(f => ({ ...f, applicantType: f.applicantType || 'Faculty' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Process HOD's own submitted forms (applicantType: 'HOD')
-      if (hodMineData.status === 'fulfilled') {
-        const forms = (hodMineData.value?.forms || hodMineData.value || [])
-          .map(f => ({ ...f, applicantType: f.applicantType || 'HOD' }))
-        allForms = [...allForms, ...forms]
-      }
-
-      // Deduplicate forms by unique identifier (_id or applicationId or id)
-      const uniqueFormsMap = new Map()
-      for (const form of allForms) {
-        const key = String(form._id || form.id || form.applicationId)
-        if (key && !uniqueFormsMap.has(key)) {
-          uniqueFormsMap.set(key, form)
-        }
-      }
-      const uniqueForms = Array.from(uniqueFormsMap.values())
-
-      // Map backend data to HOD dashboard format
-      const mappedRequests = uniqueForms.map(mapFormToRequest)
-
-      setAllRequests(mappedRequests)
+      if (generation !== requestGeneration.current) return
+      setAllRequests((pageData.forms || []).map(mapFormToRequest))
+      setQueuePagination(pageData.pagination)
+      if (queuePage > Math.max(1, pageData.pagination?.totalPages || 1)) setQueuePage(Math.max(1, pageData.pagination?.totalPages || 1))
+      setSummary(aggregateData.summary)
+      setAnalytics(aggregateData)
     } catch (error) {
-      console.error('Error fetching HOD requests:', error)
-      toast.error(error?.error || 'Failed to fetch requests')
-      setAllRequests([])
+      if (generation !== requestGeneration.current) return
+      setRequestError(error.error || error.message || 'Unable to load dashboard data. Please retry.')
     } finally {
-      setLoading(false)
+      if (generation === requestGeneration.current) setLoading(false)
     }
-  }, [mapFormToRequest])
-
-  // Fetch requests on component mount
+  }, [user, queuePage, statusFilter, typeFilter, debouncedSearch, mapFormToRequest])
   useEffect(() => {
     fetchRequests()
+    return () => { requestGeneration.current += 1 }
   }, [fetchRequests])
 
   // Update userProfile when user data from AuthContext changes
@@ -240,26 +193,21 @@ const HODLayout = ({ children }) => {
     }
   }, [user])
 
-  // Keep HOD internal tab state aligned with direct URL navigation.
-  // This is important when returning from shared edit/view pages.
-  useEffect(() => {
-    const path = location.pathname.toLowerCase()
-    if (!path.startsWith('/dashboard/hod')) return
-
-    if (path.includes('/request-status')) {
-      setActiveTab('request-status')
-      return
+  const dashboardStats = useMemo(() => {
+    const counts = summary || {}
+    const bucket = status => analytics?.byStatus?.find(item => item._id === status) || {}
+    const pending = bucket('Under HOD').count || 0
+    const underPrincipal = bucket('Under Principal').count || 0
+    const approved = underPrincipal + (counts.approved || 0) + (counts.reimbursed || 0)
+    const total = counts.total || 0
+    return {
+      total, pending, underPrincipal, approved, rejected: counts.rejected || 0,
+      totalAmount: counts.totalAmount || 0, approvedAmount: counts.reimbursedAmount || 0,
+      pendingAmount: bucket('Under HOD').totalAmount || 0,
+      approvalRate: total ? Math.round(approved / total * 100) : 0,
+      pendingRate: total ? Math.round(pending / total * 100) : 0,
     }
-
-    if (path.includes('/profile')) {
-      setActiveTab('profile')
-      return
-    }
-
-    if (path.endsWith('/dashboard/hod') || path.endsWith('/dashboard/hod/')) {
-      setActiveTab('home')
-    }
-  }, [location.pathname])
+  }, [summary, analytics])
 
   // Function to render content based on active tab
   const renderContent = () => {
@@ -295,6 +243,13 @@ const HODLayout = ({ children }) => {
     userProfile,
     setUserProfile,
     allRequests,
+    queuePage,
+    setQueuePage,
+    queuePagination,
+    summary,
+    analytics,
+    requestError,
+    refreshRequests: fetchRequests,
     setAllRequests,
     loading,
     departmentMembers,
@@ -302,6 +257,8 @@ const HODLayout = ({ children }) => {
     fetchRequests,
 
     // Computed values
+    dashboardStats,
+    calculateStats: () => dashboardStats,
     reimbursementOptions: initialHodData.reimbursementOptions,
 
     // UI State
@@ -429,12 +386,11 @@ const HODLayout = ({ children }) => {
         }
 
         // Use correct API based on request type
-        let response
         try {
           if (request.applicantType === 'Student') {
-            response = await studentFormsAPI.updateById(formId, updateData)
+            await studentFormsAPI.updateById(formId, updateData)
           } else {
-            response = await facultyFormsAPI.updateById(formId, updateData)
+            await facultyFormsAPI.updateById(formId, updateData)
           }
         } catch (apiError) {
           console.error('API call failed:', apiError)
@@ -518,49 +474,16 @@ const HODLayout = ({ children }) => {
       setNotifications(prev => [newNotification, ...prev])
     }, []),
 
-    // Filtering and search
-    getFilteredRequests: useCallback(() => {
-      const filtered = allRequests.filter(request => {
-        const matchesSearch =
-          request.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.category.toLowerCase().includes(searchQuery.toLowerCase())
+    getFilteredRequests: useCallback(() => allRequests, [allRequests]),
+    ...persistentNotifications
 
-        // Handle status filtering - "Under HOD" should match "Pending" filter for HOD dashboard
-        let matchesStatus = false
-        if (statusFilter === 'All') {
-          matchesStatus = true
-        } else if (statusFilter === 'Pending') {
-          // For HOD, "Under HOD" status means pending
-          matchesStatus = request.status === 'Pending' || request.status === 'Under HOD'
-        } else if (statusFilter === 'Under HOD') {
-          // Explicitly handle "Under HOD" filter
-          matchesStatus = request.status === 'Under HOD'
-        } else if (statusFilter === 'Under Accounts') {
-          // "Under Accounts" = approved by principal, now with accounts department
-          matchesStatus = request.status === 'Approved'
-        } else if (statusFilter === 'Approved') {
-          // "Approved" includes fully approved and reimbursed
-          matchesStatus = request.status === 'Approved' || request.status === 'Reimbursed'
-        } else {
-          matchesStatus = request.status === statusFilter
-        }
-
-        const matchesType = typeFilter === 'All' || request.applicantType === typeFilter
-
-        return matchesSearch && matchesStatus && matchesType
-      })
-
-
-      return filtered
-    }, [allRequests, searchQuery, statusFilter, typeFilter])
   }
 
   return (
     <HODContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10">
         {/* Sidebar - Fixed positioned, independent of main content scroll */}
-        <motion.div
+        <Motion.div
           initial={false}
           animate={{ width: isCollapsed ? 64 : 256 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -573,7 +496,7 @@ const HODLayout = ({ children }) => {
             setIsCollapsed={setIsCollapsed}
             userProfile={userProfile}
           />
-        </motion.div>
+        </Motion.div>
 
         {/* Main Content Area - Has left margin to account for fixed sidebar */}
         <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'
@@ -597,8 +520,13 @@ const HODLayout = ({ children }) => {
           {/* Page Content - Scrollable area */}
           <main className="flex-1 overflow-auto">
             <div className="p-4 sm:p-6">
+              {requestError && <div role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+                <p>{requestError}</p>
+                <button type="button" onClick={fetchRequests} className="mt-2 underline">Retry dashboard</button>
+              </div>}
+
               <AnimatePresence mode="wait">
-                <motion.div
+                <Motion.div
                   key={activeTab}
                   initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -610,7 +538,8 @@ const HODLayout = ({ children }) => {
                   }}
                 >
                   {renderContent()}
-                </motion.div>
+              {activeTab === 'home' && queuePagination && <Pagination page={queuePagination.page} totalPages={queuePagination.totalPages} total={queuePagination.total} pageSize={10} noun="requests" busy={loading} onPageChange={setQueuePage} />}
+                </Motion.div>
               </AnimatePresence>
             </div>
           </main>
@@ -619,7 +548,7 @@ const HODLayout = ({ children }) => {
         {/* Mobile Overlay for Sidebar - Only on mobile devices */}
         <AnimatePresence>
           {!isCollapsed && (
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

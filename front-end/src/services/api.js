@@ -29,114 +29,130 @@ const api = axios.create({
   timeout: REQUEST_TIMEOUT,
 });
 
-// Fetch CSRF token on app initialization
-export const fetchCsrfToken = async () => {
-  try {
-    const response = await api.get('/csrf-token');
-    csrfToken = response.data.csrfToken;
-    return csrfToken;
-  } catch (error) {
-    console.error('Failed to fetch CSRF token:', error);
-    return null;
-  }
+// Share token fetches and refresh rotation across concurrent dashboard requests.
+let csrfPromise = null;
+let refreshPromise = null;
+let authEpoch = 0;
+const sessionChangedError = () => Object.assign(new Error('Session changed. Please retry.'), {
+  error: 'Session changed. Please retry.', code: 'ERR_SESSION_CHANGED', isApiError: true,
+});
+export const invalidateAuthSession = ({ preserveCsrf = false } = {}) => {
+  authEpoch += 1;
+  refreshPromise = null;
+  csrfPromise = null;
+  // CSRF cookie/token pairs are browser-scoped, independent of the authenticated identity.
+  if (!preserveCsrf) csrfToken = null;
 };
-
-// Get current CSRF token
+export const normalizeApiError = (failure) => {
+  if (failure?.isApiError) return failure;
+  const status = failure?.response?.status;
+  const data = failure?.response?.data;
+  const message = data?.error || data?.message || failure?.error ||
+    (failure?.code === 'ECONNABORTED' ? 'Request timed out. Please try again.' :
+      !failure?.response ? 'Network error. Please check your connection.' : 'Request failed.');
+  const error = new Error(message);
+  Object.assign(error, data && typeof data === 'object' ? data : {}, {
+    error: message, status, code: data?.code || failure?.code, response: failure?.response,
+    details: data && typeof data === 'object' ? data : undefined,
+    isApiError: true,
+  });
+  return error;
+};
+export const fetchCsrfToken = () => {
+  if (!csrfPromise) {
+    const epoch = authEpoch;
+    const pending = api.get('/csrf-token', { timeout: 8000, __skipNetworkRetry: true })
+      .then(({ data }) => {
+        if (epoch !== authEpoch) throw sessionChangedError();
+        if (!data.csrfToken) throw new Error('Server did not return a CSRF token.');
+        csrfToken = data.csrfToken;
+        return csrfToken;
+      }).finally(() => { if (csrfPromise === pending) csrfPromise = null; });
+    csrfPromise = pending;
+  }
+  return csrfPromise;
+};
 export const getCsrfToken = () => csrfToken;
-
-// SECURITY: Request interceptor to add CSRF protection headers
-api.interceptors.request.use(
-  (config) => {
-    // Add request timestamp for debugging
-    config.metadata = { startTime: new Date().getTime() };
-
-    // Add CSRF token for state-changing operations
-    if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase())) {
-      config.headers['X-CSRF-Token'] = csrfToken;
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+const isAuthEntry = (url = '') => new RegExp('/auth/(login|google|refresh|logout)(?:[/?]|$)').test(url);
+api.interceptors.request.use((config) => {
+  if (config.__authEpoch == null) config.__authEpoch = authEpoch;
+  if (config.__authEpoch !== authEpoch) throw sessionChangedError();
+  config.metadata = { startTime: Date.now() };
+  if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())) {
+    config.headers = config.headers || {};
+    config.headers['X-CSRF-Token'] = csrfToken;
   }
-);
-
-// SECURITY: Retry logic for failed requests
+  return config;
+});
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Add response interceptor to handle errors with retry logic
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  async (error) => {
-    const config = error.config;
-
-    // Handle timeout errors
-    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-      return Promise.reject({ error: 'Request timed out. Please try again.' });
-    }
-
-    // Handle 401 Unauthorized - clear user data and redirect
-    if (error.response?.status === 401) {
-      // Clear user data
-      localStorage.removeItem('user');
-      // Only redirect if not already on login page
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
-      }
-      return Promise.reject({ error: 'Session expired. Please login again.' });
-    }
-
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
-      const errorData = error.response?.data;
-
-      // If CSRF token is invalid, refresh it and retry the request once
-      if (errorData?.error === 'Invalid CSRF token' && !config.__csrfRetried) {
-        config.__csrfRetried = true;
-        try {
-          await fetchCsrfToken();
-          // Update the header with the new token
-          config.headers['X-CSRF-Token'] = csrfToken;
-          return api(config);
-        } catch {
-          return Promise.reject({ error: 'Session expired. Please refresh the page and try again.' });
-        }
-      }
-
-      // Preserve the original error message from the backend
-      return Promise.reject(errorData || { error: 'You do not have permission to perform this action.' });
-    }
-
-    // Handle 429 Rate Limit
-    if (error.response?.status === 429) {
-      return Promise.reject({ error: 'Too many requests. Please wait a moment.' });
-    }
-
-    // Retry logic for network errors (but not for 4xx client errors)
-    if (!error.response && config && !config.__retryCount) {
-      config.__retryCount = config.__retryCount || 0;
-
-      if (config.__retryCount < MAX_RETRIES) {
-        config.__retryCount += 1;
-        await sleep(RETRY_DELAY * config.__retryCount);
-        return api(config);
-      }
-    }
-
-    // Better error handling for network errors
-    if (!error.response) {
-      return Promise.reject({ error: 'Network error. Please check your connection.' });
-    }
-
-    return Promise.reject(error);
+api.interceptors.response.use(response => {
+  if (response.config?.__authEpoch != null && response.config.__authEpoch !== authEpoch) throw sessionChangedError();
+  return response;
+}, async (failure) => {
+  const config = failure.config;
+  if (config?.__authEpoch != null && config.__authEpoch !== authEpoch) throw sessionChangedError();
+  const status = failure.response?.status;
+  if (status === 403 && failure.response?.data?.error === 'Invalid CSRF token' && config && !config.__csrfRetried) {
+    config.__csrfRetried = true;
+    await fetchCsrfToken();
+    config.headers = config.headers || {};
+    config.headers['X-CSRF-Token'] = csrfToken;
+    return api(config);
   }
-);
+  if (status === 401 && config && !isAuthEntry(config.url) && !config.__authRetried) {
+    config.__authRetried = true;
+    const epoch = authEpoch;
+    if (!refreshPromise) {
+      const pending = api.post('/auth/refresh', {}, { timeout: 8000, __skipNetworkRetry: true })
+        .then(response => {
+          if (epoch !== authEpoch) throw sessionChangedError();
+          if (response.data.user) {
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            window.dispatchEvent(new CustomEvent('auth:refreshed', { detail: response.data.user }));
+          }
+          return response;
+        }).finally(() => { if (refreshPromise === pending) refreshPromise = null; });
+      refreshPromise = pending;
+    }
+    try { await refreshPromise; }
+    catch (error) {
+      if (epoch !== authEpoch) throw sessionChangedError();
+      if (error.status === 401 || error.status === 404) {
+        localStorage.removeItem('user');
+        window.dispatchEvent(new Event('auth:expired'));
+      }
+      throw normalizeApiError(error);
+    }
+    if (epoch !== authEpoch) throw sessionChangedError();
+    return api(config);
+  }
+  if (status === 401 && config && !isAuthEntry(config.url)) {
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('auth:expired'));
+  }
+  // Only reads may be automatically replayed after an ambiguous network failure.
+  if (!failure.response && config && !config.__skipNetworkRetry &&
+      ['get', 'head'].includes(config.method?.toLowerCase()) && !axios.isCancel(failure)) {
+    config.__retryCount = config.__retryCount || 0;
+    if (config.__retryCount < MAX_RETRIES && !config.signal?.aborted) {
+      config.__retryCount += 1;
+      await sleep(RETRY_DELAY * config.__retryCount);
+      if (!config.signal?.aborted) return api(config);
+    }
+  }
+  throw normalizeApiError(failure);
+});
 
 // Auth API functions
 export const authAPI = {
+  sendUsernameOtp: async (username) => {
+    try { return (await api.post('/auth/username/send-otp', { username })).data; }
+    catch (error) { throw normalizeApiError(error); }
+  },
+  changeUsername: async (username, otp) => {
+    try { return (await api.put('/auth/username', { username, otp })).data; }
+    catch (error) { throw normalizeApiError(error); }
+  },
   // Login function
   login: async (username, password) => {
     try {
@@ -146,7 +162,7 @@ export const authAPI = {
       });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -167,7 +183,7 @@ export const authAPI = {
       const response = await api.get('/auth/profile');
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -177,7 +193,7 @@ export const authAPI = {
       const response = await api.put('/auth/profile', data);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 };
@@ -190,7 +206,7 @@ export const passwordAPI = {
       const response = await api.post('/password/forgot-password', { email });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -200,7 +216,7 @@ export const passwordAPI = {
       const response = await api.post('/password/reset-password', { token, newPassword, confirmPassword });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -210,7 +226,7 @@ export const passwordAPI = {
       const response = await api.post('/password/send-otp');
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -220,7 +236,7 @@ export const passwordAPI = {
       const response = await api.post('/password/change-password', { oldPassword, newPassword, confirmPassword, otp });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 };
@@ -228,12 +244,12 @@ export const passwordAPI = {
 // User API functions
 export const userAPI = {
   // Get all users (for admin)
-  getAllUsers: async () => {
+  getAllUsers: async (params = {}) => {
     try {
-      const response = await api.get('/users');
+      const response = await api.get('/users', { params });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 };
@@ -242,52 +258,53 @@ export default api;
 
 // Faculty Forms API
 export const facultyFormsAPI = {
-  listMine: async () => {
+  listHistory: async (params = {}) => (await api.get('/forms/history', { params })).data,
+  listMine: async (params = {}) => {
     try {
-      const res = await api.get('/forms/mine');
+      const res = await api.get('/forms/mine', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listForHOD: async () => {
+  listForHOD: async (params = {}) => {
     try {
-      const res = await api.get('/forms/for-hod');
+      const res = await api.get('/forms/for-hod', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listForPrincipal: async () => {
+  listForPrincipal: async (params = {}) => {
     try {
-      const res = await api.get('/forms/for-principal');
+      const res = await api.get('/forms/for-principal', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listForAccounts: async () => {
+  listForAccounts: async (params = {}) => {
     try {
-      const res = await api.get('/forms/for-accounts');
+      const res = await api.get('/forms/for-accounts', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listApproved: async () => {
+  listApproved: async (params = {}) => {
     try {
-      const res = await api.get('/forms/approved');
+      const res = await api.get('/forms/approved', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listRejected: async () => {
+  listRejected: async (params = {}) => {
     try {
-      const res = await api.get('/forms/rejected');
+      const res = await api.get('/forms/rejected', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
   getById: async (id) => {
@@ -295,7 +312,7 @@ export const facultyFormsAPI = {
       const res = await api.get(`/forms/${id}`);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
   updateById: async (id, data) => {
@@ -303,7 +320,7 @@ export const facultyFormsAPI = {
       const res = await api.put(`/forms/${id}`, data);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
   deleteById: async (id) => {
@@ -311,67 +328,68 @@ export const facultyFormsAPI = {
       const res = await api.delete(`/forms/${id}`);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   }
 };
 
 // Student Forms API
 export const studentFormsAPI = {
-  listMine: async () => {
+  listHistory: async (params = {}) => (await api.get('/student-forms/history', { params })).data,
+  listMine: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/mine');
+      const res = await api.get('/student-forms/mine', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listPending: async () => {
+  listPending: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/pending');
+      const res = await api.get('/student-forms/pending', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listForHOD: async () => {
+  listForHOD: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/for-hod');
+      const res = await api.get('/student-forms/for-hod', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listForPrincipal: async () => {
+  listForPrincipal: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/for-principal');
+      const res = await api.get('/student-forms/for-principal', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listForAccounts: async () => {
+  listForAccounts: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/for-accounts');
+      const res = await api.get('/student-forms/for-accounts', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listApproved: async () => {
+  listApproved: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/approved');
+      const res = await api.get('/student-forms/approved', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
-  listRejected: async () => {
+  listRejected: async (params = {}) => {
     try {
-      const res = await api.get('/student-forms/rejected');
+      const res = await api.get('/student-forms/rejected', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
   getById: async (id) => {
@@ -379,7 +397,7 @@ export const studentFormsAPI = {
       const res = await api.get(`/student-forms/${id}`);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
   updateById: async (id, data) => {
@@ -387,7 +405,7 @@ export const studentFormsAPI = {
       const res = await api.put(`/student-forms/${id}`, data);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error', details: error.message };
+      throw normalizeApiError(error);
     }
   },
   /** Upload new documents for an existing form (multipart). Uses same base URL and auth as other calls. */
@@ -398,7 +416,7 @@ export const studentFormsAPI = {
       });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error', details: error.message };
+      throw normalizeApiError(error);
     }
   },
   deleteById: async (id) => {
@@ -406,7 +424,7 @@ export const studentFormsAPI = {
       const res = await api.delete(`/student-forms/${id}`);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   }
 };
@@ -414,12 +432,12 @@ export const studentFormsAPI = {
 // Admin API functions - for managing faculty and staff
 export const adminAPI = {
   // Get all faculty members
-  getFacultyList: async () => {
+  getFacultyList: async (params = {}) => {
     try {
-      const res = await api.get('/auth/admin/faculty');
+      const res = await api.get('/auth/admin/faculty', { params });
       return res.data; // { staff: [...] }
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -429,7 +447,7 @@ export const adminAPI = {
       const res = await api.get(`/auth/admin/faculty/${id}`);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -439,7 +457,7 @@ export const adminAPI = {
       const res = await api.post('/auth/admin/faculty', data);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -449,7 +467,7 @@ export const adminAPI = {
       const res = await api.put(`/auth/admin/faculty/${id}`, data);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -459,7 +477,7 @@ export const adminAPI = {
       const res = await api.delete(`/auth/admin/faculty/${id}`);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   }
   ,
@@ -469,43 +487,7 @@ export const adminAPI = {
       const res = await api.get('/admin/logs', { params });
       return res.data; // { logs: [...] }
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
-    }
-  }
-};
-
-// Notification API — in-app notification center
-export const notificationsAPI = {
-  getAll: async () => {
-    try {
-      const res = await api.get('/notifications');
-      return res.data; // { notifications: [...] }
-    } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
-    }
-  },
-  getUnreadCount: async () => {
-    try {
-      const res = await api.get('/notifications/unread-count');
-      return res.data; // { count: ... }
-    } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
-    }
-  },
-  markAsRead: async (id) => {
-    try {
-      const res = await api.put(`/notifications/${id}/read`);
-      return res.data;
-    } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
-    }
-  },
-  markAllAsRead: async () => {
-    try {
-      const res = await api.put('/notifications/read-all');
-      return res.data;
-    } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   }
 };
@@ -519,7 +501,7 @@ export const announcementAPI = {
       const res = await api.get('/announcements/active', { params });
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   },
 
@@ -529,7 +511,18 @@ export const announcementAPI = {
       const res = await api.put('/announcements', data);
       return res.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Network error' };
+      throw normalizeApiError(error);
     }
   }
+};
+export const notificationAPI = {
+  list: async (params = {}) => (await api.get('/notifications', { params })).data,
+  read: async (id) => (await api.put(`/notifications/${id}/read`)).data,
+  readAll: async () => (await api.put('/notifications/read-all')).data,
+};
+
+// Combined, server-filtered reviewer pages and aggregate reports.
+export const dashboardAPI = {
+  list: async (params = {}) => (await api.get('/dashboard', { params })).data,
+  analytics: async (params = {}) => (await api.get('/dashboard/analytics', { params })).data,
 };

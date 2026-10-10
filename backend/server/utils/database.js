@@ -179,7 +179,7 @@ const dbUtils = {
   // Update staff profile (limited editable fields)
   updateStaffProfile: async (userId, updates) => {
     try {
-      const allowed = ['name', 'department', 'email'];
+      const allowed = ['name', 'email'];
       const fields = allowed.filter((k) => updates[k] !== undefined);
 
       if (fields.length === 0) {

@@ -11,7 +11,7 @@ export default function NotificationMenu() {
   // State for notification menu visibility
   const [open, setOpen] = React.useState(false)
   const dropdownRef = React.useRef(null)
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useNotificationContext()
+  const { notifications, error, refreshNotifications, markNotificationAsRead, markAllNotificationsAsRead } = useNotificationContext()
 
   // Calculate unread notifications count - memoized to prevent unnecessary recalculations
   const unreadCount = React.useMemo(() =>
@@ -86,6 +86,7 @@ export default function NotificationMenu() {
 
   return (
     <div className="relative" ref={dropdownRef}>
+      {error && <button type="button" role="alert" onClick={refreshNotifications}>Notifications unavailable. Retry</button>}
       {/* Notification bell button */}
       <button
         onClick={toggleMenu}

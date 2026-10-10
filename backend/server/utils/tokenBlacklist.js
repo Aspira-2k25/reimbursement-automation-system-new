@@ -6,6 +6,7 @@
  */
 
 const mongoose = require('mongoose');
+const connectMongoDB = require('../config/mongo');
 
 // Token Blacklist Schema
 const TokenBlacklistSchema = new mongoose.Schema({
@@ -54,8 +55,7 @@ async function addToBlacklist(token, expiresInSeconds) {
     return true;
   } catch (error) {
     console.error('Error adding token to blacklist:', error);
-    // Return false so callers can detect the failure and handle it appropriately
-    return false;
+    throw error;
   }
 }
 
@@ -66,10 +66,9 @@ async function addToBlacklist(token, expiresInSeconds) {
  */
 async function isBlacklisted(token) {
   try {
-    // If MongoDB is not connected (readyState !== 1), skip blacklist check to avoid hanging
+    // Revocation checks must never succeed by treating an unavailable store as empty.
     if (mongoose.connection.readyState !== 1) {
-      console.warn('MongoDB not ready for token blacklist check. Proceeding with caution.');
-      return false;
+      await connectMongoDB();
     }
 
     // Hash the token for lookup
@@ -91,31 +90,9 @@ async function isBlacklisted(token) {
     return true;
   } catch (error) {
     console.error('Error checking token blacklist:', error);
-    // In development or disconnection, avoid locking out legitimate users
-    return false;
+    throw error;
   }
 }
 
-/**
- * Clean up expired tokens (manual cleanup, though TTL should handle most)
- * Can be called periodically via a cron job if needed.
- */
-async function cleanupExpiredTokens() {
-  try {
-    const result = await TokenBlacklist.deleteMany({
-      expiresAt: { $lte: new Date() }
-    });
-    console.log(`Cleaned up ${result.deletedCount} expired blacklisted tokens`);
-    return result.deletedCount;
-  } catch (error) {
-    console.error('Error cleaning up expired tokens:', error);
-    return 0;
-  }
-}
 
-module.exports = {
-  addToBlacklist,
-  isBlacklisted,
-  cleanupExpiredTokens,
-  TokenBlacklist
-};
+module.exports = { addToBlacklist, isBlacklisted, TokenBlacklist };

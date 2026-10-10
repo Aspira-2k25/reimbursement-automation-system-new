@@ -1,3 +1,4 @@
+import Pagination from '../../../components/Pagination'
 import React from "react"
 import "../Dashboard.css"
 import { Clock, CheckCircle, XCircle, FileText } from "lucide-react"
@@ -49,48 +50,44 @@ export default function RequestStatus() {
   const [requests, setRequests] = React.useState([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(null)
-  const [previousRequests, setPreviousRequests] = React.useState([])
+  const previousRequests = React.useRef(new Map())
+  const [page, setPage] = React.useState(1)
+  const [pagination, setPagination] = React.useState({ total: 0, totalPages: 1 })
+  const [lifetimeSummary, setLifetimeSummary] = React.useState(null)
   const { addNotification } = useNotificationContext()
 
   // Fetch data on mount
   React.useEffect(() => {
+    let active = true
+    let fetching = false
     const fetchRequests = async () => {
+      if (document.hidden || fetching) return
+      fetching = true
       try {
-        setLoading(true)
-        const data = await facultyFormsAPI.listMine()
+        const data = await facultyFormsAPI.listMine({ page, limit: 20 })
+        if (!active) return
 
         // Map backend data to frontend model
         // Handle both simple array response and paginated object response
         const formsArray = Array.isArray(data) ? data : (data?.forms || [])
         const mapped = formsArray.map(f => ({
-          ...f,
           id: f.applicationId || f._id,
           _id: f._id,
-          name: f.name || f.facultyName || '',
-          facultyId: f.facultyId || '',
-          department: f.department || '',
-          email: f.email || '',
-          academicYear: f.academicYear || '',
-          accountName: f.accountName || f.name || '',
-          accountNumber: f.accountNumber || '',
-          ifscCode: f.ifscCode || '',
           category: f.reimbursementType || "NPTEL",
           status: f.status || "Pending",
-          amount: Number(f.amount || 0),
+          amount: f.amount,
           submittedDate: f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           updatedDate: f.updatedAt ? new Date(f.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           description: f.remarks || f.name || "NPTEL Reimbursement",
           courseName: f.courseName || 'N/A',
           marks: f.marks ?? null,
           documents: f.documents || [],
-          accountsRemarks: f.accountsRemarks || '',
-          remarks: f.remarks || f.rejectionRemarks || '',
         }))
 
         // Check for status changes and generate notifications
-        if (previousRequests.length > 0) {
+        if (previousRequests.current.size > 0) {
           mapped.forEach(newRequest => {
-            const oldRequest = previousRequests.find(r => r.id === newRequest.id)
+            const oldRequest = previousRequests.current.get(newRequest.id)
             if (oldRequest && oldRequest.status !== newRequest.status) {
               const statusMessages = {
                 'Approved': 'Your request has been approved and sent to Accounts for reimbursement',
@@ -109,29 +106,40 @@ export default function RequestStatus() {
           })
         }
 
-        setPreviousRequests(mapped)
+        mapped.forEach(request => previousRequests.current.set(request.id, request))
+        setPagination(data?.pagination || { total: formsArray.length, totalPages: 1 })
+        setLifetimeSummary(data?.summary || null)
         setRequests(mapped)
         setError(null)
       } catch {
-        setError("Failed to load your requests. Please try again.")
+        if (active) setError("Failed to load your requests. Please try again.")
       } finally {
-        setLoading(false)
+        fetching = false
+        if (active) setLoading(false)
       }
     }
 
     fetchRequests()
     // Poll for updates every 30 seconds
     const interval = setInterval(fetchRequests, 30000)
-    return () => clearInterval(interval)
-  }, [addNotification])
+    document.addEventListener('visibilitychange', fetchRequests)
+    return () => {
+      active = false
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', fetchRequests)
+    }
+  }, [addNotification, page])
 
   // Calculate summary statistics from dynamic data
-  const summary = {
-    total: requests.length,
-    approved: requests.filter(r => r.status === "Approved").length,
-    pending: requests.filter(r => ["Pending", "Under Review", "submitted"].includes(r.status.toLowerCase())).length,
-    rejected: requests.filter(r => r.status === "Rejected").length
+  const normalizedStatus = request => String(request.status).trim().toLowerCase()
+  const summary = lifetimeSummary || {
+    approved: requests.filter(r => ["approved", "reimbursed"].includes(normalizedStatus(r))).length,
+    pending: requests.filter(r => ["pending", "under review", "submitted", "under coordinator", "under hod", "under principal"].includes(normalizedStatus(r))).length,
+    rejected: requests.filter(r => normalizedStatus(r) === "rejected").length
   }
+  const summaryScope = lifetimeSummary ? "All time" : "On this page"
+  const totalPages = Math.max(1, pagination.totalPages || 1)
+
 
   if (loading) {
     return (
@@ -160,17 +168,17 @@ export default function RequestStatus() {
     <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 page-content">
       {/* Summary cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <SummaryCard title="Total Applications" value={summary.total} sub="All time" />
-        <SummaryCard title="Total Approved" value={summary.approved} sub="Approved requests" />
-        <SummaryCard title="Pending Review" value={summary.pending} sub="Under review" />
-        <SummaryCard title="Rejected" value={summary.rejected} sub="Not approved" />
+        <SummaryCard title="Total Applications" value={pagination.total} sub="All time" />
+        <SummaryCard title="Total Approved" value={summary.approved} sub={`${summaryScope}: approved or reimbursed`} />
+        <SummaryCard title="Pending Review" value={summary.pending} sub={summaryScope} />
+        <SummaryCard title="Rejected" value={summary.rejected} sub={summaryScope} />
       </div>
 
       {/* Search input */}
       <div className="card mt-4 sm:mt-6 p-3 sm:p-4">
-        <input
+        <input aria-label="search"
           className="input w-full"
-          placeholder="Search requests..."
+          placeholder="Search this page..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -180,9 +188,10 @@ export default function RequestStatus() {
       <div className="section mt-4 sm:mt-6">
         <div className="mb-3 sm:mb-4">
           <h3 className="section-title text-lg sm:text-xl">Your Faculty Requests</h3>
-          <p className="section-subtitle text-sm sm:text-base">Complete list of your reimbursement applications</p>
+          <p className="section-subtitle text-sm sm:text-base">{pagination.total} applications total; showing {requests.length} on this page</p>
         </div>
         <RequestsTable search={search} requests={requests} />
+        <Pagination page={page} totalPages={totalPages} total={pagination.total} pageSize={20} noun="applications" busy={loading} onPageChange={value => { setLoading(true); setPage(value) }} />
       </div>
     </main>
   )

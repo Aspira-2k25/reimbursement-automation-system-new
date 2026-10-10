@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react'
+import ChangeUsername from '../../../../components/ChangeUsername'
+import { useState, useCallback, useEffect } from "react";
 import { motion as Motion } from 'framer-motion'
 import {
   User,
@@ -13,9 +14,11 @@ import {
 import { toast } from 'react-hot-toast'
 import { useAccountsContext } from './AccountsLayout'
 import { authAPI } from '../../../../services/api'
+import { useAuth } from '../../../../context/AuthContext'
 
 const ProfileSettings = () => {
   const { userProfile, setUserProfile, setActiveTab } = useAccountsContext()
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     fullName: userProfile?.fullName || '',
@@ -23,6 +26,10 @@ const ProfileSettings = () => {
     designation: userProfile?.designation || '',
     department: userProfile?.department || ''
   })
+  useEffect(() => {
+    setFormData({ fullName: userProfile?.fullName || '', email: userProfile?.email || '',
+      designation: userProfile?.designation || '', department: userProfile?.department || '' })
+  }, [userProfile])
 
   const handleChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -34,15 +41,18 @@ const ProfileSettings = () => {
 
     try {
       // Update profile via API - backend expects 'name' not 'fullName'
-      await authAPI.updateProfile({
+      const result = await authAPI.updateProfile({
         name: formData.fullName
       })
+      if (!result.user) throw new Error('The server did not return the saved profile.')
 
       // Update local context
       setUserProfile(prev => ({
         ...prev,
-        ...formData
+        fullName: result.user.name,
+        email: result.user.email
       }))
+      window.dispatchEvent(new CustomEvent('auth:refreshed', { detail: { ...user, ...result.user } }))
 
       toast.success('Profile updated successfully')
     } catch (error) {
@@ -50,14 +60,14 @@ const ProfileSettings = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [formData, setUserProfile])
+  }, [formData, setUserProfile, user])
 
   const handleChangePassword = useCallback(() => {
     setActiveTab('change-password')
   }, [setActiveTab])
 
   return (
-    <div className="space-y-6">
+    <><div><div className="space-y-6">
       {/* Header */}
       <Motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -98,7 +108,7 @@ const ProfileSettings = () => {
                 <User className="w-4 h-4 inline mr-2" />
                 Full Name
               </label>
-              <input
+              <input aria-label="full Name"
                 type="text"
                 value={formData.fullName}
                 onChange={(e) => handleChange('fullName', e.target.value)}
@@ -111,9 +121,9 @@ const ProfileSettings = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
-                Email Address
+                Registered Email
               </label>
-              <input
+              <input aria-label="email"
                 type="email"
                 value={formData.email}
                 disabled
@@ -129,7 +139,7 @@ const ProfileSettings = () => {
                 <User className="w-4 h-4 inline mr-2" />
                 Designation
               </label>
-              <input
+              <input aria-label="designation"
                 type="text"
                 value={formData.designation}
                 disabled
@@ -144,7 +154,7 @@ const ProfileSettings = () => {
                 <Building2 className="w-4 h-4 inline mr-2" />
                 Department
               </label>
-              <input
+              <input aria-label="department"
                 type="text"
                 value={formData.department}
                 disabled
@@ -213,7 +223,8 @@ const ProfileSettings = () => {
           </button>
         </div>
       </Motion.div>
-    </div>
+      <ChangeUsername />
+    </div></div></>
   )
 }
 

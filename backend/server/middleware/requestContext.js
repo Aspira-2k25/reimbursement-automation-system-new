@@ -3,7 +3,7 @@
  * Adds request ID tracking and context for logging/debugging
  */
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 
 /**
  * Add unique request ID to each request

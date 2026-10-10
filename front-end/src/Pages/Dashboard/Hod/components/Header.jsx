@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Search, Menu, X, Clock, Calendar, ChevronDown, Settings, LogOut, FileText, CheckCircle, XCircle, Check, CheckCheck } from 'lucide-react'
+import { Bell, Clock, Calendar, ChevronDown, Settings, LogOut, Check, CheckCheck } from "lucide-react";
 import { toast } from 'react-hot-toast'
 import { useHODContext } from '../pages/HODLayout'
 import { useAuth } from '../../../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import apshahLogo from '../../../../assets/images/Apshah_logo.png'
-import websiteLogo from '../../../../assets/images/Website_logo.png'
+
 
 const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   const { logout } = useAuth()
@@ -18,7 +18,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     setActiveTab,
     notifications,
     markNotificationAsRead,
-    markAllNotificationsAsRead
+    markAllNotificationsAsRead, error: notificationError, refreshNotifications
   } = useHODContext()
 
   const notificationRef = useRef(null)
@@ -64,7 +64,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
     await logout()
     toast.success('Logged out successfully')
     setShowProfileMenu(false)
-    navigate('/')
+    navigate('/login', { replace: true })
   }, [logout, navigate])
 
   const getCurrentTime = () => {
@@ -86,15 +86,15 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   }
 
   return (
-    <header className="px-6 py-4" style={{ backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)' }}>
-      <div className="flex items-center justify-between">
+    <header className="px-3 sm:px-6 py-3 sm:py-4" style={{ backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)' }}>
+      <div className="flex items-start sm:items-center justify-between gap-2">
         {/* Left Section - College Logo & Current Page */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <div className="flex flex-1 min-w-0 flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6">
           <div className="flex items-center gap-3 pr-0 sm:pr-6 border-b sm:border-b-0 sm:border-r border-gray-200 pb-2 sm:pb-0">
             <img
               src={apshahLogo}
               alt="A.P. Shah Logo"
-              className="h-12 w-12 sm:h-14 sm:w-14 rounded-sm object-contain drop-shadow-sm"
+              className="h-8 w-8 sm:h-14 sm:w-14 rounded-sm object-contain drop-shadow-sm"
             />
             <span className="font-bold text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden lg:block" style={{ color: 'var(--color-dark-gray)' }}>
               PCT's A. P. Shah Institute of Technology
@@ -102,8 +102,8 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
           </div>
 
           <div>
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--color-dark-gray)' }}>{currentPage}</h1>
-            <div className="flex items-center gap-4 mt-1">
+            <h1 className="text-lg sm:text-2xl break-words font-semibold" style={{ color: 'var(--color-dark-gray)' }}>{currentPage}</h1>
+            <div className="hidden sm:flex flex-wrap items-center gap-2 mt-1">
               <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--color-dark-gray)' }}>
                 <Calendar className="w-4 h-4" />
                 <span>{getCurrentDate()}</span>
@@ -117,12 +117,13 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
         </div>
 
         {/* Right Section - Notifications & Profile */}
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
 
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
             <button
+              aria-label="Notifications" aria-expanded={showNotifications}
               onClick={handleNotificationClick}
               className="relative p-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
               style={{ color: 'var(--color-dark-gray)' }}
@@ -139,7 +140,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
             <AnimatePresence>
               {showNotifications && (
                 <motion.div
-                  className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                  className="absolute right-0 mt-2 w-64 sm:w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -153,6 +154,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                   </div>
 
                   <div className="max-h-80 overflow-y-auto">
+                    {notificationError && <div role="alert" className="p-3 text-sm text-red-700">{notificationError}<button type="button" onClick={() => refreshNotifications(true)} className="block underline">Retry notifications</button></div>}
                     {notifications.length === 0 ? (
                       <div className="p-4 text-center text-gray-500 text-sm">
                         No notifications
@@ -215,10 +217,11 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
           {/* Profile Menu */}
           <div className="relative" ref={profileRef}>
             <button
+              aria-label="Profile menu" aria-expanded={showProfileMenu}
               onClick={handleProfileClick}
               className="flex items-center gap-3 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#65CCB8]"
             >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#287850" }}>
                 <span className="text-white text-sm font-medium">
                   {userProfile?.fullName
                     ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
@@ -250,7 +253,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                 >
                   <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal))' }}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "#287850" }}>
                         <span className="text-white text-sm font-medium">
                           {userProfile?.fullName
                             ? userProfile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
