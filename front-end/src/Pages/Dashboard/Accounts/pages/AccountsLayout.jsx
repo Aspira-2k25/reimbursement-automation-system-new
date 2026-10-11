@@ -126,7 +126,7 @@ const AccountsLayout = () => {
       formType: f.formType,
       applicantName: f.name || 'N/A',
       applicantId: f.studentId || f.facultyId || 'N/A',
-      applicantType: f.applicantType || 'Student',
+      applicantType: f.applicantType || (f.studentId || f.formType === 'student' ? 'Student' : 'Faculty'),
       applicantEmail: f.email,
       department: f.department || 'N/A',
       category: f.reimbursementType || f.category || 'NPTEL',

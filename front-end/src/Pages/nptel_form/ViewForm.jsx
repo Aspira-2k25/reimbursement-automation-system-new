@@ -254,7 +254,12 @@ export default function ViewForm() {
         {(formData.reviewedBy || formData.remark || formData.accountsComments || (formData.status !== 'Rejected' && formData.accountsRemarks)) && (
           <section className="mt-6 p-4 bg-gray-50 rounded-lg space-y-2" aria-label="Review details">
             <h3 className="text-lg font-medium text-gray-900">Review Details</h3>
-            {formData.reviewedBy && <p className="text-sm text-gray-700">Reviewed by {formData.reviewedBy}{formData.reviewedAt ? ` on ${new Date(formData.reviewedAt).toLocaleDateString()}` : ''}</p>}
+            {formData.reviewedBy && (
+              <p className="text-sm text-gray-700">
+                Reviewed by {/^\d+$/.test(String(formData.reviewedBy).trim()) ? `Principal (Staff ID: ${formData.reviewedBy})` : formData.reviewedBy}
+                {formData.reviewedAt ? ` on ${new Date(formData.reviewedAt).toLocaleDateString()}` : ''}
+              </p>
+            )}
             {formData.remark && <p className="text-sm text-gray-700 whitespace-pre-wrap">Reviewer remark: {formData.remark}</p>}
             {formData.accountsComments && <p className="text-sm text-gray-700 whitespace-pre-wrap">Accounts comment: {formData.accountsComments}</p>}
             {formData.status !== 'Rejected' && formData.accountsRemarks && <p className="text-sm text-gray-700 whitespace-pre-wrap">Accounts remark: {formData.accountsRemarks}</p>}

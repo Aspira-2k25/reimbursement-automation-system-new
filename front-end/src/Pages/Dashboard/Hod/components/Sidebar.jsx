@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, BarChart3, FileText, Settings, ChevronLeft, ChevronRight, Building, User, Eye } from "lucide-react";
+import { Home, BarChart3, FileText, Settings, ChevronLeft, ChevronRight, Building, Eye } from "lucide-react";
+import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {
   const [hoveredItem, setHoveredItem] = useState(null)
@@ -40,26 +41,18 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userPro
     >
       {/* Header with Logo and Toggle */}
       <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <AnimatePresence>
+        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner overflow-hidden p-1 bg-white border border-gray-100 flex-shrink-0">
+              <img src={websiteLogo} alt="Reimbursement Portal Logo" className="w-full h-full object-contain" />
+            </div>
             {!isCollapsed && (
-              <motion.div
-                className="flex items-center gap-3"
-                initial={false}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner" style={{ background: 'linear-gradient(135deg, var(--color-medium-teal), var(--color-light-teal), var(--color-dark-green))' }}>
-                  <div className="w-5 h-5 bg-white rounded-md opacity-95"></div>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-base font-semibold text-slate-900 tracking-tight">Reimbursement Portal</span>
-                  <span className="sr-only">Navigation</span>
-                </div>
-              </motion.div>
+              <div className="flex flex-col">
+                <span className="text-base font-semibold text-slate-900 tracking-tight">Reimbursement Portal</span>
+                <span className="text-xs text-slate-500">HOD Management</span>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
 
           <button
             aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"} aria-expanded={!isCollapsed}

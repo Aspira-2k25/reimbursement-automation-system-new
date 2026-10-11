@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast'
 import FacultyManagement from './FacultyManagement'
 import Dashboard from './Dashboard'
 import AdminLogs from './AdminLogs'
+import PortalManagement from './PortalManagement'
 import ChangePassword from '../../../../components/ChangePassword'
 import { normalizeDepartment } from '../../../../utils/departmentNormalization'
 
@@ -38,6 +39,7 @@ const AdminLayout = () => {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('All')
   const [editingStaff, setEditingStaff] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -103,24 +105,36 @@ const AdminLayout = () => {
     }
   }, [fetchStaff])
 
-  // Filter faculty based on search and filters
+  // Filter faculty based on search, department, and active status
   const filteredFaculty = useMemo(() => {
     return staffList.filter(faculty => {
-      const isActive = faculty.is_active !== false
       const matchesSearch = !searchQuery ||
         faculty.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         faculty.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        faculty.email?.toLowerCase().includes(searchQuery.toLowerCase())
+        faculty.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        faculty.role?.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchesDepartment = departmentFilter === 'All' || normalizeDepartment(faculty.department) === departmentFilter
+      const isCollegeWide = ['principal', 'accounts', 'admin'].includes(faculty.role?.toLowerCase())
+      // College-wide roles have no department; they only appear when viewing 'All' departments
+      const matchesDepartment = departmentFilter === 'All' || (!isCollegeWide && normalizeDepartment(faculty.department) === departmentFilter)
 
-      return isActive && matchesSearch && matchesDepartment
+      const matchesStatus =
+        statusFilter === 'All' ||
+        (statusFilter === 'Active' && faculty.is_active !== false) ||
+        (statusFilter === 'Inactive' && faculty.is_active === false)
+
+      return matchesStatus && matchesSearch && matchesDepartment
     })
-  }, [staffList, searchQuery, departmentFilter])
+  }, [staffList, searchQuery, departmentFilter, statusFilter])
 
-  // Get unique departments
+  // Get unique departments (excluding college-wide roles)
   const departments = useMemo(() => {
-    const depts = new Set(staffList.map(f => normalizeDepartment(f.department)).filter(Boolean))
+    const depts = new Set(
+      staffList
+        .filter(f => !['principal', 'accounts', 'admin'].includes(f.role?.toLowerCase()))
+        .map(f => normalizeDepartment(f.department))
+        .filter(Boolean)
+    )
     return ['All', ...Array.from(depts)]
   }, [staffList])
 
@@ -157,20 +171,41 @@ const AdminLayout = () => {
     }
   }, [editingStaff, fetchStaff])
 
-  // Delete staff member
-  const handleDeleteStaff = useCallback(async (id) => {
-    if (!window.confirm('Are you sure you want to delete this staff member?')) {
+  // Toggle staff active/inactive status
+  const handleToggleStaffStatus = useCallback(async (faculty) => {
+    const isCurrentlyActive = faculty.is_active !== false
+    const newStatus = !isCurrentlyActive
+    const actionWord = newStatus ? 'activate' : 'deactivate'
+    const name = faculty.name || faculty.username || 'this staff member'
+    if (!window.confirm(`Are you sure you want to ${actionWord} the account for ${name}?`)) {
       return
     }
     try {
-      await adminAPI.deleteFaculty(id)
-      toast.success('Staff removed successfully')
+      await adminAPI.updateFaculty(faculty.id, { is_active: newStatus })
+      toast.success(`Staff account ${newStatus ? 'activated' : 'deactivated'} successfully`)
+      fetchStaff()
+    } catch (error) {
+      console.error('Error toggling staff status:', error)
+      toast.error(error?.error || `Failed to ${actionWord} staff account`)
+    }
+  }, [fetchStaff])
+
+  // Delete staff member (permanently)
+  const handleDeleteStaff = useCallback(async (id) => {
+    const target = staffList.find(s => s.id === id)
+    const name = target?.name || target?.username || 'this staff member'
+    if (!window.confirm(`Are you sure you want to permanently delete ${name}? This action cannot be undone.`)) {
+      return
+    }
+    try {
+      const res = await adminAPI.deleteFaculty(id, { permanent: true })
+      toast.success(res?.message || 'Staff member permanently deleted successfully')
       fetchStaff()
     } catch (error) {
       console.error('Error deleting staff:', error)
       toast.error(error?.error || 'Failed to delete staff')
     }
-  }, [fetchStaff])
+  }, [staffList, fetchStaff])
 
   const contextValue = {
     activeTab,
@@ -182,6 +217,8 @@ const AdminLayout = () => {
     setSearchQuery,
     departmentFilter,
     setDepartmentFilter,
+    statusFilter,
+    setStatusFilter,
     departments,
     editingStaff,
     setEditingStaff,
@@ -190,6 +227,7 @@ const AdminLayout = () => {
     handleAddStaff,
     handleEditStaff,
     handleSaveStaff,
+    handleToggleStaffStatus,
     handleDeleteStaff,
     refreshStaff: fetchStaff
   }
@@ -217,6 +255,7 @@ const AdminLayout = () => {
                 className="p-6"
               >
                 {activeTab === 'home' && <Dashboard />}
+                {activeTab === 'portals' && <PortalManagement />}
                 {activeTab === 'faculty' && <FacultyManagement />}
                 {activeTab === 'logs' && <AdminLogs />}
                 {activeTab === 'change-password' && <ChangePassword />}

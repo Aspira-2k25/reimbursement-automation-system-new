@@ -6,7 +6,6 @@ import NotificationMenu from "./NotificationMenu"
 import { useProfile } from "../ProfileContext"
 import { useAuth } from "../../../../context/AuthContext.jsx"
 import apshahLogo from "../../../../assets/images/Apshah_logo.png"
-// import websiteLogo from "../../../../assets/images/Website_logo.png"
 
 function initials(name) {
   return name
@@ -125,18 +124,20 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:grid grid-cols-2 gap-1 absolute left-1/2 -translate-x-1/2 p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
-            <div
-              className={[
-                "absolute top-1 bottom-1 rounded-xl sliding-block",
-                "bg-gradient-to-r from-[#3B945E] via-[#57BA98] to-[#65CCB8]",
-                "shadow-lg",
-                "border border-white/20",
-                "backdrop-blur-sm",
-                navItems.slice(0, 2).findIndex(item => isActive(item.path)) === 0
-                  ? "sliding-block-left"
-                  : "sliding-block-right"
-              ].join(" ")}
-            />
+            {navItems.slice(0, 2).findIndex(item => isActive(item.path)) !== -1 && (
+              <div
+                className={[
+                  "absolute top-1 bottom-1 rounded-xl sliding-block",
+                  "bg-gradient-to-r from-[#3B945E] via-[#57BA98] to-[#65CCB8]",
+                  "shadow-lg",
+                  "border border-white/20",
+                  "backdrop-blur-sm",
+                  navItems.slice(0, 2).findIndex(item => isActive(item.path)) === 0
+                    ? "sliding-block-left"
+                    : "sliding-block-right"
+                ].join(" ")}
+              />
+            )}
 
             {navItems.slice(0, 2).map((item) => (
               <Link
@@ -177,14 +178,6 @@ export default function Navbar() {
 
           {/* Right section with notifications and profile */}
           <div className="flex items-center gap-2 sm:gap-4">
-
-            {/* System Logo */}
-            {/* <div className="hidden sm:flex items-center gap-2 mr-2">
-              <img src={websiteLogo} alt="Reimbursement Portal" className="h-10 w-10 sm:h-11 sm:w-11 drop-shadow-sm object-contain" />
-              <span className="font-semibold text-white/95 text-sm">
-                Reimbursement Portal
-              </span>
-            </div> */}
 
             {/* Notification menu */}
             <div className="relative">

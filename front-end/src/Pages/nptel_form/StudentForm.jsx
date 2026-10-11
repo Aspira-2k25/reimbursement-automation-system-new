@@ -2,13 +2,14 @@ import NptelFormWizard from '../../components/NptelFormWizard';
 import { selectFormErrors } from '../../utils/nptelReview';
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
 import { getCsrfToken, API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import apshahLogo from '../../assets/images/Apshah_logo.png';
 import websiteLogo from '../../assets/images/Website_logo.png';
 import { toast } from 'react-hot-toast';
 import { resolveDepartment } from '../../utils/departmentResolver';
+import { usePortalStatus } from '../../hooks/usePortalStatus';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -40,6 +41,7 @@ const validateFile = (file) => {
 const StudentNptelForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { portal, isNptelOpen } = usePortalStatus('nptel');
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -60,14 +62,21 @@ const StudentNptelForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nptelFileRef = useRef(null);
   const idCardFileRef = useRef(null);
+  const warnedDepartmentRef = useRef(false);
 
   React.useEffect(() => {
     const department = resolveDepartment(user?.department);
     setFormData(prev => ({ ...prev, name: prev.name || user?.name || '', email: user?.email || prev.email }));
     if (department) {
       setFormData(prev => ({ ...prev, department }));
+    } else {
+      if (!warnedDepartmentRef.current) {
+        warnedDepartmentRef.current = true;
+        toast.error('Please set your Department and Academic Year in Profile Settings first');
+      }
+      navigate('/dashboard/profile');
     }
-  }, [user?.department, user?.name, user?.email]);
+  }, [user?.department, user?.name, user?.email, navigate]);
 
   const validateForm = (fields) => {
     const newErrors = {};
@@ -205,6 +214,11 @@ const StudentNptelForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!isNptelOpen) {
+      toast.error(portal?.closedMessage || 'NPTEL Reimbursement Portal is currently closed by the Principal.');
+      return;
+    }
+
     // Prevent duplicate submissions
     if (isSubmitting) return;
 
@@ -337,7 +351,27 @@ const StudentNptelForm = () => {
           <p>Date: {new Date().toLocaleDateString()}</p>
         </div>
 
-        <NptelFormWizard sections={[<div className="border-t border-gray-200 pt-4">
+        {!isNptelOpen ? (
+          <div className="py-12 px-4 text-center max-w-lg mx-auto border-t border-gray-100">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4 border border-rose-200 shadow-sm">
+              <Lock className="w-8 h-8 text-rose-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">
+              NPTEL Reimbursement Portal Closed
+            </h3>
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              {portal?.closedMessage || 'The Principal has temporarily closed the NPTEL Reimbursement Portal for new submissions. Please contact administration for further details.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#3B945E] hover:bg-[#2e754a] shadow-sm transition-all cursor-pointer"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        ) : (
+          <NptelFormWizard sections={[<div className="border-t border-gray-200 pt-4">
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -410,8 +444,18 @@ const StudentNptelForm = () => {
                   name="department"
                   value={formData.department}
                   readOnly
+                  placeholder="Set in profile settings..."
                   className="w-full px-3 py-2 border rounded-md focus:outline-none border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
                 />
+                {!formData.department && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/profile')}
+                    className="text-xs text-teal-600 hover:text-teal-700 underline font-semibold mt-1 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    Set Department in Profile Settings →
+                  </button>
+                )}
                 {errors.department && <p id="department-error" role="alert" className="text-red-600 text-sm mt-1">{errors.department}</p>}
               </div>
 
@@ -682,6 +726,7 @@ const StudentNptelForm = () => {
               </div>
             </div>
           </div></div>]} values={formData} applicantType={user?.role} validate={validateForm} onSubmit={handleSubmit} busy={isSubmitting} onCancel={() => navigate(-1)} />
+        )}
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ const { parsePaginationParams, paginateQuery } = require('../utils/pagination');
 const { sanitizeApplicationId, isValidObjectId, buildDepartmentFilter, getNormalizedDepartment, hasDepartmentAccess } = require('../utils/formHelpers');
 
 const { applicantBody, validateSubmission, validateEdit, ownerSummary, paginatedForms } = require('../utils/formPolicy');
+const { getPortalStatus, isPortalClosedForUser } = require('../utils/portalManager');
 
 const documentKinds = ['nptelResult', 'idCard'];
 function replacementDocuments(existing, uploads) {
@@ -53,6 +54,17 @@ router.post(
     const stagedUploads = [];
     let committed = false;
     try {
+      const portalStatus = await getPortalStatus('nptel');
+      const isClosed = isPortalClosedForUser(portalStatus, {
+        role: req.applicantType || req.user.role || 'Faculty',
+        department: req.body.department || req.user.department
+      });
+      if (isClosed) {
+        return res.status(403).json({
+          error: portalStatus.closedMessage || 'NPTEL Reimbursement Portal is currently closed.'
+        });
+      }
+
       let userId = req.user.userId; // <-- get the logged-in user's ID from JWT
 
       // Fallback: if userId is null, use email as userId (for old JWT tokens)
@@ -617,7 +629,9 @@ router.put(
         }
       });
       if (userRole === 'principal' && req.body.status) {
-        updates.reviewedBy = String(req.user.userId || req.user.email);
+        updates.reviewedBy = req.user.name
+          ? `${req.user.name} (${req.user.role || 'Principal'})`
+          : (req.user.role || 'Principal');
         updates.reviewedAt = new Date();
       }
 

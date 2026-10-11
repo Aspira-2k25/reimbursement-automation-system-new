@@ -1,8 +1,10 @@
 
 import { useAdminContext } from '../pages/AdminLayout'
-import { LayoutGrid, Terminal, ChevronLeft, ChevronRight, LogOut, KeyRound } from "lucide-react";
+import { LayoutGrid, Terminal, ChevronLeft, ChevronRight, LogOut, KeyRound, Sliders } from "lucide-react";
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../../context/AuthContext'
+
+import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const { activeTab, setActiveTab } = useAdminContext()
@@ -10,8 +12,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const { logout } = useAuth()
 
   const menuItems = [
-    { id: 'home', label: 'Dashboard', icon: LayoutGrid }
-    , { id: 'logs', label: 'Logs', icon: Terminal },
+    { id: 'home', label: 'Dashboard', icon: LayoutGrid },
+    { id: 'portals', label: 'Portal Controls', icon: Sliders },
+    { id: 'logs', label: 'Logs', icon: Terminal },
     { id: 'change-password', label: 'Change Password', icon: KeyRound }
   ]
 
@@ -22,19 +25,28 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
   return (
     <div className="bg-white border-r border-gray-200 flex flex-col h-screen overflow-y-auto" style={{ width: isCollapsed ? 80 : 280, transition: 'width 0.3s ease-in-out' }}>
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-gray-200">
-        {!isCollapsed && (
-          <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-        )}
+      {/* Header with Logo */}
+      <div className={`p-4 border-b border-gray-200 flex items-center ${isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner overflow-hidden p-1 bg-white border border-gray-100 flex-shrink-0">
+            <img src={websiteLogo} alt="Admin Portal Logo" className="w-full h-full object-contain" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="text-base font-bold text-gray-900 tracking-tight">Admin Panel</span>
+              <span className="text-xs text-gray-500">System Management</span>
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? (
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4" />
           ) : (
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
           )}
         </button>
       </div>

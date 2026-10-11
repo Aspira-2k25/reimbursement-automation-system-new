@@ -471,16 +471,16 @@ export const adminAPI = {
     }
   },
 
-  // Delete (deactivate) faculty member
-  deleteFaculty: async (id) => {
+  // Delete faculty member (supports permanent deletion)
+  deleteFaculty: async (id, { permanent = true } = {}) => {
     try {
-      const res = await api.delete(`/auth/admin/faculty/${id}`);
+      const params = permanent ? { permanent: 'true' } : {};
+      const res = await api.delete(`/auth/admin/faculty/${id}`, { params });
       return res.data;
     } catch (error) {
       throw normalizeApiError(error);
     }
-  }
-  ,
+  },
   // Get recent server logs (requires admin role)
   getLogs: async (params = {}) => {
     try {
@@ -525,4 +525,28 @@ export const notificationAPI = {
 export const dashboardAPI = {
   list: async (params = {}) => (await api.get('/dashboard', { params })).data,
   analytics: async (params = {}) => (await api.get('/dashboard/analytics', { params })).data,
+  departmentsOverview: async () => (await api.get('/dashboard/departments-overview')).data,
+};
+
+// Portal API — portal status and control (Principal/Admin control)
+export const portalAPI = {
+  /** Fetch status of reimbursement portals (e.g. nptel). Any authenticated user. */
+  getStatus: async (portalKey = 'nptel') => {
+    try {
+      const res = await api.get('/portal/status', { params: { portalKey } });
+      return res.data;
+    } catch (error) {
+      throw normalizeApiError(error);
+    }
+  },
+
+  /** Update portal status (open/close). Principal and Admin only. */
+  updateStatus: async (data) => {
+    try {
+      const res = await api.put('/portal/status', data);
+      return res.data;
+    } catch (error) {
+      throw normalizeApiError(error);
+    }
+  }
 };

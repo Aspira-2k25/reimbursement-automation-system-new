@@ -13,21 +13,30 @@ const FacultyModal = () => {
     email: '',
     department: '',
     role: '',
+    is_active: true,
     password: '',
     confirmPassword: ''
   })
+
+  const isCollegeWideRole = (role) => {
+    if (!role) return false
+    const r = role.toLowerCase()
+    return r === 'principal' || r === 'accounts' || r === 'admin'
+  }
 
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (editingStaff) {
+      const isCollegeWide = isCollegeWideRole(editingStaff.role)
       setFormData({
         username: editingStaff.username || '',
         name: editingStaff.name || '',
         email: editingStaff.email || '',
-        department: editingStaff.department || '',
+        department: isCollegeWide ? '' : (editingStaff.department || ''),
         role: editingStaff.role || 'Faculty',
+        is_active: editingStaff.is_active !== false,
         password: '',
         confirmPassword: ''
       })
@@ -38,6 +47,7 @@ const FacultyModal = () => {
         email: '',
         department: '',
         role: '',
+        is_active: true,
         password: '',
         confirmPassword: ''
       })
@@ -47,10 +57,16 @@ const FacultyModal = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: value
+      }
+      if (name === 'role' && isCollegeWideRole(value)) {
+        updated.department = ''
+      }
+      return updated
+    })
     // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -97,12 +113,14 @@ const FacultyModal = () => {
     try {
       setSaving(true)
 
+      const isCollegeWide = isCollegeWideRole(formData.role)
       const submitData = {
         name: formData.name.trim(),
         username: formData.username.trim(),
         email: formData.email.trim(),
-        department: formData.department || null,
-        role: formData.role || 'Faculty'
+        department: isCollegeWide ? null : (formData.department || null),
+        role: formData.role || 'Faculty',
+        is_active: formData.is_active
       }
 
       if (formData.password) {
@@ -206,31 +224,6 @@ const FacultyModal = () => {
             {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
           </div>
 
-          {/* Department */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Department
-            </label>
-            <select aria-label="department"
-              name="department"
-              value={formData.department}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              {/* {departments.filter(d => d !== 'All').map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))} */}
-
-              <option value="">Select Department</option>
-              <option value="Information Technology">Information Technology</option>
-              <option value="Computer Engineering">Computer Engineering</option>
-              <option value="CSE AI and ML">CSE AI and ML</option>
-              <option value="CSE Data Science">CSE Data Science</option>
-              <option value="Civil Engineering">Civil Engineering</option>
-              <option value="Mechanical Engineering">Mechanical Engineering</option>
-            </select>
-          </div>
-
           {/* Role */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
@@ -248,6 +241,50 @@ const FacultyModal = () => {
               <option value="HOD">HOD</option>
               <option value="Principal">Principal</option>
               <option value="Accounts">Accounts</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+
+          {/* Department */}
+          {isCollegeWideRole(formData.role) ? (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+              <span className="font-semibold">{formData.role}</span> is a college-wide role. Department selection is not applicable.
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">
+                Department
+              </label>
+              <select aria-label="department"
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">Select Department</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Computer Engineering">Computer Engineering</option>
+                <option value="CSE AI and ML">CSE AI and ML</option>
+                <option value="CSE Data Science">CSE Data Science</option>
+                <option value="Civil Engineering">Civil Engineering</option>
+                <option value="Mechanical Engineering">Mechanical Engineering</option>
+              </select>
+            </div>
+          )}
+
+          {/* Account Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">
+              Account Status
+            </label>
+            <select aria-label="account status"
+              name="is_active"
+              value={formData.is_active ? 'active' : 'inactive'}
+              onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.value === 'active' }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
 

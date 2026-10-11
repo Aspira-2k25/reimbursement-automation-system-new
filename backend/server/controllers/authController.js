@@ -28,6 +28,19 @@ const buildAuthCookieOptions = (maxAgeMs) => ({
   path: '/'
 });
 
+const getRequestUserAgent = (req) => {
+  if (!req) return null;
+  if (typeof req.get === 'function') {
+    try { return req.get('user-agent') || null; } catch { /* ignore */ }
+  }
+  return req.headers?.['user-agent'] || null;
+};
+
+const getRequestIp = (req) => {
+  if (!req) return null;
+  return req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || null;
+};
+
 /**
  * Generate an opaque refresh token, hash it, and store in DB.
  * Returns the plaintext token (to be set as a cookie).
@@ -128,16 +141,18 @@ const authController = {
       setAuthCookies(res, token, refreshToken, refreshExpiresAt);
 
       // Log the login activity (persisted to MongoDB)
+      const actorLabel = `${user.name || user.username} (${user.role}${user.department ? ' · ' + user.department : ''})`;
       logger.logActivity({
         action: 'login',
-        message: 'User logged in',
+        message: `${actorLabel} logged in successfully`,
         userId: String(user.id),
         userName: user.name || user.username || user.email || 'Unknown',
         role: user.role,
         department: user.department || '',
         status: 'success',
-        ipAddress: req.ip || req.connection?.remoteAddress || null,
-        userAgent: req.get('user-agent') || null
+        details: { method: 'password', username: user.username, email: user.email },
+        ipAddress: getRequestIp(req),
+        userAgent: getRequestUserAgent(req)
       });
 
       // Return user data (without sensitive information or token)
@@ -222,16 +237,19 @@ const authController = {
       setAuthCookies(res, token, refreshToken, refreshExpiresAt);
 
       // Log the Google login activity (persisted to MongoDB)
+      const actorName = staff?.name || name || email;
+      const deptSuffix = staff?.department ? ` · ${staff.department}` : '';
       logger.logActivity({
         action: 'login',
-        message: 'User logged in via Google',
+        message: `${actorName} (${role}${deptSuffix}) logged in via Google Workspace`,
         userId: String(userId),
-        userName: staff?.name || name || email,
+        userName: actorName,
         role: role,
         department: staff?.department || '',
         status: 'success',
-        ipAddress: req.ip || req.connection?.remoteAddress || null,
-        userAgent: req.get('user-agent') || null
+        details: { method: 'google', email },
+        ipAddress: getRequestIp(req),
+        userAgent: getRequestUserAgent(req)
       });
 
       return res.json({ user: { id: userId, email, name, role, department: staff?.department || null } });
@@ -447,16 +465,17 @@ const authController = {
         try {
           const decoded = jwt.decode(token);
           if (decoded && decoded.userId) {
+            const actorName = decoded.name || decoded.username || decoded.email || 'User';
             logger.logActivity({
               action: 'logout',
-              message: 'User logged out',
+              message: `${actorName} (${decoded.role || 'User'}) logged out`,
               userId: String(decoded.userId),
-              userName: decoded.name || decoded.username || decoded.email || 'Unknown',
+              userName: actorName,
               role: decoded.role || 'Unknown',
               department: decoded.department || '',
               status: 'success',
-              ipAddress: req.ip || req.connection?.remoteAddress || null,
-              userAgent: req.get('user-agent') || null
+              ipAddress: getRequestIp(req),
+              userAgent: getRequestUserAgent(req)
             });
           }
         } catch (e) {
@@ -475,11 +494,18 @@ const authController = {
   }
 };
 
+const isCollegeWideRole = (r) => {
+  if (!r) return false;
+  const roleLower = String(r).toLowerCase();
+  return roleLower === 'principal' || roleLower === 'accounts' || roleLower === 'admin';
+};
+
 // List all staff (used by non-admin endpoints)
 authController.getAllStaff = async (req, res) => {
   try {
     const staff = await dbUtils.getAllStaff();
-    res.json({ staff });
+    const sanitized = staff.map(s => isCollegeWideRole(s.role) ? { ...s, department: null } : s);
+    res.json({ staff: sanitized });
   } catch (error) {
     console.error('getAllStaff error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -624,8 +650,9 @@ authController.getFacultyList = async (req, res) => {
       });
       const total = await prisma.staff.count();
 
+      const sanitized = staff.map(s => isCollegeWideRole(s.role) ? { ...s, department: null } : s);
       return res.json({
-        staff,
+        staff: sanitized,
         pagination: {
           page: safePage,
           limit: safeLimit,
@@ -637,7 +664,8 @@ authController.getFacultyList = async (req, res) => {
 
     // Default: return all (backward compatible)
     const staff = await dbUtils.getAllStaff();
-    res.json({ staff });
+    const sanitized = staff.map(s => isCollegeWideRole(s.role) ? { ...s, department: null } : s);
+    res.json({ staff: sanitized });
   } catch (error) {
     console.error('getFacultyList error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -708,10 +736,23 @@ authController.updateStaffById = async (req, res) => {
       }
     }
 
+    let targetRole = role;
+    if (!targetRole) {
+      const existing = await prisma.staff.findUnique({ where: { id: staffId }, select: { role: true } });
+      targetRole = existing?.role;
+    }
+    const isCollegeWide = isCollegeWideRole(targetRole);
+    let resolvedDepartment;
+    if (isCollegeWide) {
+      resolvedDepartment = null;
+    } else if (department !== undefined) {
+      resolvedDepartment = department ? getNormalizedDepartment(department) : null;
+    }
+
     const updates = {
       username: normalizedUsername,
       name,
-      department: department ? getNormalizedDepartment(department) : undefined,
+      department: resolvedDepartment,
       role,
       email: normalizedEmail,
       employee_id,
@@ -725,15 +766,38 @@ authController.updateStaffById = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ error: 'No fields to update or staff not found' });
     }
+    const adminName = req.user?.name || req.user?.username || 'Admin';
+    const targetLabel = `${updated.name || updated.username} (@${updated.username}, ${updated.role}${updated.department ? ' · ' + updated.department : ''})`;
+    let updateMessage;
+    let actionType = 'update_details';
+
+    if (updates.is_active !== undefined) {
+      actionType = updates.is_active ? 'activate' : 'deactivate';
+      updateMessage = `Admin ${adminName} ${updates.is_active ? 'activated' : 'deactivated'} staff account of ${targetLabel}`;
+    } else {
+      updateMessage = `Admin ${adminName} updated details for staff ${targetLabel}`;
+    }
+
     logger.logActivity({
-      action: 'update',
-      message: 'Staff record updated by Admin',
+      action: updates.is_active === false ? 'deactivate' : updates.is_active === true ? 'activate' : 'update',
+      message: updateMessage,
       userId: String(req.user?.userId || 'admin'),
-      userName: req.user?.name || req.user?.username || 'Admin',
+      userName: adminName,
       role: 'Admin',
       department: req.user?.department || '',
       status: 'success',
-      details: { targetId: id, fields: Object.keys(updates).filter(k => k !== 'password') }
+      details: {
+        actionType,
+        targetId: staffId,
+        targetName: updated.name,
+        targetUsername: updated.username,
+        targetRole: updated.role,
+        targetDepartment: updated.department,
+        isActive: updated.is_active,
+        fields: Object.keys(updates).filter(k => k !== 'password' && updates[k] !== undefined)
+      },
+      ipAddress: getRequestIp(req),
+      userAgent: getRequestUserAgent(req)
     });
     res.json({ message: 'Staff updated successfully', staff: updated });
   } catch (error) {
@@ -810,6 +874,9 @@ authController.createFaculty = async (req, res) => {
 
     const reactivationTarget = inactiveByUsername || inactiveByEmail;
 
+    const isCollegeWide = isCollegeWideRole(role);
+    const resolvedDepartment = isCollegeWide ? null : (department ? getNormalizedDepartment(department) : null);
+
     if (reactivationTarget) {
       const reactivatedStaff = await prisma.$transaction(async (transaction) => {
         const current = await transaction.staff.findUnique({ where: { id: reactivationTarget.id } });
@@ -823,7 +890,7 @@ authController.createFaculty = async (req, res) => {
           name: name.trim(),
           password: hashedPassword,
           email: normalizedEmail,
-          department: department ? getNormalizedDepartment(department) : null,
+          department: resolvedDepartment,
           role: role || 'Faculty',
           employee_id: employee_id || null,
           is_active: true,
@@ -848,15 +915,24 @@ authController.createFaculty = async (req, res) => {
         return reactivated;
       }, { isolationLevel: 'Serializable' });
 
+      const adminName = req.user?.name || req.user?.username || 'Admin';
       logger.logActivity({
-        action: 'update',
-        message: 'Inactive staff reactivated by Admin',
+        action: 'activate',
+        message: `Admin ${adminName} reactivated inactive staff account for ${reactivatedStaff.name} (@${reactivatedStaff.username}, Role: ${reactivatedStaff.role})`,
         userId: String(req.user?.userId || 'admin'),
-        userName: req.user?.name || req.user?.username || 'Admin',
+        userName: adminName,
         role: 'Admin',
         department: req.user?.department || '',
         status: 'success',
-        details: { reactivatedId: reactivatedStaff.id, username: reactivatedStaff.username }
+        details: {
+          actionType: 'reactivate',
+          targetId: reactivatedStaff.id,
+          targetName: reactivatedStaff.name,
+          targetUsername: reactivatedStaff.username,
+          targetRole: reactivatedStaff.role
+        },
+        ipAddress: getRequestIp(req),
+        userAgent: getRequestUserAgent(req)
       });
 
       return res.status(201).json({
@@ -872,7 +948,7 @@ authController.createFaculty = async (req, res) => {
         name: name.trim(),
         password: hashedPassword,
         email: normalizedEmail,
-        department: department ? getNormalizedDepartment(department) : null,
+        department: resolvedDepartment,
         role: role || 'Faculty',
         employee_id: employee_id || null,
         is_active: true,
@@ -890,15 +966,27 @@ authController.createFaculty = async (req, res) => {
       }
     });
 
+    const adminName = req.user?.name || req.user?.username || 'Admin';
+    const deptSuffix = newFaculty.department ? ` · ${newFaculty.department}` : '';
     logger.logActivity({
-      action: 'update',
-      message: 'New staff created by Admin',
+      action: 'create',
+      message: `Admin ${adminName} created new staff account for ${newFaculty.name} (@${newFaculty.username}, Role: ${newFaculty.role}${deptSuffix})`,
       userId: String(req.user?.userId || 'admin'),
-      userName: req.user?.name || req.user?.username || 'Admin',
+      userName: adminName,
       role: 'Admin',
       department: req.user?.department || '',
       status: 'success',
-      details: { newStaffId: newFaculty.id, username: newFaculty.username }
+      details: {
+        actionType: 'create_staff',
+        targetId: newFaculty.id,
+        targetName: newFaculty.name,
+        targetUsername: newFaculty.username,
+        targetRole: newFaculty.role,
+        targetDepartment: newFaculty.department,
+        email: newFaculty.email
+      },
+      ipAddress: getRequestIp(req),
+      userAgent: getRequestUserAgent(req)
     });
     res.status(201).json({
       message: 'Faculty member created successfully',
@@ -924,7 +1012,7 @@ authController.createFaculty = async (req, res) => {
   }
 };
 
-// Delete faculty member by ID (soft delete)
+// Delete faculty member by ID (supports permanent delete via ?permanent=true, or soft delete/deactivate)
 authController.deleteFaculty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -932,23 +1020,93 @@ authController.deleteFaculty = async (req, res) => {
       return res.status(400).json({ error: 'Staff ID required' });
     }
 
-    // Soft delete - mark as inactive so history is preserved.
     const staffId = Number(id);
     if (!Number.isSafeInteger(staffId) || staffId <= 0) return res.status(400).json({ error: 'Invalid staff ID' });
+
+    const isPermanent = req.query?.permanent === 'true' || req.query?.permanent === true || req.body?.permanent === true;
+
+    if (isPermanent) {
+      // Permanent deletion from database
+      const existing = await prisma.staff.findUnique({ where: { id: staffId } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Staff member not found' });
+      }
+
+      // Safety checks: Cannot delete your own Admin account or the last remaining active Admin
+      if (existing.role === 'Admin') {
+        if (String(staffId) === String(req.user?.userId)) {
+          return res.status(409).json({ error: 'Cannot delete your own administrator account' });
+        }
+        const activeAdminCount = await prisma.staff.count({ where: { role: 'Admin', is_active: true } });
+        if (existing.is_active && activeAdminCount <= 1) {
+          return res.status(409).json({ error: 'Cannot delete the final active administrator account' });
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // Clean up any related tokens or challenges
+        await tx.refreshToken.deleteMany({
+          where: { userId: { in: [String(staffId), existing.email].filter(Boolean) } }
+        });
+        if (existing.email) {
+          await tx.passwordResetToken.deleteMany({ where: { email: existing.email } }).catch(() => {});
+          await tx.otpVerification.deleteMany({ where: { email: existing.email } }).catch(() => {});
+          await tx.accountOtpChallenge.deleteMany({ where: { email: existing.email } }).catch(() => {});
+        }
+        await tx.staff.delete({ where: { id: staffId } });
+      }, { isolationLevel: 'Serializable' });
+
+      const adminName = req.user?.name || req.user?.username || 'Admin';
+      const targetLabel = `${existing.name || existing.username} (@${existing.username}, ${existing.role}${existing.department ? ' · ' + existing.department : ''})`;
+      logger.logActivity({
+        action: 'delete',
+        message: `Admin ${adminName} permanently deleted staff account of ${targetLabel}`,
+        userId: String(req.user?.userId || 'admin'),
+        userName: adminName,
+        role: 'Admin',
+        department: req.user?.department || '',
+        status: 'success',
+        details: {
+          actionType: 'permanent_delete',
+          targetId: id,
+          targetName: existing.name,
+          targetUsername: existing.username,
+          targetRole: existing.role,
+          targetDepartment: existing.department,
+          email: existing.email
+        },
+        ipAddress: getRequestIp(req),
+        userAgent: getRequestUserAgent(req)
+      });
+
+      return res.json({ message: 'Staff member permanently deleted successfully' });
+    }
+
+    // Default / Backward compatibility: Soft delete - mark as inactive so history is preserved.
     const updated = await updateManagedStaff(staffId, { is_active: false }, req.user?.userId);
     if (!updated) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
 
+    const adminName = req.user?.name || req.user?.username || 'Admin';
+    const targetLabel = `${updated.name || updated.username || id} (@${updated.username || id}, ${updated.role || 'Staff'})`;
     logger.logActivity({
       action: 'delete',
-      message: 'Staff member deactivated by Admin',
+      message: `Admin ${adminName} deactivated staff account of ${targetLabel}`,
       userId: String(req.user?.userId || 'admin'),
-      userName: req.user?.name || req.user?.username || 'Admin',
+      userName: adminName,
       role: 'Admin',
       department: req.user?.department || '',
       status: 'success',
-      details: { deactivatedId: id }
+      details: {
+        actionType: 'deactivate',
+        targetId: id,
+        targetName: updated.name,
+        targetUsername: updated.username,
+        targetRole: updated.role
+      },
+      ipAddress: getRequestIp(req),
+      userAgent: getRequestUserAgent(req)
     });
 
     res.json({ message: 'Staff member deleted successfully' });

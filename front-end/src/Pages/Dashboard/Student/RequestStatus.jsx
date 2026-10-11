@@ -8,6 +8,7 @@ import "../Dashboard.css"
 import RequestsTable from "./components/RequestsTable.jsx"
 import { useNotificationContext } from "./NotificationContext"
 import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton.jsx"
+import { useProfile } from "./ProfileContext"
 
 // Fetched data state
 const useStudentRequests = (addNotification) => {
@@ -127,9 +128,19 @@ const SummaryCard = ({ title, value, sub, icon: Icon, color = "#3B945E" }) => (
 
 export default function RequestStatus() {
   const navigate = useNavigate()
+  const { profile } = useProfile()
   const [search, setSearch] = React.useState("")
   const { addNotification } = useNotificationContext()
   const { loading, error, requests, pagination, summary: lifetimeSummary, page, setPage, refetch } = useStudentRequests(addNotification)
+
+  const handleNewReimbursement = () => {
+    if (!profile.department || !profile.year) {
+      toast.error('Please set your Department and Academic Year in Profile Settings first')
+      navigate('/dashboard/profile')
+      return
+    }
+    navigate('/student-nptel-form')
+  }
 
   // Calculate summary statistics from fetched data
   const summary = React.useMemo(() => error ? { total: "Unavailable", approved: "Unavailable", pending: "Unavailable", rejected: "Unavailable" } : lifetimeSummary || ({
@@ -195,7 +206,7 @@ export default function RequestStatus() {
             Refresh
           </button>
           <button
-            onClick={() => navigate('/student-nptel-form')}
+            onClick={handleNewReimbursement}
             className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-[#3B945E] to-[#57BA98] hover:from-[#2e744a] hover:to-[#459e80] rounded-xl shadow-sm transition-all"
           >
             <PlusCircle className="w-4 h-4" />
@@ -235,7 +246,7 @@ export default function RequestStatus() {
               Submit your NPTEL course completion certificate or other expenses to start the approval workflow.
             </p>
             <button
-              onClick={() => navigate('/student-nptel-form')}
+              onClick={handleNewReimbursement}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-[#3B945E] hover:bg-[#2e744a] rounded-xl shadow-md transition"
             >
               <PlusCircle className="w-4 h-4" />
