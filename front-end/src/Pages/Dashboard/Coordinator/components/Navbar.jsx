@@ -103,7 +103,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, notificat
               alt="A.P. Shah Logo"
               className="h-10 w-10 sm:h-12 sm:w-12 rounded-sm object-contain drop-shadow-sm"
             />
-            <span className="font-bold text-white text-sm sm:text-base tracking-wide max-w-[200px] leading-tight hidden 2xl:block">
+            <span className="font-bold text-white text-xs sm:text-sm tracking-wide max-w-[180px] sm:max-w-[200px] leading-tight hidden sm:block">
               PCT's A. P. Shah Institute of Technology
             </span>
           </div>
@@ -169,15 +169,15 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, notificat
                         .map((n) => n[0])
                         .join("")
                         .slice(0, 2)
-                      : "CC"}
+                      : "CH"}
                   </span>
                 </div>
                 <div className="hidden 2xl:block text-left">
                   <div className="text-sm font-medium text-gray-900">
-                    {userProfile?.fullName || "Class Cordinator"}
+                    {userProfile?.fullName || "Co-HOD"}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {userProfile?.role || "Coordinator"}
+                    {userProfile?.designation || "Co-HOD"}
                   </div>
                 </div>
                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''

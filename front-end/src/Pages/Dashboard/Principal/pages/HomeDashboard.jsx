@@ -240,7 +240,6 @@ const HomeDashboard = () => {
         </div>
       </motion.div>
 
-
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {dashboardStats.map((stat, index) => (
@@ -557,6 +556,7 @@ const HomeDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* Portal Close Confirmation Modal */}
     </div>
   )
 }

@@ -338,23 +338,23 @@ const HomeDashboard = () => {
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
-            const stats = serverSummary ? serverStats : { total: 'Unavailable', pending: 'Unavailable', approved: 'Unavailable', rejected: 'Unavailable', approvedAmount: 'Unavailable' }
-            const processedRequests = Number(stats.approved) + Number(stats.rejected)
-            const approvalRate = !serverSummary ? 'Unavailable' : processedRequests > 0 ? Math.round((stats.approved / processedRequests) * 100) : 0
+            const stats = serverStats || { total: 0, pending: 0, approved: 0, rejected: 0, approvedAmount: 0 }
+            const processedRequests = Number(stats.approved || 0) + Number(stats.rejected || 0)
+            const approvalRate = processedRequests > 0 ? Math.round(((stats.approved || 0) / processedRequests) * 100) : 0
 
             return [
               {
-                value: serverStats.facultyCount ?? 'Unavailable',
+                value: Number(serverStats?.facultyCount ?? 0),
                 label: 'Faculty Requests',
                 color: 'teal'
               },
               {
-                value: serverStats.studentCount ?? 'Unavailable',
+                value: Number(serverStats?.studentCount ?? 0),
                 label: 'Student Requests',
                 color: 'green'
               },
               {
-                value: `₹${stats.approvedAmount.toLocaleString()}`,
+                value: `₹${Number(stats.approvedAmount || 0).toLocaleString()}`,
                 label: 'Total Reimbursed',
                 color: 'purple'
               },

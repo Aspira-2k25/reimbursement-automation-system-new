@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { motion } from 'framer-motion'
 import { useAdminContext } from './AdminLayout'
-import { Users, UserPlus, TrendingUp, Award } from 'lucide-react'
+import { Users, UserPlus, TrendingUp, Award, ShieldCheck, ShieldAlert, ArrowRight } from 'lucide-react'
 import FacultyManagement from './FacultyManagement'
+import { usePortalStatus } from '../../../../hooks/usePortalStatus'
 
 const StatCard = ({ title, value, subtitle, icon: Icon }) => {
   return (
@@ -27,25 +28,42 @@ const StatCard = ({ title, value, subtitle, icon: Icon }) => {
 }
 
 const Dashboard = () => {
-  const { allFaculty, departments } = useAdminContext()
+  const { allFaculty, departments, setActiveTab } = useAdminContext()
+  const { portal, isNptelOpen } = usePortalStatus('nptel')
 
   const stats = useMemo(() => {
     const total = allFaculty.length
     const active = allFaculty.filter(f => f.is_active).length
-    const byDept = departments.length - 1 // Exclude 'All'
+    const inactive = total - active
+    const byDept = Math.max(0, departments.length - 1) // Exclude 'All'
+
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+
+    const newThisMonth = allFaculty.filter(f => {
+      const dateVal = f.created_at || f.createdAt
+      if (!dateVal) return false
+      const created = new Date(dateVal)
+      return (
+        !isNaN(created.getTime()) &&
+        created.getFullYear() === currentYear &&
+        created.getMonth() === currentMonth
+      )
+    }).length
 
     return [
       {
         title: 'Total Staff',
         value: total.toString(),
-        subtitle: `${active} active`,
+        subtitle: `${active} active · ${inactive} inactive`,
         icon: Users,
         color: 'green'
       },
       {
         title: 'Active Staff',
         value: active.toString(),
-        subtitle: `${((active / total) * 100).toFixed(1)}% of total`,
+        subtitle: total > 0 ? `${((active / total) * 100).toFixed(1)}% of total` : '0% of total',
         icon: Award,
         color: 'blue'
       },
@@ -58,8 +76,8 @@ const Dashboard = () => {
       },
       {
         title: 'New This Month',
-        value: '0',
-        subtitle: 'Recently added',
+        value: newThisMonth.toString(),
+        subtitle: newThisMonth === 1 ? '1 added this month' : `${newThisMonth} added this month`,
         icon: UserPlus,
         color: 'orange'
       }
@@ -91,6 +109,48 @@ const Dashboard = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* Quick Portal Access Summary */}
+      <motion.div
+        className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isNptelOpen ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+            }`}
+          >
+            {isNptelOpen ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-slate-900">NPTEL Portal Status:</span>
+              <span
+                className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                  isNptelOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {isNptelOpen ? 'OPEN (Accepting Submissions)' : 'CLOSED / RESTRICTED'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isNptelOpen
+                ? 'Portal is currently open for eligible applicants.'
+                : portal?.closedMessage || 'Portal submissions are currently restricted.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setActiveTab('portals')}
+          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#3B945E] hover:bg-[#2e754a] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs self-end sm:self-auto"
+        >
+          <span>Manage Portal Controls</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </motion.div>
 
       {/* include staff management table directly */}
       <FacultyManagement />

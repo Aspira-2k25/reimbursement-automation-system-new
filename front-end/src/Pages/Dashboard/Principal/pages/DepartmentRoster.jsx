@@ -22,9 +22,13 @@ const DepartmentRoster = () => {
       const data = await userAPI.getAllUsers();
       if (current !== generation.current) return;
       const records = data.staff || data.users || (Array.isArray(data) ? data : []);
-      setUsers(records.filter(user => user.role !== 'Student').map(user => ({ ...user,
-        department: normalizeDepartment(user.department) || 'Unassigned',
-      })));
+      setUsers(records.filter(user => user.role !== 'Student').map(user => {
+        const isCollegeWide = ['principal', 'accounts', 'admin'].includes(user.role?.toLowerCase());
+        return {
+          ...user,
+          department: isCollegeWide ? 'College-wide' : (normalizeDepartment(user.department) || 'Unassigned'),
+        };
+      }));
       setPage(1);
     } catch (failure) {
       if (current === generation.current) setError(failure.error || failure.message || 'Unable to load staff roster.');

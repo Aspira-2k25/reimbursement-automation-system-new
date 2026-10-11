@@ -20,6 +20,21 @@ const colors = {
   RESET: '\x1b[0m'
 };
 
+function normalizeIp(rawIp) {
+  if (!rawIp) return null;
+  let ip = String(rawIp).trim();
+  if (ip.includes(',')) {
+    ip = ip.split(',')[0].trim();
+  }
+  if (ip === '::1' || ip === '::ffff:127.0.0.1' || ip === '127.0.0.1') {
+    return '127.0.0.1 (Localhost)';
+  }
+  if (ip.startsWith('::ffff:')) {
+    return ip.replace('::ffff:', '');
+  }
+  return ip;
+}
+
 class Logger {
   constructor() {
     this.isProduction = process.env.NODE_ENV === 'production';
@@ -79,23 +94,6 @@ class Logger {
   /**
    * Persist an activity log entry to MongoDB.
    * This is fire-and-forget — it never throws or blocks the request.
-   *
-   * @param {Object} data
-   * @param {string}  data.action     - e.g. 'login', 'submit', 'approve'
-   * @param {string}  data.message    - human-readable description
-   * @param {string} [data.userId]
-   * @param {string} [data.userName]
-   * @param {string} [data.role]
-   * @param {string} [data.department]
-   * @param {string} [data.formId]
-   * @param {string} [data.level]     - INFO (default), WARN, ERROR
-   * @param {string} [data.status]    - e.g. 'success', 'failure'
-   * @param {*}      [data.details]   - any extra data
-   * @param {string} [data.ipAddress]
-   * @param {string} [data.userAgent]
-   * @param {string} [data.method]
-   * @param {string} [data.endpoint]
-   * @param {number} [data.responseTime]
    */
   async logActivity(data) {
     try {
@@ -114,7 +112,7 @@ class Logger {
         level: data.level || LOG_LEVELS.INFO,
         status: data.status || null,
         details: data.details || null,
-        ipAddress: data.ipAddress || null,
+        ipAddress: normalizeIp(data.ipAddress),
         userAgent: data.userAgent || null,
         method: data.method || null,
         endpoint: data.endpoint || null,

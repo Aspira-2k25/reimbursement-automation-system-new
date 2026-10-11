@@ -10,7 +10,7 @@ import { useAuth } from "../../../context/AuthContext"
 const initialUserData = {
   fullName: "Coordinator",
   department: "",
-  designation: "Class Coordinator",
+  designation: "Co-HOD",
   role: "Coordinator",
 }
 
@@ -114,7 +114,7 @@ export default function ProfileSettings({ userProfile, setUserProfile }) {
               </label>
               <input id="coordinator-designation"
                 type="text"
-                value={userData.designation}
+                value={(!userData.designation || userData.designation === "Class Coordinator") ? "Co-HOD" : userData.designation}
                 readOnly
                 disabled
                 className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm sm:text-base transition-all duration-200 hover:border-gray-400"

@@ -68,7 +68,7 @@ const validationMiddleware = {
 
       // Check if user is active
       if (!user.is_active) {
-        logFailedLogin(req, 'Account deactivated', user.username);
+        logFailedLogin(req, 'Account deactivated', user.username, user);
         return res.status(401).json({ error: 'Account is deactivated' });
       }
 
@@ -77,6 +77,7 @@ const validationMiddleware = {
       if (user.locked_until && new Date(user.locked_until) > new Date()) {
         const remainingMs = new Date(user.locked_until).getTime() - Date.now();
         const remainingMin = Math.ceil(remainingMs / 60000);
+        logFailedLogin(req, 'Account temporarily locked', user.username, user);
         return res.status(401).json({
           error: 'Validation failed',
           details: [`Account is temporarily locked. Try again in ${remainingMin} minute(s).`]
@@ -85,6 +86,7 @@ const validationMiddleware = {
 
       // Strict Check: Verify email matches exactly
       if (!user.email || user.email.toLowerCase() !== email.toLowerCase()) {
+        logFailedLogin(req, 'Email mismatch', user.username, user);
         // Increment failed attempts for email mismatch
         await incrementFailedAttempts(user.id, user.failed_login_attempts);
         return res.status(401).json(invalidCredentialsError);
@@ -107,6 +109,7 @@ const validationMiddleware = {
       }
 
       if (!isPasswordValid) {
+        logFailedLogin(req, 'Incorrect password', user.username, user);
         // ── Failed Login: increment counter and possibly lock ──
         await incrementFailedAttempts(user.id, user.failed_login_attempts);
         return res.status(401).json(invalidCredentialsError);
@@ -224,10 +227,24 @@ async function incrementFailedAttempts(userId, currentAttempts) {
   });
 }
 
-// Helper function
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+function logFailedLogin(req, reason, username, user = null) {
+  try {
+    logger.logActivity({
+      action: 'login_failed',
+      message: `Failed login attempt for username "${username || 'unknown'}": ${reason}`,
+      userId: user?.id ? String(user.id) : null,
+      userName: user?.name || username || 'Unknown',
+      role: user?.role || null,
+      department: user?.department || null,
+      level: 'WARN',
+      status: 'failed',
+      details: { reason, attemptedUsername: username },
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.get('user-agent') || null
+    });
+  } catch (err) {
+    console.error('logFailedLogin error:', err);
+  }
 }
 
 module.exports = validationMiddleware;
