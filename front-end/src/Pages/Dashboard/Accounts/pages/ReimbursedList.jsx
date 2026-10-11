@@ -45,8 +45,8 @@ const ReimbursedList = () => {
   // All filters run on the server before pagination.
   const filteredRequests = reimbursedRequests
   const reimbursedStats = useMemo(() => ({
-    total: summary?.reimbursed ?? 'Unavailable',
-    totalAmount: summary?.reimbursedAmount ?? 'Unavailable',
+    total: summary?.reimbursed ?? 0,
+    totalAmount: summary?.reimbursedAmount ?? 0,
     studentCount: reimbursedRequests.filter(request => request.applicantType === 'Student').length,
     facultyCount: reimbursedRequests.filter(request => request.applicantType !== 'Student').length
   }), [summary, reimbursedRequests])
@@ -121,7 +121,7 @@ const ReimbursedList = () => {
     },
     {
       title: "Total Amount",
-      value: `₹${reimbursedStats.totalAmount.toLocaleString()}`,
+      value: `₹${(Number(reimbursedStats.totalAmount) || 0).toLocaleString('en-IN')}`,
       subtitle: "All time reimbursed amount",
       icon: IndianRupee,
       color: 'teal'

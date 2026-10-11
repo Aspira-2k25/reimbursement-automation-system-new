@@ -12,8 +12,10 @@ const PROFILE_STORAGE_KEY = 'student_profile_settings'
 const defaultProfile = {
   name: "Student",
   department: "",
+  year: "",
   role: "Student",
-  departmentSet: false
+  departmentSet: false,
+  yearSet: false
 }
 
 /**
@@ -56,6 +58,8 @@ export function ProfileProvider({ children }) {
           ...prev,
           name: savedName,
           department: nextDepartment,
+          year: prev.year || '',
+          yearSet: prev.yearSet || Boolean(prev.year),
           role: user.role || prev.role || "Student",
           email: user.email || null,
           departmentSet: isDepartmentSet,
@@ -72,11 +76,13 @@ export function ProfileProvider({ children }) {
         nameCustomized: profile.nameCustomized || false,
         department: profile.department,
         departmentSet: profile.departmentSet || false,
+        year: profile.year || '',
+        yearSet: profile.yearSet || false,
       }))
     } catch {
       // Silently handle localStorage errors
     }
-  }, [profile.name, profile.nameCustomized, profile.department, profile.departmentSet])
+  }, [profile.name, profile.nameCustomized, profile.department, profile.departmentSet, profile.year, profile.yearSet])
 
   /**
    * Update profile information
@@ -90,6 +96,9 @@ export function ProfileProvider({ children }) {
       }
       if (updates.department && updates.department !== '') {
         next.departmentSet = true
+      }
+      if (updates.year && updates.year !== '') {
+        next.yearSet = true
       }
       return next
     })
@@ -108,10 +117,13 @@ export function ProfileProvider({ children }) {
     localStorage.removeItem(PROFILE_STORAGE_KEY)
   }
 
+  const isProfileComplete = Boolean(profile.department && profile.year)
+
   const value = {
     profile,
     updateProfile,
-    resetProfile
+    resetProfile,
+    isProfileComplete
   }
 
   return (

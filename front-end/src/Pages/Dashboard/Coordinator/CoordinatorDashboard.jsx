@@ -39,7 +39,7 @@ const sanitizeRejectionReason = (reason) => {
 const initialUserProfile = {
   fullName: "Coordinator",
   department: "",
-  designation: "Class Coordinator",
+  designation: "Co-HOD",
   role: "Coordinator",
 }
 
@@ -56,7 +56,7 @@ export default function CoordinatorDashboard() {
       setUserProfile({
         fullName: user.name || user.username || "Coordinator",
         department: resolveDepartment(user.department),
-        designation: user.designation || "Class Coordinator",
+        designation: (user.designation && user.designation !== "Class Coordinator") ? user.designation : "Co-HOD",
         role: user.role || "Coordinator",
         email: user.email || null
       })

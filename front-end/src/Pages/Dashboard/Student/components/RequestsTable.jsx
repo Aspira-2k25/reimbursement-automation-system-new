@@ -375,7 +375,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                       await onDelete?.(deleteItem._id);
                       setDeleteItem(null);
                     } catch {
-                      toast.error('Failed to delete form. Please try again.');
+                      // Handled by onDelete caller
                     }
                   }}
                 >
@@ -411,9 +411,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                 onSave={async (payload) => {
                   try {
                     await studentFormsAPI.updateById(editItem._id || editItem.id, payload);
-                    toast.success('Request updated successfully!');
                     setEditItem(null);
-                    // Trigger a refetch if parent provided a callback
                     window.location.reload();
                   } catch {
                     toast.error('Failed to update form. Please try again.');

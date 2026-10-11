@@ -108,7 +108,7 @@ const HODLayout = () => {
       userId: f.userId,
       applicantName: f.name || 'N/A',
       applicantId: f.studentId || f.facultyId || 'N/A',
-      applicantType: f.applicantType || 'Student',
+      applicantType: (f.studentId || f.formType === 'student' || f.applicantType === 'Student') ? 'Student' : 'Faculty',
       applicantEmail: f.email,
       department: f.department || 'N/A',
       category: f.reimbursementType || f.category || "NPTEL",
@@ -198,16 +198,20 @@ const HODLayout = () => {
     const bucket = status => analytics?.byStatus?.find(item => item._id === status) || {}
     const pending = bucket('Under HOD').count || 0
     const underPrincipal = bucket('Under Principal').count || 0
-    const approved = underPrincipal + (counts.approved || 0) + (counts.reimbursed || 0)
+    const approved = underPrincipal + (counts.approved || 0)
     const total = counts.total || 0
+    const facultyCount = counts.facultyCount !== undefined ? counts.facultyCount : (allRequests || []).filter(r => r.applicantType === 'Faculty' || !r.applicantType).length
+    const studentCount = counts.studentCount !== undefined ? counts.studentCount : (allRequests || []).filter(r => r.applicantType === 'Student').length
     return {
       total, pending, underPrincipal, approved, rejected: counts.rejected || 0,
       totalAmount: counts.totalAmount || 0, approvedAmount: counts.reimbursedAmount || 0,
       pendingAmount: bucket('Under HOD').totalAmount || 0,
       approvalRate: total ? Math.round(approved / total * 100) : 0,
       pendingRate: total ? Math.round(pending / total * 100) : 0,
+      facultyCount,
+      studentCount,
     }
-  }, [summary, analytics])
+  }, [summary, analytics, allRequests])
 
   // Function to render content based on active tab
   const renderContent = () => {
@@ -240,6 +244,7 @@ const HODLayout = () => {
     setIsCollapsed,
 
     // Data State
+    user,
     userProfile,
     setUserProfile,
     allRequests,

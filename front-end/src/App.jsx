@@ -1,11 +1,45 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
 import RoleGuard from './components/RoleGuard'
 import useDialogFocus from './hooks/useDialogFocus'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, useToasterStore, toast } from 'react-hot-toast'
+import { setupToastDeduplication } from './utils/setupToast'
+
+// Initialize toast deduplication across all call sites
+setupToastDeduplication()
+
+/**
+ * ToastLimitManager prevents duplicate popups and limits visible toasts
+ * so the user never sees identical stacked toast messages at the same time.
+ */
+function ToastLimitManager() {
+  const { toasts } = useToasterStore()
+
+  useEffect(() => {
+    // 1. Deduplicate by message string
+    const seen = new Set()
+    toasts.forEach((t) => {
+      if (!t.visible) return
+      const key = `${t.type}:${typeof t.message === 'function' ? '' : String(t.message)}`
+      if (seen.has(key)) {
+        toast.dismiss(t.id)
+      } else {
+        seen.add(key)
+      }
+    })
+
+    // 2. Limit visible toasts to 2 at a time to prevent popup stacking
+    toasts
+      .filter((t) => t.visible)
+      .filter((_, i) => i >= 2)
+      .forEach((t) => toast.dismiss(t.id))
+  }, [toasts])
+
+  return null
+}
 
 // Lazy load pages for code splitting and better performance
 const LoginPage = lazy(() => import('./Pages/Login/Login'))
@@ -67,6 +101,7 @@ function App() {
           {/* Catch-all route MUST be last */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ToastLimitManager />
         <Toaster {...toastConfig} />
       </Suspense>
     </BrowserRouter>

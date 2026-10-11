@@ -7,7 +7,7 @@ const { DEPARTMENT_LIST, REIMBURSEMENT_STATUS } = require('../constants/statusEn
 const { parsePaginationParams, createPaginationMeta } = require('../utils/pagination');
 const router = express.Router();
 const pendingStatuses = ['Pending', 'Under Coordinator', 'Under HOD', 'Under Principal'];
-const zeroSummary = { total: 0, pending: 0, approved: 0, rejected: 0, reimbursed: 0, totalAmount: 0, reimbursedAmount: 0 };
+const zeroSummary = { total: 0, pending: 0, approved: 0, rejected: 0, reimbursed: 0, totalAmount: 0, reimbursedAmount: 0, facultyCount: 0, studentCount: 0 };
 const badInput = message => Object.assign(new Error(message), { status: 400 });
 const text = (query, key, max = 100) => {
   if (query[key] == null || query[key] === '') return '';
@@ -66,7 +66,10 @@ const filters = (user, query) => {
     const normalized = ['Student', 'Faculty', 'Coordinator', 'HOD'].find(value => value.toLowerCase() === applicantType.toLowerCase());
     if (!normalized) throw badInput('Invalid applicant type');
   }
-  if (category && category.toLowerCase() !== 'all') clauses.push({ reimbursementType: new RegExp(`^${escaped(category)}$`, 'i') });
+  if (category && category.toLowerCase() !== 'all') {
+    const reg = new RegExp(`^${escaped(category)}$`, 'i');
+    clauses.push({ $or: [{ reimbursementType: reg }, { category: reg }] });
+  }
   const createdAt = {};
   for (const [key, operator] of [['startDate', '$gte'], ['endDate', '$lte']]) {
     const value = text(query, key, 40);
@@ -90,14 +93,23 @@ const collectionPipeline = (filter, student, role, applicantType) => [
   { $match: filter }, projection(role),
   { $set: { formType: student ? 'student' : 'faculty', documenttype: student ? 'student' : 'faculty',
     applicantType: student ? 'Student' : { $ifNull: ['$applicantType', 'Faculty'] } } },
-  ...(applicantType ? [{ $match: { applicantType } }] : []),
+  ...(applicantType ? [{
+    $match: applicantType === 'Faculty'
+      ? { applicantType: { $in: ['Faculty', 'Coordinator', 'HOD'] } }
+      : { applicantType }
+  }] : []),
 ];
 const combined = (user, query) => {
   const role = user.role.toLowerCase();
   const filter = filters(user, query);
   const type = text(query, 'applicantType');
   const applicantType = ['Student', 'Faculty', 'Coordinator', 'HOD'].find(value => value.toLowerCase() === type.toLowerCase());
-  if (role === 'coordinator') return { model: StudentForm, pipeline: collectionPipeline(filter, true, role, applicantType) };
+  if (role === 'coordinator' || applicantType === 'Student') {
+    return { model: StudentForm, pipeline: collectionPipeline(filter, true, role, applicantType) };
+  }
+  if (applicantType) {
+    return { model: Form, pipeline: collectionPipeline(filter, false, role, applicantType) };
+  }
   return { model: Form, pipeline: [
     ...collectionPipeline(filter, false, role, applicantType),
     { $unionWith: { coll: StudentForm.collection.name, pipeline: collectionPipeline(filter, true, role, applicantType) } },
@@ -106,11 +118,13 @@ const combined = (user, query) => {
 const summaryGroup = { $group: {
   _id: null, total: { $sum: 1 },
   pending: { $sum: { $cond: [{ $in: ['$status', pendingStatuses] }, 1, 0] } },
-  approved: { $sum: { $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0] } },
+  approved: { $sum: { $cond: [{ $in: ['$status', ['Approved', 'Reimbursed']] }, 1, 0] } },
   rejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } },
   reimbursed: { $sum: { $cond: [{ $eq: ['$status', 'Reimbursed'] }, 1, 0] } },
   totalAmount: { $sum: '$amount' },
   reimbursedAmount: { $sum: { $cond: [{ $eq: ['$status', 'Reimbursed'] }, '$amount', 0] } },
+  facultyCount: { $sum: { $cond: [{ $eq: ['$formType', 'faculty'] }, 1, 0] } },
+  studentCount: { $sum: { $cond: [{ $eq: ['$formType', 'student'] }, 1, 0] } },
 } };
 const summary = data => {
   if (!data?.length) return { ...zeroSummary };
@@ -127,6 +141,122 @@ const handleFailure = (res, error) => {
   return res.status(status).json({ error: status === 503 ? 'Dashboard service unavailable. Please retry.' : error.message });
 };
 router.use(auth.verifyToken, auth.requireRole(['Coordinator', 'HOD', 'Principal', 'Accounts']));
+router.get('/departments-overview', async (req, res) => {
+  try {
+    const [facultyData, studentData] = await Promise.all([
+      Form.aggregate([
+        { $project: { department: 1, status: 1, amount: 1 } },
+        { $group: {
+          _id: '$department',
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $in: ['$status', pendingStatuses] }, 1, 0] } },
+          underPrincipal: { $sum: { $cond: [{ $eq: ['$status', 'Under Principal'] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $in: ['$status', ['Approved', 'Reimbursed']] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } },
+          reimbursed: { $sum: { $cond: [{ $eq: ['$status', 'Reimbursed'] }, 1, 0] } },
+          totalDisbursed: { $sum: { $cond: [{ $eq: ['$status', 'Reimbursed'] }, '$amount', 0] } },
+          facultyCount: { $sum: 1 },
+          studentCount: { $sum: 0 },
+        } }
+      ]).option({ maxTimeMS: 10000 }),
+      StudentForm.aggregate([
+        { $project: { department: 1, status: 1, amount: 1 } },
+        { $group: {
+          _id: '$department',
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $in: ['$status', pendingStatuses] }, 1, 0] } },
+          underPrincipal: { $sum: { $cond: [{ $eq: ['$status', 'Under Principal'] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $in: ['$status', ['Approved', 'Reimbursed']] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } },
+          reimbursed: { $sum: { $cond: [{ $eq: ['$status', 'Reimbursed'] }, 1, 0] } },
+          totalDisbursed: { $sum: { $cond: [{ $eq: ['$status', 'Reimbursed'] }, '$amount', 0] } },
+          facultyCount: { $sum: 0 },
+          studentCount: { $sum: 1 },
+        } }
+      ]).option({ maxTimeMS: 10000 })
+    ]);
+
+    const codeMap = {
+      'Information Technology': 'IT',
+      'Computer Engineering': 'CE',
+      'CSE AI and ML': 'AIML',
+      'CSE Data Science': 'DS',
+      'Civil Engineering': 'CIVIL',
+      'Mechanical Engineering': 'MECH'
+    };
+
+    const deptStats = {};
+    for (const d of DEPARTMENT_LIST) {
+      deptStats[d] = {
+        name: d,
+        code: codeMap[d] || d.slice(0, 4).toUpperCase(),
+        totalRequests: 0,
+        pendingRequests: 0,
+        underPrincipal: 0,
+        approvedRequests: 0,
+        rejectedRequests: 0,
+        totalDisbursed: 0,
+        facultyRequests: 0,
+        studentRequests: 0,
+      };
+    }
+
+    const mergeItem = (item) => {
+      if (!item?._id) return;
+      let normalized;
+      try { normalized = getNormalizedDepartment(item._id); } catch { return; }
+      if (!deptStats[normalized]) {
+        deptStats[normalized] = {
+          name: normalized,
+          code: codeMap[normalized] || normalized.slice(0, 4).toUpperCase(),
+          totalRequests: 0,
+          pendingRequests: 0,
+          underPrincipal: 0,
+          approvedRequests: 0,
+          rejectedRequests: 0,
+          totalDisbursed: 0,
+          facultyRequests: 0,
+          studentRequests: 0,
+        };
+      }
+      const target = deptStats[normalized];
+      target.totalRequests += item.total || 0;
+      target.pendingRequests += item.pending || 0;
+      target.underPrincipal += item.underPrincipal || 0;
+      target.approvedRequests += item.approved || 0;
+      target.rejectedRequests += item.rejected || 0;
+      target.totalDisbursed += item.totalDisbursed || 0;
+      target.facultyRequests += item.facultyCount || 0;
+      target.studentRequests += item.studentCount || 0;
+    };
+
+    facultyData.forEach(mergeItem);
+    studentData.forEach(mergeItem);
+
+    const result = DEPARTMENT_LIST.map((name, index) => {
+      const d = deptStats[name] || {
+        name,
+        code: codeMap[name] || 'DEPT',
+        totalRequests: 0,
+        pendingRequests: 0,
+        underPrincipal: 0,
+        approvedRequests: 0,
+        rejectedRequests: 0,
+        totalDisbursed: 0,
+        facultyRequests: 0,
+        studentRequests: 0,
+      };
+      const processed = d.approvedRequests + d.rejectedRequests;
+      return {
+        id: index + 1,
+        ...d,
+        approvalRate: processed > 0 ? Math.round((d.approvedRequests / processed) * 100) : 0,
+      };
+    });
+
+    return res.json({ departments: result });
+  } catch (error) { return handleFailure(res, error); }
+});
 router.get('/analytics', async (req, res) => {
   try {
     const { model, pipeline } = combined(req.user, req.query);

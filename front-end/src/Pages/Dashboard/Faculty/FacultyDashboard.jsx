@@ -1,11 +1,13 @@
 import React from "react"
 import { toast } from "react-hot-toast"
+import { ShieldAlert } from "lucide-react"
 import "../Dashboard.css"
 import ReminderBanner from "./components/ReminderBanner"
 import StatCard from "./components/StatCard"
 import InfoTipBox from "./components/InfoTipBox"
 import { useProfile } from "./ProfileContext"
 import { useNavigate } from "react-router-dom"
+import { usePortalStatus } from "../../../hooks/usePortalStatus"
 
 // Available reimbursement options for faculty
 const facultyReimbursementOptions = [
@@ -42,6 +44,7 @@ const facultyReimbursementOptions = [
 export default function FacultyDashboard() {
   const navigate = useNavigate();
   const { profile } = useProfile()
+  const { portal, isNptelOpen } = usePortalStatus('nptel')
 
   // Available reimbursement options for faculty
   const [reimbursementOptions] = React.useState(facultyReimbursementOptions)
@@ -52,6 +55,10 @@ export default function FacultyDashboard() {
    */
   const handleApply = (option) => {
     if (option.id === "nptel") {
+      if (!isNptelOpen) {
+        toast.error(portal?.closedMessage || "NPTEL Reimbursement Portal is currently closed by the Principal.");
+        return;
+      }
       navigate("/faculty-nptel-form");
 
     } else {
@@ -69,6 +76,26 @@ export default function FacultyDashboard() {
       <ReminderBanner />
 
       <section className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+        {/* NPTEL Portal Closed Notice Banner */}
+        {!isNptelOpen && (
+          <div className="mb-6 p-4 sm:p-4.5 rounded-2xl flex items-start sm:items-center gap-3.5 bg-rose-50/90 border border-rose-200 text-rose-950 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0 text-rose-600 border border-rose-200 mt-0.5 sm:mt-0">
+              <ShieldAlert className="w-5 h-5 text-rose-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-sm text-rose-900">NPTEL Portal Currently Closed</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-200/80 text-rose-800">
+                  Administration Notice
+                </span>
+              </div>
+              <p className="text-xs text-rose-800 mt-0.5 leading-relaxed">
+                {portal?.closedMessage || 'The NPTEL Reimbursement Portal is currently paused for new submissions by the Administration.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Welcome section with greeting and main title */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#65CCB8]/20 text-[#3B945E] text-xs sm:text-sm font-medium mb-3 sm:mb-4">
@@ -94,7 +121,9 @@ export default function FacultyDashboard() {
               <StatCard
                 key={opt.id}
                 option={opt}
-                onApply={() => handleApply(opt)} disabled={opt.id !== 'nptel'}
+                onApply={() => handleApply(opt)}
+                disabled={opt.id !== 'nptel' || (opt.id === 'nptel' && !isNptelOpen)}
+                customLabel={opt.id === 'nptel' && !isNptelOpen ? 'Portal Closed' : undefined}
               />
             ))
           ) : (

@@ -118,6 +118,9 @@ function activityLogger(req, res, next) {
             const userName = req.user?.name || req.user?.username || req.user?.email || 'Unknown';
             const userRoleDisplay = req.user?.role || 'Unknown';
             const department = req.user?.department || '';
+            const deptSuffix = department ? ` · ${department}` : '';
+            const actorPrefix = `${userName} (${userRoleDisplay}${deptSuffix})`;
+            const fullMessage = `${actorPrefix} — ${descriptor.message}`;
 
             // Persist to MongoDB (fire-and-forget)
             logger.logActivity({
@@ -126,10 +129,16 @@ function activityLogger(req, res, next) {
                 role: userRoleDisplay,
                 department,
                 action: descriptor.action,
-                message: descriptor.message,
+                message: fullMessage,
                 formId: descriptor.formId || null,
                 level: 'INFO',
                 status: 'success',
+                details: {
+                    actor: userName,
+                    role: userRoleDisplay,
+                    formId: descriptor.formId || null,
+                    endpoint: req.originalUrl || req.path
+                },
                 ipAddress: req.ip || req.connection?.remoteAddress || null,
                 userAgent: req.get('user-agent') || null,
                 method: req.method,

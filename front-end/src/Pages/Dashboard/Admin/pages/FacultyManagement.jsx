@@ -3,7 +3,7 @@ import { serializeCsv } from '../../../../utils/csv'
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAdminContext } from './AdminLayout'
-import { Plus, Search, Filter, Download, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Search, Filter, Download, Edit2, Trash2, UserCheck, UserX } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import FacultyModal from '../components/FacultyModal'
 
@@ -15,9 +15,12 @@ const FacultyManagement = () => {
     setSearchQuery,
     departmentFilter,
     setDepartmentFilter,
+    statusFilter,
+    setStatusFilter,
     departments,
     handleAddStaff,
     handleEditStaff,
+    handleToggleStaffStatus,
     handleDeleteStaff,
     showModal
   } = useAdminContext()
@@ -43,7 +46,7 @@ const FacultyManagement = () => {
 
   // Pagination
   const totalPages = Math.ceil(sortedStaff.length / itemsPerPage)
-  useEffect(() => setCurrentPage(1), [searchQuery, departmentFilter])
+  useEffect(() => setCurrentPage(1), [searchQuery, departmentFilter, statusFilter])
   useEffect(() => setCurrentPage(page => Math.min(page, Math.max(1, totalPages))), [totalPages])
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedStaff = sortedStaff.slice(startIndex, startIndex + itemsPerPage)
@@ -56,18 +59,21 @@ const FacultyManagement = () => {
   }
 
   const handleExport = () => {
-    const headers = ['ID', 'Name', 'Username', 'Email', 'Department', 'Role', 'Active']
+    const headers = ['ID', 'Name', 'Username', 'Email', 'Department', 'Role', 'Status']
     const csvContent = serializeCsv([
       headers,
-      ...sortedStaff.map(f => [
-        f.id,
-        f.name,
-        f.username,
-        f.email || 'N/A',
-        f.department || 'N/A',
-        f.role || 'N/A',
-        f.is_active ? 'Yes' : 'No'
-      ])
+      ...sortedStaff.map(f => {
+        const isCollegeWide = ['principal', 'accounts', 'admin'].includes(f.role?.toLowerCase())
+        return [
+          f.id,
+          f.name,
+          f.username,
+          f.email || 'N/A',
+          isCollegeWide ? 'College-wide' : (f.department || 'N/A'),
+          f.role || 'N/A',
+          f.is_active ? 'Active' : 'Inactive'
+        ]
+      })
     ])
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
@@ -111,7 +117,7 @@ const FacultyManagement = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -136,11 +142,27 @@ const FacultyManagement = () => {
                 setDepartmentFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
             >
               {departments.map(dept => (
                 <option key={dept} value={dept}>{dept}</option>
               ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <select aria-label="status Filter"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+            >
+              <option value="All">All Status</option>
+              <option value="Active">Active Only</option>
+              <option value="Inactive">Inactive Only</option>
             </select>
           </div>
 
@@ -224,30 +246,50 @@ const FacultyManagement = () => {
                       <div className="text-sm text-gray-600">{faculty.role || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${faculty.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStaffStatus(faculty)}
+                        title={`Click to ${faculty.is_active ? 'deactivate' : 'activate'} this account`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all shadow-sm cursor-pointer ${
+                          faculty.is_active
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${faculty.is_active ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
                         {faculty.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <motion.button
+                          onClick={() => handleToggleStaffStatus(faculty)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            faculty.is_active ? 'hover:bg-amber-100 text-amber-600' : 'hover:bg-emerald-100 text-emerald-600'
+                          }`}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                          title={faculty.is_active ? 'Deactivate account' : 'Activate account'}
+                        >
+                          {faculty.is_active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                        </motion.button>
+                        <motion.button
                           onClick={() => handleEditStaff(faculty)}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                          className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                           title="Edit"
                         >
-                          <Edit2 className="w-4 h-4 text-blue-600" />
+                          <Edit2 className="w-4 h-4" />
                         </motion.button>
                         <motion.button
                           onClick={() => handleDeleteStaff(faculty.id)}
-                          className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                          className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
-                          title="Delete"
+                          title="Permanent Delete"
                         >
-                          <Trash2 className="w-4 h-4 text-red-600" />
+                          <Trash2 className="w-4 h-4" />
                         </motion.button>
                       </div>
                     </td>

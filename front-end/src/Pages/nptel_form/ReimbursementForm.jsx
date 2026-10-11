@@ -2,13 +2,14 @@ import NptelFormWizard from '../../components/NptelFormWizard';
 import { selectFormErrors } from '../../utils/nptelReview';
 import React, { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apshahLogo from "../../assets/images/Apshah_logo.png";
 import websiteLogo from "../../assets/images/Website_logo.png";
 import { getCsrfToken, fetchCsrfToken, API_BASE_URL } from '../../services/api';
 import { resolveDepartment } from '../../utils/departmentResolver';
+import { usePortalStatus } from '../../hooks/usePortalStatus';
 
 // SECURITY: Input sanitization helper
 const sanitizeInput = (input) => {
@@ -40,6 +41,7 @@ const validateFile = (file) => {
 const ReimbursementForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { portal, isNptelOpen } = usePortalStatus('nptel');
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -219,6 +221,11 @@ const ReimbursementForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!isNptelOpen) {
+      toast.error(portal?.closedMessage || 'NPTEL Reimbursement Portal is currently closed by the Principal.');
+      return;
+    }
+
     // Prevent duplicate submissions
     if (isSubmitting) return;
 
@@ -387,7 +394,27 @@ const ReimbursementForm = () => {
           <p>Date: {new Date().toLocaleDateString()}</p>
         </div>
 
-        <NptelFormWizard sections={[<div className="border-t border-gray-200 pt-4">
+        {!isNptelOpen ? (
+          <div className="py-12 px-4 text-center max-w-lg mx-auto border-t border-gray-100">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4 border border-rose-200 shadow-sm">
+              <Lock className="w-8 h-8 text-rose-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">
+              NPTEL Reimbursement Portal Closed
+            </h3>
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              {portal?.closedMessage || 'The Principal has temporarily closed the NPTEL Reimbursement Portal for new submissions. Please contact administration for further details.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#3B945E] hover:bg-[#2e754a] shadow-sm transition-all cursor-pointer"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        ) : (
+          <NptelFormWizard sections={[<div className="border-t border-gray-200 pt-4">
 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -743,6 +770,7 @@ const ReimbursementForm = () => {
               </div>
             </div>
           </div></div>]} values={formData} applicantType={user?.role} validate={validateForm} onSubmit={handleSubmit} busy={isSubmitting} onCancel={() => navigate(-1)} />
+        )}
       </div>
     </div>
   );

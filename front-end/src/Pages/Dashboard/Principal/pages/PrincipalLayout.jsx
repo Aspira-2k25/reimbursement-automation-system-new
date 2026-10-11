@@ -131,7 +131,7 @@ const PrincipalLayout = () => {
       userId: f.userId,
       applicantName: f.name || 'N/A',
       applicantId: f.studentId || f.facultyId || 'N/A',
-      applicantType: f.applicantType || 'Student',
+      applicantType: (f.studentId || f.formType === 'student' || f.applicantType === 'Student') ? 'Student' : 'Faculty',
       applicantEmail: f.email,
       department: f.department || 'N/A',
       category: f.reimbursementType || f.category || 'NPTEL',
@@ -192,7 +192,7 @@ const PrincipalLayout = () => {
 
   const collegeStats = useMemo(() => {
     const counts = summary || {}
-    const approved = (counts.approved || 0) + (counts.reimbursed || 0)
+    const approved = counts.approved || 0
     const processed = approved + (counts.rejected || 0)
     return {
       total: counts.total || 0,

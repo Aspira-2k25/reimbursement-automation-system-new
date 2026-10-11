@@ -60,7 +60,7 @@ export default function ProfileSettings() {
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold">Faculty Profile Settings</h1>
           <p className="text-slate-600 mt-1 text-sm sm:text-base">
-            Update your name. Department, designation and role are managed by an administrator.
+            Update your name. Department and role are managed by an administrator.
           </p>
         </div>
 
@@ -93,16 +93,6 @@ export default function ProfileSettings() {
             <input
               className="input w-full"
               value={profile.department || 'Not assigned'}
-              readOnly
-            />
-          </label>
-
-          {/* Designation input */}
-          <label className="grid gap-1">
-            <span className="text-sm text-slate-600">Designation</span>
-            <input
-              className="input w-full"
-              value={profile.designation || "Not assigned"}
               readOnly
             />
           </label>

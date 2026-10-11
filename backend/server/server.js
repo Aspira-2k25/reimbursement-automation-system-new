@@ -86,6 +86,7 @@ const ActivityLog = require('./models/ActivityLog');
 
 const notificationRoutes = require('./routes/notificationRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const portalRoutes = require('./routes/portalRoutes');
 const studentFormRoutes = require('./routes/StudentFormRoutes');
 const formRoutes = require('./routes/formRoutes');
 const authRoutes = require('./routes/auth');
@@ -192,7 +193,9 @@ const requestLimitKey = req => {
 const limiter = rateLimit({
   keyGenerator: requestLimitKey,
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 1000, // 100 requests per window
+  max: process.env.NODE_ENV === 'development'
+    ? 20000
+    : (parseInt(process.env.RATE_LIMIT_MAX, 10) || 2000),
   message: {
     error: 'Too many requests',
     message: 'Please try again later.',
@@ -231,7 +234,7 @@ app.use('/api/auth/google', authLimiter);
 const formSubmitLimiter = rateLimit({
   keyGenerator: requestLimitKey,
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // 10 form submissions per hour
+  max: process.env.NODE_ENV === 'development' ? 200 : (parseInt(process.env.FORM_SUBMIT_LIMIT_MAX, 10) || 20),
   message: {
     error: 'Too many form submissions',
     message: 'Please try again later.',
@@ -396,6 +399,8 @@ app.use('/api/notifications', csrfProtection, notificationRoutes);
 
 // Announcement routes (dynamic reminder banner)
 app.use('/api/announcements', csrfProtection, announcementRoutes);
+// Portal configuration routes (Principal/Admin control)
+app.use('/api/portal', csrfProtection, portalRoutes);
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 // CSRF token endpoint for frontend (uses new custom handler)
@@ -466,18 +471,23 @@ app.get('/api/admin/logs',
         .limit(limit)
         .lean();
 
-      // Map to response format (compatible with existing frontend)
+      // Map to response format (compatible with existing frontend + rich audit details)
       const formattedLogs = logs.map(log => ({
+        id: String(log._id),
         timestamp: log.timestamp,
         level: log.level,
         message: log.message,
         data: {
           user: log.userName,
+          userId: log.userId,
           role: log.role,
           department: log.department,
           formId: log.formId || undefined,
           action: log.action,
-          status: log.status
+          status: log.status,
+          details: log.details || null,
+          ipAddress: log.ipAddress || null,
+          userAgent: log.userAgent || null
         }
       }));
 
@@ -595,7 +605,7 @@ async function startServer() {
     const PORT = process.env.PORT || 5000;
 
     const server = http.createServer(app);
-    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Server running on port ${PORT} ✅`));
 
     // ── Graceful shutdown ──
     const gracefulShutdown = async (signal) => {

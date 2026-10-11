@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 import api, { fetchCsrfToken, getCsrfToken, invalidateAuthSession } from '../services/api';
 
 const AuthContext = createContext();
@@ -26,6 +27,10 @@ export const AuthProvider = ({ children }) => {
     return normalized;
   }, [normalizeUser]);
   const refreshUserProfile = useCallback(async () => {
+    if (!localStorage.getItem('user')) {
+      setSessionError(null);
+      return null;
+    }
     const version = sessionVersion.current;
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), 12000);
@@ -39,7 +44,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       if (version !== sessionVersion.current) return null;
       setUser(null);
-      if ([401, 404].includes(error.status)) {
+      if (
+        [401, 404].includes(error.status) ||
+        error.code === 'ERR_SESSION_CHANGED' ||
+        error.name === 'CanceledError' ||
+        error.code === 'ERR_CANCELED' ||
+        !localStorage.getItem('user')
+      ) {
         localStorage.removeItem('user');
         setSessionError(null);
       } else {
@@ -50,14 +61,17 @@ export const AuthProvider = ({ children }) => {
   }, [saveUser]);
   useEffect(() => {
     let mounted = true;
-    const expired = () => { sessionVersion.current += 1; saveUser(null); };
+    const expired = () => { sessionVersion.current += 1; saveUser(null); setSessionError(null); };
     const refreshed = event => saveUser(event.detail);
     window.addEventListener('auth:expired', expired);
     window.addEventListener('auth:refreshed', refreshed);
     // Persisted user data is a cache; authenticate only after server validation.
     const init = async () => {
       if (localStorage.getItem('user')) await refreshUserProfile();
-      else await fetchCsrfToken().catch(() => {});
+      else {
+        setSessionError(null);
+        await fetchCsrfToken().catch(() => {});
+      }
       if (mounted) setLoading(false);
     };
     init();
@@ -82,6 +96,8 @@ export const AuthProvider = ({ children }) => {
   const login = (username, email, password) => completeLogin('/auth/login', { username, email, password });
   const loginWithGoogle = credential => completeLogin('/auth/google', { credential });
   const logout = useCallback(async () => {
+    try { toast.dismiss(); } catch { /* Ignore if toast not mounted */ }
+    setSessionError(null);
     invalidateAuthSession();
     sessionVersion.current += 1;
     saveUser(null);
@@ -90,6 +106,7 @@ export const AuthProvider = ({ children }) => {
       await fetchCsrfToken();
       await api.post('/auth/logout');
     } catch { /* Local session remains closed even if the server is unavailable. */ }
+    setSessionError(null);
   }, [saveUser]);
   const isAuthenticated = useCallback(() => !!user, [user]);
   return <AuthContext.Provider value={{
