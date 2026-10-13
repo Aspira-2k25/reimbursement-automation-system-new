@@ -79,7 +79,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Side - Branding */}
-      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }}>
+      <div className="auth-brand-panel w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }}>
         <Link to="/" aria-label="Go to landing page" className="absolute top-6 left-6 z-20 flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-green-700">
           <img src={apshahLogo} alt="A.P. Shah Institute of Technology Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-sm" />
           <span className="font-bold text-white text-sm sm:text-base tracking-wide drop-shadow-md max-w-[200px] leading-tight">
@@ -95,7 +95,7 @@ export default function ResetPassword() {
           <div className="absolute bottom-40 left-32 w-24 h-24 bg-white/10 rounded-full"></div>
         </div>
 
-        <div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center">
+        <div className="auth-brand-message flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center">
           <img src={websiteLogo} alt="Reimbursement Portal Logo" className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 object-contain drop-shadow-lg mb-6 lg:mb-8" />
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 leading-tight">
             Set New Password
@@ -107,7 +107,7 @@ export default function ResetPassword() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }}>
+      <div className="auth-form-panel w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }}>
         <div className="w-full max-w-md px-4 sm:px-0">
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8">
             {success ? (

@@ -283,33 +283,33 @@ const RequestStatus = () => {
           <p className="text-sm text-gray-500">Complete list of your reimbursement applications</p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Last Updated</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
+        <div className="overflow-x-auto" data-mobile-card-container="">
+          <table className="min-w-full divide-y divide-slate-200" data-mobile-cards="" role="table">
+            <thead className="bg-slate-50" role="rowgroup">
+              <tr role="row">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Application ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Department</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Submitted Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Last Updated</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className="divide-y divide-slate-100 bg-white" role="rowgroup">
               {filteredRequests.length > 0 ? filteredRequests.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/60">
-                  <td className="px-4 py-3 font-medium text-slate-900">{r.id}</td>
-                  <td className="px-4 py-3 text-slate-700">{r.category}</td>
-                  <td className="px-4 py-3 text-slate-700">{r.department}</td>
-                  <td className="px-4 py-3">
+                <tr key={r.id} className="hover:bg-slate-50/60" role="row">
+                  <td className="px-4 py-3 font-medium text-slate-900" data-label="Application ID" role="cell">{r.id}</td>
+                  <td className="px-4 py-3 text-slate-700" data-label="Category" role="cell">{r.category}</td>
+                  <td className="px-4 py-3 text-slate-700" data-label="Department" role="cell">{r.department}</td>
+                  <td className="px-4 py-3" data-label="Status" role="cell">
                     <StatusBadge status={r.status} />
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">₹{r.amount.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-slate-600">{new Date(r.submittedDate).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-slate-600">{new Date(r.updatedDate).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 font-medium text-slate-900" data-label="Amount" role="cell">₹{r.amount.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-slate-600" data-label="Submitted Date" role="cell">{new Date(r.submittedDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-slate-600" data-label="Last Updated" role="cell">{new Date(r.updatedDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3" data-label="Actions" role="cell">
                     <div className="flex items-center gap-2">
                       {/* Download */}
                       <button
@@ -362,7 +362,7 @@ const RequestStatus = () => {
                   </td>
                 </tr>
               )) : (
-                <tr>
+                <tr role="row">
                   <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                     <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <div className="text-lg font-medium text-gray-900 mb-1">No requests found</div>

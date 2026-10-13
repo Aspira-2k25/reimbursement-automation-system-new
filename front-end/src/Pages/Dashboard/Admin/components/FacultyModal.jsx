@@ -162,7 +162,7 @@ const FacultyModal = () => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between" data-mobile-toolbar="">
           <h2 className="text-xl font-bold text-gray-900">
             {editingStaff ? 'Edit Staff' : 'Add New Staff'}
           </h2>

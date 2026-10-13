@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { User, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -11,6 +11,16 @@ export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const signInPending = useRef(false)
+  const googleContainer = useRef(null)
+  const [googleWidth, setGoogleWidth] = useState(0)
+  useEffect(() => {
+    const element = googleContainer.current
+    const measure = () => setGoogleWidth(Math.max(1, Math.min(300, Math.floor(element.clientWidth))))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -58,7 +68,7 @@ export default function LoginPage() {
         <p className="text-sm text-slate-600">Verifying your account securely.</p>
       </div>}
       {/* Left Side - Welcome Section */}
-      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }}>
+      <div className="auth-brand-panel w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen" style={{ background: 'linear-gradient(135deg, #3B945E 0%, #57BA98 50%, #65CCB8 100%)' }}>
 
         {/* College Branding Top Left */}
         <Link to="/" aria-label="Go to landing page" className="absolute top-6 left-6 z-20 flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-green-700">
@@ -93,7 +103,7 @@ export default function LoginPage() {
         </div>
 
         {/* Content */}
-        <div className="flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center">
+        <div className="auth-brand-message flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 relative z-10 text-center">
           {/* Large System Logo on the Green Panel */}
           {/* <img
             // src={websiteLogo}
@@ -110,7 +120,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Side - Form Section */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }}>
+      <div className="auth-form-panel w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-[60vh] lg:min-h-screen" style={{ background: '#F2F2F2' }}>
         <div className="w-full max-w-md px-4 sm:px-0">
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8">
             {/* Header */}
@@ -206,8 +216,8 @@ export default function LoginPage() {
               </div>
 
               {/* Social Icons */}
-              <div className="flex justify-center mb-6">
-                <GoogleLogin
+              <div ref={googleContainer} className="flex w-full min-w-0 justify-center mb-6">
+                {googleWidth > 0 && <GoogleLogin width={googleWidth}
                   onSuccess={async (credentialResponse) => {
                     if (signInPending.current) return;
                     signInPending.current = true;
@@ -230,7 +240,7 @@ export default function LoginPage() {
                   onError={() => {
                     setError('Google login failed. Please try again.');
                   }}
-                />
+                />}
               </div>
 
               {/* Submit Button */}

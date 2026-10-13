@@ -1,3 +1,4 @@
+import ResponsiveSidebar from '../../../../components/ResponsiveSidebar'
 import Pagination from '../../../../components/Pagination'
 import useDashboardTab from '../../../../hooks/useDashboardTab'
 import usePersistentNotifications from '../../../../hooks/usePersistentNotifications'
@@ -417,7 +418,7 @@ const PrincipalLayout = () => {
     <PrincipalContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50/30">
         {/* Sidebar - Fixed positioned, independent of main content scroll */}
-        <Motion.div
+        <ResponsiveSidebar collapsed={isCollapsed} onCollapse={setIsCollapsed}><Motion.div
           initial={false}
           animate={{ width: isCollapsed ? 64 : 256 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -430,10 +431,10 @@ const PrincipalLayout = () => {
             setIsCollapsed={setIsCollapsed}
             userProfile={userProfile}
           />
-        </Motion.div>
+        </Motion.div></ResponsiveSidebar>
 
         {/* Main Content Area - Has left margin to account for fixed sidebar */}
-        <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'
+        <div className={`mobile-full-content min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'
           }`}>
           {/* Header */}
           <Header
@@ -478,7 +479,7 @@ const PrincipalLayout = () => {
 
         {/* Mobile Overlay for Sidebar - Only on mobile devices */}
         <AnimatePresence>
-          {!isCollapsed && (
+          {!isCollapsed && window.matchMedia('(min-width: 768px)').matches && (
             <Motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -331,7 +331,7 @@ const HomeDashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4" data-mobile-toolbar="">
           <h3 className="text-lg font-semibold text-gray-900">Department Overview</h3>
           <TrendingUp className="w-5 h-5 text-green-600" />
         </div>
@@ -406,7 +406,7 @@ const HomeDashboard = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-mobile-controls="">
               <select aria-label="status Filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -537,7 +537,7 @@ const HomeDashboard = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6" data-mobile-toolbar="">
                 <h3 className="text-xl font-semibold text-gray-900">
                   Request Details
                 </h3>

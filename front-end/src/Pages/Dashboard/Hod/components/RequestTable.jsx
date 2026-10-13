@@ -1,3 +1,4 @@
+import MobileTableSort from '../../../../components/MobileTableSort'
 import Pagination from '../../../../components/Pagination'
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
@@ -182,6 +183,7 @@ const RequestTable = ({
       </div>
 
       {/* Table */}
+      <MobileTableSort fields={[{"key":"id","label":"Request ID"},{"key":"applicantName","label":"Applicant"},{"key":"category","label":"Category"},{"key":"amount","label":"Amount"},{"key":"submittedDate","label":"Submitted"}]} sort={sortConfig} onSort={handleSort} />
       <div className="space-y-3 p-3 sm:hidden">
         {!isLoading && paginatedRequests.map(request => <article key={request.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
           <p className="font-semibold break-words">{request.applicantName || request.name}</p>
@@ -193,14 +195,14 @@ const RequestTable = ({
         {isLoading && <p role="status">Loading requests…</p>}
         {!isLoading && !paginatedRequests.length && <p>No matching requests.</p>}
       </div>
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
+      <><div className="hidden sm:block overflow-x-auto" data-mobile-card-container="">
+        <table className="w-full" data-mobile-cards="" role="table">
+          <thead className="bg-gray-50" role="rowgroup">
+            <tr role="row">
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('id')}
-              >
+               role="columnheader">
                 Request ID
                 {sortConfig.key === 'id' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
@@ -209,25 +211,25 @@ const RequestTable = ({
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('applicantName')}
-              >
+               role="columnheader">
                 Applicant
                 {sortConfig.key === 'applicantName' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                 )}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Course Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Marks
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('category')}
-              >
+               role="columnheader">
                 Category
                 {sortConfig.key === 'category' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
@@ -236,32 +238,32 @@ const RequestTable = ({
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('amount')}
-              >
+               role="columnheader">
                 Amount
                 {sortConfig.key === 'amount' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                 )}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Status
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('submittedDate')}
-              >
+               role="columnheader">
                 Submitted
                 {sortConfig.key === 'submittedDate' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                 )}
               </th>
               {showActions && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                   Actions
                 </th>
               )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200" role="rowgroup">
             <AnimatePresence>
               {paginatedRequests.map((request, index) => (
                 <motion.tr
@@ -338,7 +340,7 @@ const RequestTable = ({
             </AnimatePresence>
           </tbody>
         </table>
-      </div>
+      </div></>
 
       {totalPages > 1 && <div className="p-4"><Pagination page={currentPage} totalPages={totalPages} total={sortedRequests.length} pageSize={itemsPerPage} onPageChange={handlePageChange} noun="requests" /></div>}
 

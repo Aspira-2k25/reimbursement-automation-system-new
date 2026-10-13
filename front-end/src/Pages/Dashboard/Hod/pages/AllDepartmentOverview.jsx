@@ -269,7 +269,7 @@ const AllDepartmentOverview = () => {
 
       {/* Department Cards */}
       <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6" data-mobile-toolbar="">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Building className="w-5 h-5 text-gray-600" />
             Department Statistics
@@ -289,7 +289,7 @@ const AllDepartmentOverview = () => {
                   : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
               }`}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3" data-mobile-toolbar="">
                 <h4 className="font-semibold text-gray-900">{dept.name}</h4>
                 <div className="flex items-center gap-2">
                   {dept.isOwnDepartment ? (

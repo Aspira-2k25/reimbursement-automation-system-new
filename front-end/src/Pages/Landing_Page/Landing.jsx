@@ -39,7 +39,7 @@ export default function LandingPage() {
 
   return (
     <div
-      className="min-h-screen"
+      className="mobile-landing min-h-screen"
       style={{
         background: `linear-gradient(to bottom, ${theme.light}, ${theme.mint}20%, ${theme.light})`
       }}

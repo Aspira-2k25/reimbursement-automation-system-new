@@ -483,7 +483,7 @@ const AdminLogs = () => {
 
         {/* Date Range & Reset Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-mobile-controls="">
             <span className="text-gray-500 font-medium">Date Range:</span>
             <input
               type="date"
@@ -515,27 +515,27 @@ const AdminLogs = () => {
 
       {/* Logs Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
-              <tr>
-                <th className="px-5 py-3.5 w-44">Time</th>
-                <th className="px-5 py-3.5 w-48">Actor (Who)</th>
-                <th className="px-5 py-3.5 w-36">Action</th>
-                <th className="px-5 py-3.5">Activity & Target Details</th>
-                <th className="px-4 py-3.5 w-20 text-center">Inspect</th>
+        <div className="overflow-x-auto" data-mobile-card-container="">
+          <table className="w-full text-left text-sm" data-mobile-cards="" role="table">
+            <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider" role="rowgroup">
+              <tr role="row">
+                <th className="px-5 py-3.5 w-44" role="columnheader">Time</th>
+                <th className="px-5 py-3.5 w-48" role="columnheader">Actor (Who)</th>
+                <th className="px-5 py-3.5 w-36" role="columnheader">Action</th>
+                <th className="px-5 py-3.5" role="columnheader">Activity & Target Details</th>
+                <th className="px-4 py-3.5 w-20 text-center" role="columnheader">Inspect</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100" role="rowgroup">
               {loading && logs.length === 0 ? (
-                <tr>
+                <tr role="row">
                   <td colSpan={5} className="py-12 text-center text-gray-500">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto text-green-600 mb-2" />
                     Loading activity logs...
                   </td>
                 </tr>
               ) : displayedLogs.length === 0 ? (
-                <tr>
+                <tr role="row">
                   <td colSpan={5} className="py-12 text-center text-gray-500">
                     <Shield className="w-8 h-8 mx-auto text-gray-400 mb-2" />
                     <p className="font-medium text-gray-800">No activity logs found</p>
@@ -560,16 +560,16 @@ const AdminLogs = () => {
                       className={`hover:bg-gray-50 transition-colors ${
                         isExpanded ? 'bg-green-50/40' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                       }`}
-                    >
+                     role="row">
                       {/* Timestamp */}
-                      <td className="px-5 py-3.5 align-top whitespace-nowrap">
+                      <td className="px-5 py-3.5 align-top whitespace-nowrap" data-label="Time" role="cell">
                         <div className="font-mono text-xs text-gray-700 font-medium">
                           {formatTime(log.timestamp)}
                         </div>
                       </td>
 
                       {/* Actor (Who) */}
-                      <td className="px-5 py-3.5 align-top">
+                      <td className="px-5 py-3.5 align-top" data-label="Actor (Who)" role="cell">
                         <div className="flex items-start gap-2.5">
                           <div className="w-7 h-7 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
                             {(log.data?.user || 'S').charAt(0).toUpperCase()}
@@ -595,7 +595,7 @@ const AdminLogs = () => {
                       </td>
 
                       {/* Action Badge */}
-                      <td className="px-5 py-3.5 align-top">
+                      <td className="px-5 py-3.5 align-top" data-label="Action" role="cell">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${config.badgeClass}`}
                         >
@@ -605,7 +605,7 @@ const AdminLogs = () => {
                       </td>
 
                       {/* Activity & Target Details */}
-                      <td className="px-5 py-3.5 align-top">
+                      <td className="px-5 py-3.5 align-top" data-label="Activity & Target Details" role="cell">
                         <div className="font-medium text-gray-900 leading-relaxed">
                           {log.message}
                         </div>
@@ -676,7 +676,7 @@ const AdminLogs = () => {
                       </td>
 
                       {/* Expand / Inspect Action */}
-                      <td className="px-4 py-3.5 align-top text-center">
+                      <td className="px-4 py-3.5 align-top text-center" data-label="Inspect" role="cell">
                         <button
                           type="button"
                           onClick={() => setExpandedLogId(isExpanded ? null : logId)}

@@ -55,22 +55,22 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
   }, [requests, search])
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Application ID</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted Date</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Last Updated</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
+    <div className="overflow-x-auto" data-mobile-card-container="">
+      <table className="min-w-full divide-y divide-slate-200" data-mobile-cards="" role="table">
+        <thead className="bg-slate-50" role="rowgroup">
+          <tr role="row">
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Application ID</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Course Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Marks</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Amount</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Submitted Date</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Last Updated</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="divide-y divide-slate-100 bg-white" role="rowgroup">
           {filtered.length > 0 ? filtered.map((r) => {
             // Helper function to safely format dates
             const formatDate = (dateValue) => {
@@ -85,12 +85,12 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
             };
 
             return (
-              <tr key={r.id || r._id} className="hover:bg-slate-50/60">
-                <td className="px-4 py-3 font-medium text-slate-900">{r.id || r._id || 'N/A'}</td>
-                <td className="px-4 py-3">{r.category || r.reimbursementType || 'NPTEL'}</td>
-                <td className="px-4 py-3">{r.courseName || 'N/A'}</td>
-                <td className="px-4 py-3">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
-                <td className="px-4 py-3">
+              <tr key={r.id || r._id} className="hover:bg-slate-50/60" role="row">
+                <td className="px-4 py-3 font-medium text-slate-900" data-label="Application ID" role="cell">{r.id || r._id || 'N/A'}</td>
+                <td className="px-4 py-3" data-label="Category" role="cell">{r.category || r.reimbursementType || 'NPTEL'}</td>
+                <td className="px-4 py-3" data-label="Course Name" role="cell">{r.courseName || 'N/A'}</td>
+                <td className="px-4 py-3" data-label="Marks" role="cell">{r.marks !== undefined && r.marks !== null ? `${r.marks}%` : 'N/A'}</td>
+                <td className="px-4 py-3" data-label="Status" role="cell">
                   <div className="flex flex-col gap-1 items-center">
                     <StatusBadge status={r.status || 'Pending'} />
                     {r.status === 'Rejected' && r.accountsRemarks && (
@@ -100,10 +100,10 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3">₹{(r.amount || 0).toLocaleString("en-IN")}</td>
-                <td className="px-4 py-3">{formatDate(r.submittedDate || r.createdAt)}</td>
-                <td className="px-4 py-3">{formatDate(r.updatedDate || r.updatedAt)}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-label="Amount" role="cell">₹{(r.amount || 0).toLocaleString("en-IN")}</td>
+                <td className="px-4 py-3" data-label="Submitted Date" role="cell">{formatDate(r.submittedDate || r.createdAt)}</td>
+                <td className="px-4 py-3" data-label="Last Updated" role="cell">{formatDate(r.updatedDate || r.updatedAt)}</td>
+                <td className="px-4 py-3" data-label="Actions" role="cell">
                   <div className="flex items-center gap-2">
                     <button
                       className="icon-btn hover:bg-blue-50"
@@ -232,7 +232,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               </tr>
             );
           }) : (
-            <tr>
+            <tr role="row">
               <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                 <div className="text-lg">No requests found</div>
                 <div className="text-sm mt-1">Try adjusting your search or check back later</div>
@@ -250,7 +250,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               onClick={() => setViewItem(null)}
             ></div>
             <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4" data-mobile-toolbar="">
                 <h3 className="text-lg font-semibold">Request Details</h3>
                 <button
                   className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"
@@ -395,7 +395,7 @@ export default function RequestsTable({ search, requests = [], onDelete }) {
               onClick={() => setEditItem(null)}
             ></div>
             <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl transform transition-all duration-200 scale-100">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4" data-mobile-toolbar="">
                 <h3 className="text-lg font-semibold">Edit Request</h3>
                 <button
                   className="icon-btn hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150"

@@ -219,7 +219,7 @@ const ReimbursedList = () => {
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-wrap gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
+        <div className="flex flex-wrap gap-3 mb-6 p-4 bg-gray-50 rounded-lg" data-mobile-controls="">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -299,32 +299,32 @@ const ReimbursedList = () => {
         </div>
 
         {/* Request Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Applicant</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Department</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
+        <div className="overflow-x-auto" data-mobile-card-container="">
+          <table className="min-w-full divide-y divide-slate-200" data-mobile-cards="" role="table">
+            <thead className="bg-slate-50" role="rowgroup">
+              <tr role="row">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Request ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Applicant</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Course Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Marks</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Department</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200" role="rowgroup">
               {loading ? (
-                <tr>
+                <tr role="row">
                   <td colSpan={10} className="px-4 py-8 text-center">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#57BA98]" />
                     <p className="mt-2 text-sm text-gray-500">Loading requests...</p>
                   </td>
                 </tr>
               ) : filteredRequests.length === 0 ? (
-                <tr>
+                <tr role="row">
                   <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                     No reimbursed requests found matching your criteria
                   </td>
@@ -415,7 +415,7 @@ const ReimbursedList = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="print-modal-header p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+              <div className="print-modal-header p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white" data-mobile-toolbar="">
                 <h3 className="text-lg font-semibold text-gray-900">Print Reimbursement Form</h3>
                 <div className="flex items-center gap-2">
                   <button

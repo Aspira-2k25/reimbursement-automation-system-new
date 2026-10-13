@@ -6,6 +6,27 @@ const vm = require('node:vm');
 const { createRequire } = require('node:module');
 const filename = path.join(__dirname, '../utils/emailService.js');
 const realRequire = createRequire(filename);
+test('application emails use the applicant ID for every notification type', async () => {
+  const service = load({ data: { id: 'mock-message' } });
+  const senders = ['sendSubmissionEmail', 'sendApprovalEmail', 'sendRejectionEmail', 'sendReimbursedEmail'];
+  for (const sender of senders) {
+    for (const applicantType of ['Faculty', 'Coordinator', 'HOD', 'Student']) {
+      await service[sender]({ name: 'Applicant', email: 'recipient@example.test', applicationId: 'APP1',
+        applicantType, facultyId: applicantType === 'Student' ? undefined : 'EMP<12>',
+        studentId: applicantType === 'Student' ? 'ST123' : undefined, amount: 1500, status: 'Reimbursed' }, 'Accounts', 'Reason');
+      const html = service.sent.at(-1).html;
+      if (applicantType === 'Student') {
+        assert.match(html, /Student ID:<\/strong> ST123/);
+        assert.doesNotMatch(html, /Faculty ID:/);
+      } else {
+        assert.match(html, /Faculty ID:<\/strong> EMP/);
+        assert.doesNotMatch(html, /Student ID:|EMP<12>/);
+      }
+    }
+  }
+  await service.sendReimbursedEmail({ applicantType: 'Faculty', email: 'recipient@example.test' });
+  assert.match(service.sent.at(-1).html, /Faculty ID:<\/strong> Not provided/);
+});
 function load(response, env = { RESEND_API_KEY: 're_mockkey', RESEND_FROM_EMAIL: 'sender@example.test' }) {
   const module = { exports: {} }, sent = [], logs = [];
   vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {

@@ -94,6 +94,7 @@ export default function Navbar() {
             </span>
           </div>
 
+          <nav aria-label="Mobile navigation" className="flex gap-1 md:hidden">{navItems.map(item => <Link key={item.path} to={item.path} aria-current={isActive(item.path) ? 'page' : undefined} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-white hover:bg-white/15">{item.label}</Link>)}</nav>
           {/* Desktop Navigation */}
           <nav className="hidden md:grid grid-cols-2 gap-1 absolute left-1/2 -translate-x-1/2 p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shadow-slate-900/10 w-80 lg:w-96">
             {navItems.slice(0, 2).findIndex(item => isActive(item.path)) !== -1 && (

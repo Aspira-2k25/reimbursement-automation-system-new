@@ -80,7 +80,7 @@ export default function NotificationMenu({ notifications = [], markNotificationA
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center">
+            <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center" data-mobile-toolbar="">
               <h3 className="text-xs sm:text-sm font-semibold text-gray-900">Notifications</h3>
               {unreadCount > 0 && (
                 <button

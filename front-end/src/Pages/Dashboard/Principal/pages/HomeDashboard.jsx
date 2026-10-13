@@ -261,7 +261,7 @@ const HomeDashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4" data-mobile-toolbar="">
           <h3 className="text-lg font-semibold text-gray-900">College Overview</h3>
           <TrendingUp className="w-5 h-5 text-green-600" />
         </div>
@@ -349,7 +349,7 @@ const HomeDashboard = () => {
             </button>
 
             {/* Filters */}
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-mobile-controls="">
               <select aria-label="status Filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -401,23 +401,23 @@ const HomeDashboard = () => {
 <div className="flex flex-wrap gap-2 text-sm"><button onClick={() => handleViewRequest(request)}  className="px-3 py-2 rounded-lg border text-slate-700 disabled:opacity-50">View</button>{request.status === 'Under Principal' && <><button onClick={() => handleApproveRequest(request)} disabled={isLoading} className="px-3 py-2 rounded-lg bg-green-700 text-white disabled:opacity-50">Approve</button><button onClick={() => handleRejectRequest(request)} disabled={isLoading} className="px-3 py-2 rounded-lg border border-red-700 text-red-700 disabled:opacity-50">Reject</button></>}</div>
 </article>)}
 </div>
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Request ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Applicant</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Course Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Marks</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Submitted</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Actions</th>
+        <div className="hidden sm:block overflow-x-auto" data-mobile-card-container="">
+          <table className="min-w-full divide-y divide-slate-200" data-mobile-cards="" role="table">
+            <thead className="bg-slate-50" role="rowgroup">
+              <tr role="row">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Request ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Applicant</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Course Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Marks</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Submitted</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600" role="columnheader">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {recentRequests.map((request, index) => (
                 <motion.tr
                   key={request.id}

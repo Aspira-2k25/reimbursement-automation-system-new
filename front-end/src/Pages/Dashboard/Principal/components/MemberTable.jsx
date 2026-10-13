@@ -1,3 +1,4 @@
+import MobileTableSort from '../../../../components/MobileTableSort'
 import { useState, useMemo } from "react";
 import {
   Search,
@@ -176,32 +177,32 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
+      <><MobileTableSort fields={[{"key":"name","label":"Member"},{"key":"totalReimbursements","label":"Reimbursements"}]} sort={sortConfig} onSort={handleSort} /><div className="overflow-x-auto" data-mobile-card-container="">
+        <table className="w-full" data-mobile-cards="" role="table">
+          <thead className="bg-gray-50" role="rowgroup">
+            <tr role="row">
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('name')}
-              >
+               role="columnheader">
                 Member
                 {sortConfig.key === 'name' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                 )}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Department
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Contact
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('totalReimbursements')}
-              >
+               role="columnheader">
                 Reimbursements
                 {sortConfig.key === 'totalReimbursements' && (
                   <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
@@ -209,10 +210,10 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200" role="rowgroup">
             {paginatedMembers.map((member) => (
-              <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
+              <tr key={member.id} className="hover:bg-gray-50 transition-colors" role="row">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Member" role="cell">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white ${member.type === 'Student' ? 'bg-green-600' : 'bg-green-600'
                       }`}>
@@ -228,7 +229,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Type" role="cell">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.type === 'Student'
                     ? 'bg-blue-100 text-blue-800'
                     : 'bg-green-100 text-green-800'
@@ -236,10 +237,10 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                     {member.type}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Department" role="cell">
                   <div className="text-sm text-gray-900">{member.department}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Contact" role="cell">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Mail className="w-3 h-3" />
@@ -247,7 +248,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Reimbursements" role="cell">
                   <div className="text-center">
                     <div className="text-sm font-semibold text-gray-900">
                       {member.totalReimbursements}
@@ -261,7 +262,7 @@ const MemberTable = ({ members = [], title = "Department Members" }) => {
             ))}
           </tbody>
         </table>
-      </div>
+      </div></>
 
       {/* Pagination */}
       {totalPages > 1 && (

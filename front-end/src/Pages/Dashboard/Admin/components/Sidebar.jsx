@@ -39,6 +39,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           )}
         </div>
         <button
+          aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"} aria-expanded={!isCollapsed}
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}

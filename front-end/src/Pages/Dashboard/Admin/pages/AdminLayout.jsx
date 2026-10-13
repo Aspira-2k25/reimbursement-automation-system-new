@@ -1,3 +1,4 @@
+import ResponsiveSidebar from '../../../../components/ResponsiveSidebar'
 import { useState, createContext, useContext, useCallback, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -234,12 +235,12 @@ const AdminLayout = () => {
 
   return (
     <AdminContext.Provider value={contextValue}>
-      <div className="flex h-screen bg-gray-100">
+      <div className="mobile-dashboard-root flex h-screen bg-gray-100">
         {/* Sidebar */}
-        <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <ResponsiveSidebar collapsed={isCollapsed} onCollapse={setIsCollapsed}><Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} /></ResponsiveSidebar>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="mobile-full-content flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Header */}
           <Header isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
@@ -252,7 +253,7 @@ const AdminLayout = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="p-6"
+                className="mobile-page-content p-6"
               >
                 {activeTab === 'home' && <Dashboard />}
                 {activeTab === 'portals' && <PortalManagement />}

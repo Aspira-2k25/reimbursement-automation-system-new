@@ -1,3 +1,4 @@
+import MobileTableSort from '../../../../components/MobileTableSort'
 import Pagination from '../../../../components/Pagination'
 import { serializeCsv } from '../../../../utils/csv'
 import { useMemo, useState, useEffect } from "react";
@@ -187,39 +188,39 @@ const FacultyManagement = () => {
         transition={{ duration: 0.3, delay: 0.2 }}
       >
         {/* Table Header */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+        <><MobileTableSort fields={[{"key":"name","label":"Name"},{"key":"role","label":"Role"}]} sort={sortConfig} onSort={handleSort} /><div className="overflow-x-auto" data-mobile-card-container="">
+          <table className="w-full" data-mobile-cards="" role="table">
+            <thead className="bg-gray-50 border-b border-gray-200" role="rowgroup">
+              <tr role="row">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')} role="columnheader">
                   Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                   Username
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')} role="columnheader">
                   Role {sortConfig.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200" role="rowgroup">
               {loading ? (
-                <tr>
+                <tr role="row">
                   <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                     Loading staff...
                   </td>
                 </tr>
               ) : paginatedStaff.length === 0 ? (
-                <tr>
+                <tr role="row">
                   <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                     No staff members found
                   </td>
@@ -298,7 +299,7 @@ const FacultyManagement = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </div></>
 
         {/* Pagination */}
         {totalPages > 1 && (

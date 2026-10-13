@@ -1,3 +1,4 @@
+import ResponsiveSidebar from '../../../../components/ResponsiveSidebar'
 import usePersistentNotifications from '../../../../hooks/usePersistentNotifications'
 import { useState, createContext, useContext, useCallback, useMemo, useEffect, useRef } from "react";
 import { AnimatePresence, motion as Motion } from 'framer-motion'
@@ -335,15 +336,15 @@ const AccountsLayout = () => {
   return (
     <AccountsContext.Provider value={contextValue}>
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-[#65CCB8]/10">
-        <Sidebar
+        <ResponsiveSidebar collapsed={isCollapsed} onCollapse={setIsCollapsed}><Sidebar
           activeTab={activeTab}
           setActiveTab={handleSetActiveTab}
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
           userProfile={userProfile}
-        />
+        /></ResponsiveSidebar>
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="mobile-full-content flex-1 flex flex-col min-w-0">
           <Header userProfile={userProfile} currentPage={
             activeTab === 'home' ? 'Accounts Dashboard' :
               activeTab === 'reimbursed' ? 'Reimbursed List' :

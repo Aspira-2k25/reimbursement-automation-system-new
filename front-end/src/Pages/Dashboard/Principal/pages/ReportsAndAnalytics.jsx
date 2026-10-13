@@ -115,9 +115,9 @@ const ReportsAndAnalytics = () => {
     const [updated] = await Promise.all([fetchReport(), refreshRequests()]);
     if (updated) toast.success('Report refreshed.');
   };
-  const statusTable = <table className="w-full"><thead><tr><th>Status</th><th>Requests</th></tr></thead><tbody>{statuses.map(item => <tr key={item.name}><td>{item.name}</td><td>{item.count}</td></tr>)}</tbody></table>;
-  const categoryTable = <table className="w-full"><thead><tr><th>Category</th><th>Requests</th><th>Reimbursed amount</th></tr></thead><tbody>{categories.map(item => <tr key={item._id}><td>{item._id}</td><td>{item.count}</td><td>{money(item.reimbursedAmount)}</td></tr>)}</tbody></table>;
-  const monthlyTable = <table className="w-full"><thead><tr><th>Month</th><th>Requests</th><th>Reimbursed amount</th></tr></thead><tbody>{monthly.map(item => <tr key={item.month}><td>{item.month}</td><td>{item.requests}</td><td>{money(item.amount)}</td></tr>)}</tbody></table>;
+  const statusTable = <table className="w-full" data-mobile-cards="" role="table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Status</th><th role="columnheader">Requests</th></tr></thead><tbody role="rowgroup">{statuses.map(item => <tr key={item.name} role="row"><td data-label="Status" role="cell">{item.name}</td><td data-label="Requests" role="cell">{item.count}</td></tr>)}</tbody></table>;
+  const categoryTable = <table className="w-full" data-mobile-cards="" role="table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Category</th><th role="columnheader">Requests</th><th role="columnheader">Reimbursed amount</th></tr></thead><tbody role="rowgroup">{categories.map(item => <tr key={item._id} role="row"><td data-label="Category" role="cell">{item._id}</td><td data-label="Requests" role="cell">{item.count}</td><td data-label="Reimbursed amount" role="cell">{money(item.reimbursedAmount)}</td></tr>)}</tbody></table>;
+  const monthlyTable = <table className="w-full" data-mobile-cards="" role="table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Month</th><th role="columnheader">Requests</th><th role="columnheader">Reimbursed amount</th></tr></thead><tbody role="rowgroup">{monthly.map(item => <tr key={item.month} role="row"><td data-label="Month" role="cell">{item.month}</td><td data-label="Requests" role="cell">{item.requests}</td><td data-label="Reimbursed amount" role="cell">{money(item.amount)}</td></tr>)}</tbody></table>;
   return <>
     <div className="reports-screen space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -191,30 +191,30 @@ const ReportsAndAnalytics = () => {
             {categories.length === 0 ? (
               <div className="py-8 text-center text-sm text-gray-400">No category claims recorded.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50/70">
-                      <th className="py-2.5 px-3 rounded-l-md">Category</th>
-                      <th className="py-2.5 px-3 text-center">Requests</th>
-                      <th className="py-2.5 px-3 text-right rounded-r-md">Reimbursed amount</th>
+              <div className="overflow-x-auto" data-mobile-card-container="">
+                <table className="w-full text-left text-sm" data-mobile-cards="" role="table">
+                  <thead role="rowgroup">
+                    <tr className="border-b border-gray-100 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50/70" role="row">
+                      <th className="py-2.5 px-3 rounded-l-md" role="columnheader">Category</th>
+                      <th className="py-2.5 px-3 text-center" role="columnheader">Requests</th>
+                      <th className="py-2.5 px-3 text-right rounded-r-md" role="columnheader">Reimbursed amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100" role="rowgroup">
                     {categories.map(item => (
-                      <tr key={item._id} className="hover:bg-gray-50/60 transition-colors">
-                        <td className="py-3 px-3">
+                      <tr key={item._id} className="hover:bg-gray-50/60 transition-colors" role="row">
+                        <td className="py-3 px-3" data-label="Category" role="cell">
                           <div className="flex items-center gap-2 font-medium text-gray-900">
                             <span className="h-2 w-2 rounded-full bg-teal-500"></span>
                             <span>{item._id}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center" data-label="Requests" role="cell">
                           <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                             {item.count}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-right font-bold text-gray-900">
+                        <td className="py-3 px-3 text-right font-bold text-gray-900" data-label="Reimbursed amount" role="cell">
                           {money(item.reimbursedAmount)}
                         </td>
                       </tr>
@@ -396,7 +396,7 @@ const ReportsAndAnalytics = () => {
       }
 
       return (
-        <div className="principal-print-root aggregate-report-print">
+        <div className="principal-print-root aggregate-report-print" data-mobile-card-container="">
           <style>{`
             @media screen {
               .aggregate-report-print {
@@ -468,22 +468,22 @@ const ReportsAndAnalytics = () => {
           </div>
 
           {/* Report Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1.5px solid black', color: '#000', fontFamily: 'Times New Roman, serif' }}>
-            <thead>
-              <tr style={{ height: '40px', backgroundColor: '#fff' }}>
-                <th style={{ border: '1.5px solid black', padding: '8px 4px', textAlign: 'center', width: '8%', fontWeight: 'bold', fontSize: '11pt' }}>Sr. No</th>
-                <th style={{ border: '1.5px solid black', padding: '8px 12px', textAlign: 'left', width: '32%', fontWeight: 'bold', fontSize: '11pt' }}>Name of applicant</th>
-                <th style={{ border: '1.5px solid black', padding: '8px 12px', textAlign: 'left', width: '36%', fontWeight: 'bold', fontSize: '11pt' }}>{courseColumnHeader}</th>
-                <th style={{ border: '1.5px solid black', padding: '8px 4px', textAlign: 'center', width: '10%', fontWeight: 'bold', fontSize: '11pt' }}>Score</th>
-                <th style={{ border: '1.5px solid black', padding: '6px 4px', textAlign: 'center', width: '14%', fontWeight: 'bold', fontSize: '11pt', lineHeight: '1.2' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1.5px solid black', color: '#000', fontFamily: 'Times New Roman, serif' }} data-mobile-cards="" role="table">
+            <thead role="rowgroup">
+              <tr style={{ height: '40px', backgroundColor: '#fff' }} role="row">
+                <th style={{ border: '1.5px solid black', padding: '8px 4px', textAlign: 'center', width: '8%', fontWeight: 'bold', fontSize: '11pt' }} role="columnheader">Sr. No</th>
+                <th style={{ border: '1.5px solid black', padding: '8px 12px', textAlign: 'left', width: '32%', fontWeight: 'bold', fontSize: '11pt' }} role="columnheader">Name of applicant</th>
+                <th style={{ border: '1.5px solid black', padding: '8px 12px', textAlign: 'left', width: '36%', fontWeight: 'bold', fontSize: '11pt' }} role="columnheader">{courseColumnHeader}</th>
+                <th style={{ border: '1.5px solid black', padding: '8px 4px', textAlign: 'center', width: '10%', fontWeight: 'bold', fontSize: '11pt' }} role="columnheader">Score</th>
+                <th style={{ border: '1.5px solid black', padding: '6px 4px', textAlign: 'center', width: '14%', fontWeight: 'bold', fontSize: '11pt', lineHeight: '1.2' }} role="columnheader">
                   <div>Amount</div>
                   <div>in Rs.</div>
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {reportRecords.length === 0 ? (
-                <tr>
+                <tr role="row">
                   <td colSpan={5} style={{ border: '1.5px solid black', textAlign: 'center', padding: '24px', fontStyle: 'italic', color: '#555', fontSize: '11pt' }}>
                     No reimbursement records found matching the selected filters.
                   </td>
@@ -492,12 +492,12 @@ const ReportsAndAnalytics = () => {
                 reportRecords.map((item, index) => {
                   const rawAmount = item.amountNum !== undefined ? item.amountNum : (typeof item.amount === 'number' ? item.amount : parseFloat(String(item.amount || '0').replace(/[^0-9.]/g, '')) || 0);
                   return (
-                    <tr key={item._id || item.id || index} style={{ height: '36px', pageBreakInside: 'avoid' }}>
-                      <td style={{ border: '1.5px solid black', padding: '6px 4px', textAlign: 'center', fontSize: '11pt' }}>{index + 1}</td>
-                      <td style={{ border: '1.5px solid black', padding: '6px 12px', textAlign: 'left', fontSize: '11pt' }}>{item.name || item.applicantName || 'N/A'}</td>
-                      <td style={{ border: '1.5px solid black', padding: '6px 12px', textAlign: 'left', fontSize: '11pt' }}>{item.courseName || item.remarks || item.reimbursementType || item.category || 'N/A'}</td>
-                      <td style={{ border: '1.5px solid black', padding: '6px 4px', textAlign: 'center', fontSize: '11pt' }}>{item.marks !== undefined && item.marks !== null && item.marks !== 'N/A' && item.marks !== '' ? item.marks : (item.score || '-')}</td>
-                      <td style={{ border: '1.5px solid black', padding: '6px 8px', textAlign: 'center', fontSize: '11pt' }}>{rawAmount}</td>
+                    <tr key={item._id || item.id || index} style={{ height: '36px', pageBreakInside: 'avoid' }} role="row">
+                      <td style={{ border: '1.5px solid black', padding: '6px 4px', textAlign: 'center', fontSize: '11pt' }} data-label="Sr. No" role="cell">{index + 1}</td>
+                      <td style={{ border: '1.5px solid black', padding: '6px 12px', textAlign: 'left', fontSize: '11pt' }} data-label="Name of applicant" role="cell">{item.name || item.applicantName || 'N/A'}</td>
+                      <td style={{ border: '1.5px solid black', padding: '6px 12px', textAlign: 'left', fontSize: '11pt' }} data-label="Details" role="cell">{item.courseName || item.remarks || item.reimbursementType || item.category || 'N/A'}</td>
+                      <td style={{ border: '1.5px solid black', padding: '6px 4px', textAlign: 'center', fontSize: '11pt' }} data-label="Score" role="cell">{item.marks !== undefined && item.marks !== null && item.marks !== 'N/A' && item.marks !== '' ? item.marks : (item.score || '-')}</td>
+                      <td style={{ border: '1.5px solid black', padding: '6px 8px', textAlign: 'center', fontSize: '11pt' }} data-label="Amount in Rs." role="cell">{rawAmount}</td>
                     </tr>
                   );
                 })

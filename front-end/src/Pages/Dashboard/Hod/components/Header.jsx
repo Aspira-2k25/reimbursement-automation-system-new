@@ -10,6 +10,7 @@ import apshahLogo from '../../../../assets/images/Apshah_logo.png'
 
 const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   const { logout } = useAuth()
+  const { isCollapsed, setIsCollapsed } = useHODContext()
   const navigate = useNavigate()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
@@ -88,6 +89,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
   return (
     <header className="px-3 sm:px-6 py-3 sm:py-4" style={{ backgroundColor: 'var(--color-off-white)', borderBottom: '1px solid var(--color-light-teal)' }}>
       <div className="flex items-start sm:items-center justify-between gap-2">
+        <button type="button" className="mobile-header-menu" aria-label="Open navigation" aria-expanded={!isCollapsed} onClick={() => setIsCollapsed(false)}><span aria-hidden="true">☰</span></button>
         {/* Left Section - College Logo & Current Page */}
         <div className="flex flex-1 min-w-0 flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6">
           <div className="flex items-center gap-3 pr-0 sm:pr-6 border-b sm:border-b-0 sm:border-r border-gray-200 pb-2 sm:pb-0">
@@ -147,7 +149,7 @@ const Header = ({ userProfile, currentPage = 'Dashboard' }) => {
                   transition={{ duration: 0.2 }}
                 >
                   <div className="p-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between" data-mobile-toolbar="">
                       <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                       <span className="text-xs text-gray-500">{unreadCount} unread</span>
                     </div>

@@ -39,7 +39,7 @@ const sanitizeRejectionReason = (reason) => {
 const initialUserProfile = {
   fullName: "Coordinator",
   department: "",
-  designation: "Co-HOD",
+  designation: "Coordinator",
   role: "Coordinator",
 }
 
@@ -56,7 +56,7 @@ export default function CoordinatorDashboard() {
       setUserProfile({
         fullName: user.name || user.username || "Coordinator",
         department: resolveDepartment(user.department),
-        designation: (user.designation && user.designation !== "Class Coordinator") ? user.designation : "Co-HOD",
+        designation: user.designation || "Coordinator",
         role: user.role || "Coordinator",
         email: user.email || null
       })
@@ -397,7 +397,7 @@ export default function CoordinatorDashboard() {
             className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-3xl mx-auto shadow-xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6" data-mobile-toolbar="">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
                 Request Details
               </h3>

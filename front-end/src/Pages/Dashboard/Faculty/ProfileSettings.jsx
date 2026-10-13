@@ -54,7 +54,7 @@ export default function ProfileSettings() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mobile-settings mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6">
         {/* Header section */}
         <div className="mb-4 sm:mb-6">

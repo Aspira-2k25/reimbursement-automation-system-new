@@ -7,6 +7,14 @@ const sanitizeHtml = (str) => {
   return he.encode(String(str));
 };
 
+const applicantIdRow = (formData) => {
+  const staffTypes = ['faculty', 'coordinator', 'hod', 'principal', 'accounts', 'admin'];
+  const isStaff = staffTypes.includes(String(formData.applicantType || '').toLowerCase())
+    || (!formData.studentId && Boolean(formData.facultyId));
+  const label = isStaff ? 'Faculty ID' : 'Student ID';
+  const value = isStaff ? formData.facultyId : formData.studentId;
+  return `<strong>${label}:</strong> ${sanitizeHtml(value) || 'Not provided'}`;
+};
 const getConfigurationError = () => {
   const key = process.env.RESEND_API_KEY || '';
   const from = process.env.RESEND_FROM_EMAIL || '';
@@ -51,7 +59,7 @@ const emailTemplates = {
 
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row">${applicantIdRow(formData)}</div>
               <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Current Status:</strong> ${sanitizeHtml(formData.status)}</div>
               ${formData.remarks ? `<div class="detail-row"><strong>Remarks:</strong> ${sanitizeHtml(formData.remarks)}</div>` : ''}
@@ -99,7 +107,7 @@ const emailTemplates = {
 
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row">${applicantIdRow(formData)}</div>
               <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Status:</strong> ${sanitizeHtml(formData.status)}</div>
             </div>
@@ -151,7 +159,7 @@ const emailTemplates = {
 
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row">${applicantIdRow(formData)}</div>
               <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Current Status:</strong> ${sanitizeHtml(formData.status || 'Reimbursed')}</div>
               ${formData.remarks ? `<div class="detail-row"><strong>Accounts Remarks:</strong> ${sanitizeHtml(formData.remarks)}</div>` : ''}
@@ -198,7 +206,7 @@ const emailTemplates = {
 
             <div class="details">
               <div class="detail-row"><strong>Application ID:</strong> ${sanitizeHtml(formData.applicationId)}</div>
-              <div class="detail-row"><strong>Student ID:</strong> ${sanitizeHtml(formData.studentId)}</div>
+              <div class="detail-row">${applicantIdRow(formData)}</div>
               <div class="detail-row"><strong>Amount:</strong> ₹${sanitizeHtml(formData.amount) || 'N/A'}</div>
               <div class="detail-row"><strong>Status:</strong> Pending</div>
             </div>

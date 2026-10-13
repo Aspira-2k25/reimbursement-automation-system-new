@@ -174,6 +174,8 @@ router.post(
           status: initialStatus,
           userEmail: req.body.email || req.user.email,
           userName: req.body.name,
+          facultyId: newForm.facultyId,
+          applicantType: newForm.applicantType,
           amount: req.body.amount,
         }, true); // Send email notification
       } catch (notifErr) {
@@ -737,6 +739,8 @@ router.put(
             status: newStatus,
             userEmail: userEmail,
             userName: userName,
+            facultyId: form.facultyId,
+            applicantType: form.applicantType,
             amount: form.amount,
             remarks: updates.remark || form.remark,
           }, true); // Send email notification

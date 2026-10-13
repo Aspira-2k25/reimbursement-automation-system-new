@@ -24,7 +24,7 @@ const ReportLineChart = ({
 }) => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4" data-mobile-toolbar="">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
       </div>
 

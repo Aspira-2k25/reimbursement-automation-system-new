@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, BarChart3, FileText, Settings, ChevronLeft, ChevronRight, Building, Eye } from "lucide-react";
+import { Home, BarChart3, FileText, Settings, ChevronLeft, ChevronRight, Building, Eye, User } from "lucide-react";
 import websiteLogo from '../../../../assets/images/Website_logo.png'
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, userProfile }) => {

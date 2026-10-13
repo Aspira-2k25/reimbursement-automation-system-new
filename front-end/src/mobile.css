@@ -1,0 +1,56 @@
+/* Mobile-only presentation. Tablet and desktop retain their existing layouts. */
+.mobile-drawer-close,.mobile-drawer-backdrop,.mobile-header-menu,.mobile-table-sort{display:none}
+@media(max-width:767px){
+  .responsive-sidebar{position:fixed;inset:0 auto 0 0;width:min(85vw,320px);height:100dvh;z-index:80;background:white;transform:translateX(-101%);visibility:hidden;overflow-y:auto}
+  .responsive-sidebar[data-open=true]{transform:none;visibility:visible}
+  .responsive-sidebar>div{position:static!important;width:100%!important;min-height:100%;height:auto!important}
+  .responsive-sidebar [aria-label="Collapse navigation"]{display:none}
+  .mobile-drawer-backdrop{display:block;position:fixed;inset:0;z-index:79;border:0;background:rgb(15 23 42 / .45)}
+  .mobile-drawer-close{display:flex;position:absolute;right:10px;top:8px;z-index:2;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;background:white;color:#334155;box-shadow:0 1px 4px #0002}
+  .mobile-full-content{margin-left:0!important;min-width:0;width:100%}
+  .mobile-header-menu{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border-radius:10px}
+  .mobile-page-content{padding:16px!important;min-width:0}
+  .mobile-dashboard-root{height:100dvh}
+  .mobile-table-sort{display:flex;align-items:flex-end;gap:10px;padding:12px;min-width:0}
+  [data-mobile-toolbar]{flex-wrap:wrap;gap:12px}
+  [data-mobile-toolbar]>div{max-width:100%;flex-wrap:wrap}
+  [data-mobile-toolbar] h1,[data-mobile-toolbar] h2{font-size:24px;line-height:1.25;overflow-wrap:anywhere}
+  [data-mobile-controls]{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+  [data-mobile-controls] input,[data-mobile-controls] select{width:100%!important}
+  [data-mobile-popover]{position:fixed!important;top:72px!important;left:12px!important;right:12px!important;width:auto!important;max-width:none!important;max-height:calc(100dvh - 88px);overflow-y:auto}
+  [data-mobile-cards]{display:block!important;min-width:0!important;width:100%!important;table-layout:auto}
+  [data-mobile-cards] thead{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  [data-mobile-cards] tbody{display:grid;gap:12px;width:100%}
+  [data-mobile-cards] tbody tr{display:block!important;width:100%;min-width:0;border:1px solid #e2e8f0;border-radius:12px;background:#fff!important;padding:8px 12px;box-sizing:border-box}
+  [data-mobile-cards] td{display:grid!important;position:static!important;grid-template-columns:minmax(76px,.35fr) minmax(0,1fr);column-gap:12px;align-items:start;width:auto!important;min-width:0!important;padding:9px 0!important;border:0!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px}
+  [data-mobile-cards] td::before{content:attr(data-label);color:#64748b;font-size:12px;font-weight:500;grid-column:1}
+  [data-mobile-cards] td>*{min-width:0;max-width:100%;grid-column:2}
+  [data-mobile-cards] td .flex{flex-wrap:wrap}
+  [data-mobile-cards] td .whitespace-nowrap{white-space:normal}
+  [data-mobile-cards] td[colspan]{display:block!important;text-align:center;padding:18px 4px!important}
+  [data-mobile-cards] td[colspan]::before{display:none}
+  [data-mobile-card-container]{overflow:visible!important;max-height:none!important;min-width:0}
+  .auth-brand-panel{min-height:140px!important;height:140px;padding:16px}
+  .auth-brand-panel>.auth-brand-message,.auth-brand-panel>.absolute.inset-0{display:none}
+  .auth-form-panel{min-height:calc(100dvh - 140px)!important;padding:20px 16px!important;align-items:flex-start!important}
+  .auth-form-panel>.w-full{padding-left:0!important;padding-right:0!important}
+  .mobile-settings{padding:0!important}
+  .mobile-settings h1{font-size:24px;line-height:1.25}
+  .mobile-landing>nav>div{flex-direction:row;gap:12px;padding:12px 16px}
+  .mobile-landing>nav>div>div:first-child{min-width:0}
+  .mobile-landing>nav img{width:36px;height:36px}
+  .mobile-landing>nav span{font-size:11px;line-height:1.3}
+  .mobile-landing>nav a{padding:10px 14px;min-height:44px}
+  .mobile-landing>section{padding:32px 16px}
+  .mobile-landing h1{font-size:32px;line-height:1.15}
+  .mobile-landing h2{font-size:26px;line-height:1.25}
+  .mobile-landing .blobatar{max-width:270px;margin:auto;padding:0}
+  .mobile-landing footer{padding:24px 16px}
+  [role=dialog]:not(.responsive-sidebar){overflow-y:auto;overscroll-behavior:contain}
+  [role=dialog]:not(.responsive-sidebar)>div{max-width:100%;max-height:calc(100dvh - 32px);overflow-y:auto}
+  input,select,textarea{min-width:0;max-width:100%;font-size:16px!important}
+  input:not([type=checkbox]):not([type=radio]),select{min-height:44px}
+  input[type=checkbox],input[type=radio]{min-height:20px;min-width:20px}
+  button:not([role=tab]),a[role=button]{touch-action:manipulation}
+  .mobile-full-content button,.mobile-settings button,.auth-form-panel button,[data-mobile-cards] button{min-height:44px}
+}

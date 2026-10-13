@@ -1,3 +1,4 @@
+import MobileTableSort from '../../../../components/MobileTableSort'
 "use client"
 
 import { useState } from "react"
@@ -61,81 +62,81 @@ export default function RequestTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
+    <><MobileTableSort fields={[{"key":"id","label":"Application ID"},{"key":"studentName","label":"Student Name"},{"key":"category","label":"Category"},{"key":"status","label":"Status"},{"key":"amount","label":"Amount"},{"key":"submittedDate","label":"Submitted Date"},{"key":"lastUpdated","label":"Last Updated"}]} sort={{ key: sortField, direction: sortDirection }} onSort={handleSort} /><div className="overflow-x-auto" data-mobile-card-container="">
+      <table className="min-w-full divide-y divide-gray-200" data-mobile-cards="" role="table">
+        <thead className="bg-gray-50" role="rowgroup">
+          <tr role="row">
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort("id")}
-            >
+             role="columnheader">
               Application ID
             </th>
             {showStudentInfo && (
               <th
                 className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("studentName")}
-              >
+               role="columnheader">
                 Student Name
               </th>
             )}
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort("category")}
-            >
+             role="columnheader">
               Category
             </th>
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
+             role="columnheader">
               Course Name
             </th>
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
+             role="columnheader">
               Marks
             </th>
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort("status")}
-            >
+             role="columnheader">
               Status
             </th>
             {!showStudentInfo && (
               <th
                 className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("amount")}
-              >
+               role="columnheader">
                 Amount
               </th>
             )}
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort("submittedDate")}
-            >
+             role="columnheader">
               Submitted Date
             </th>
             <th
               className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort("lastUpdated")}
-            >
+             role="columnheader">
               Last Updated
             </th>
             {showActions && (
-              <th className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" role="columnheader">
                 Actions
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-gray-200" role="rowgroup">
           {requests.map((request) => (
-            <tr key={request.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+            <tr key={request.id} className="hover:bg-gray-50 transition-colors" role="row">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900" data-label="Application ID" role="cell">
                 {request.id}
               </td>
               {showStudentInfo && (
-                <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
+                <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap" data-label="Student Name" role="cell">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <User className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                     <div>
@@ -145,16 +146,16 @@ export default function RequestTable({
                   </div>
                 </td>
               )}
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900" data-label="Category" role="cell">
                 {request.category}
               </td>
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900" data-label="Course Name" role="cell">
                 {request.courseName || 'N/A'}
               </td>
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900" data-label="Marks" role="cell">
                 {request.marks !== undefined && request.marks !== null ? `${request.marks}%` : 'N/A'}
               </td>
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap" data-label="Status" role="cell">
                 <span className={getStatusBadge(request.status)}>
                   {getStatusIcon(request.status)}
                   <span className="hidden sm:inline">{request.status}</span>
@@ -162,18 +163,18 @@ export default function RequestTable({
                 </span>
               </td>
               {!showStudentInfo && (
-                <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900" data-label="Amount" role="cell">
                   {request.amount}
                 </td>
               )}
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500" data-label="Submitted Date" role="cell">
                 {request.submittedDate}
               </td>
-              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+              <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500" data-label="Last Updated" role="cell">
                 {request.lastUpdated}
               </td>
               {showActions && (
-                <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium" data-label="Actions" role="cell">
                   <div className="flex items-center gap-1 sm:gap-2">
                     {actionType === "coordinator" ? (
                       <>
@@ -220,6 +221,6 @@ export default function RequestTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </div></>
   )
 }

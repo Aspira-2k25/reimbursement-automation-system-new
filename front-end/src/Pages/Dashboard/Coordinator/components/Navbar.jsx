@@ -174,10 +174,10 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, notificat
                 </div>
                 <div className="hidden 2xl:block text-left">
                   <div className="text-sm font-medium text-gray-900">
-                    {userProfile?.fullName || "Co-HOD"}
+                    {userProfile?.fullName || "Coordinator"}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {userProfile?.designation || "Co-HOD"}
+                    {userProfile?.designation || "Coordinator"}
                   </div>
                 </div>
                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''
@@ -186,7 +186,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, notificat
 
               {/* Profile Dropdown - Enhanced with smooth transitions */}
               {isProfileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 animate-in fade-in-0 zoom-in-95 duration-200">
+                <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 animate-in fade-in-0 zoom-in-95 duration-200" data-mobile-popover="">
                   <div className="p-2">
                     <button
                       onClick={handleProfileSettings}
@@ -233,6 +233,7 @@ export default function Navbar({ activeTab, setActiveTab, userProfile, notificat
 
             {/* Mobile menu button - Enhanced */}
             <button
+              aria-label={isMobileMenuOpen ? "Close navigation" : "Open navigation"} aria-expanded={isMobileMenuOpen}
               onClick={toggleMobileMenu}
               className={`xl:hidden p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#65CCB8]/60 focus:ring-offset-2 ${isMobileMenuOpen
                 ? "text-white bg-white/20"
