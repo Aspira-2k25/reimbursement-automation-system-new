@@ -3,7 +3,7 @@
 </div>
 
 <div align="center">
-  <a href="https://reimbursement-automation-system-new-nu.vercel.app">
+  <a href="https://reimburse.a[sit.edu.in">
     <img src="https://img.shields.io/badge/Live_Testing_Portal-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Testing Portal" />
   </a>
 </div>
